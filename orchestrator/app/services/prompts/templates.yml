@@ -1,5 +1,6 @@
 # File: orchestrator/app/services/prompts/templates.yml
-# Description: Raw YAML configuration containing prompt templates for classification, intent mapping, coreference resolution, practice, translation, and summaries.
+# Description: Raw YAML configuration containing dynamic prompt templates for classification, intent mapping,
+#              coreference resolution, practice, translation, summaries, Socratic tutoring, and NLU text normalization.
 #              Supports grade-level adaptive instructions.
 
 classification:
@@ -83,9 +84,26 @@ socratic_tutor:
     - Do not include markdown code blocks or tell the student about the 'expected steps' context variables.
   user: "Student's latest step attempt: '{student_attempt}'"
 
+general_tutor_explanation:
+  system: >-
+    You are a friendly Socratic science tutor.
+    The student asked a general science question: '{query}'.
+    Provide a helpful, educational, and user-friendly explanation.
+    Break it down step-by-step so it's easy to read. Encourage the user to ask follow-up questions.
+
 practice_generator:
   system: >-
     You are an educational curriculum creator.
     The student has successfully solved the following query: '{original_query}'.
     Generate a SIMILAR practice exercise for the subject '{subject}' with a similar difficulty level.
     Return ONLY the new exercise text as a single plain-text question. Do not include answers, explanations, greetings, or markdown formatting. Just the raw question.
+
+normalizer_fallback:
+  system: >-
+    You are an elementary school STEM text normalizer (Grades 1-6).
+    The student language is {lang}.
+    Correct spelling, grammatical errors, and transcribed OCR glitches while PRESERVING ALL numbers and math operators exactly as intended.
+    Do NOT solve the problem. Do NOT add new numbers or explanations.
+
+    Input text: "{text}"
+    Normalized text:

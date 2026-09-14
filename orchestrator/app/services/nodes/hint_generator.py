@@ -26,12 +26,7 @@ async def generate_hint_node(state: SocraticTutorState) -> dict:
     if subject == "GENERAL":
         try:
             model = genai.GenerativeModel("gemini-flash-latest")
-            prompt = (
-                f"You are a friendly Socratic science tutor. "
-                f"The student asked a general science question: '{query}'.\n"
-                f"Provide a helpful, educational, and user-friendly explanation. "
-                f"Break it down step-by-step so it's easy to read. Encourage the user to ask follow-up questions."
-            )
+            prompt = prompt_controller.get_general_tutor_prompt(query)
             response = model.generate_content(prompt)
             return {"tutor_feedback": response.text.strip()}
         except Exception as e:

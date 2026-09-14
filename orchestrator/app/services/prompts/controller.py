@@ -1,13 +1,13 @@
 """
 File: orchestrator/app/services/prompts/controller.py
-Description: Dynamic Prompt Controller class implementation for compiling and managing prompts.
+Description: Dynamic Central Prompt Controller class implementation for compiling and managing prompts.
              Loads templates dynamically from templates.yml with local Python fallback dictionary.
-             Supports grade-level adaptive instructions and NLU pipeline formatting.
+             Supports grade-level adaptive instructions, Socratic hinting, translation, and NLU text normalization.
 """
 
 import os
 import yaml
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 # Grade level guidelines map (Elementary School: Grades 1-6)
 GRADE_LEVELS = {
@@ -86,8 +86,6 @@ DEFAULT_TEMPLATES = {
         ),
         "user": "Current Summary: '{rolling_summary}'\n\nNew Turns:\n{evicted_turns}\n\nNew updated summary (keep it under 400 characters):"
     },
-
-
     "socratic_tutor": {
         "system": (
             "You are a friendly Socratic science tutor specializing in {subject}.\n"
@@ -109,6 +107,14 @@ DEFAULT_TEMPLATES = {
         ),
         "user": "Student's latest step attempt: '{student_attempt}'"
     },
+    "general_tutor_explanation": {
+        "system": (
+            "You are a friendly Socratic science tutor.\n"
+            "The student asked a general science question: '{query}'.\n"
+            "Provide a helpful, educational, and user-friendly explanation.\n"
+            "Break it down step-by-step so it's easy to read. Encourage the user to ask follow-up questions."
+        )
+    },
     "practice_generator": {
         "system": (
             "You are an educational curriculum creator.\n"
@@ -116,83 +122,94 @@ DEFAULT_TEMPLATES = {
             "Generate a SIMILAR practice exercise for the subject '{subject}' with a similar difficulty level.\n"
             "Return ONLY the new exercise text as a single plain-text question. Do not include answers, explanations, greetings, or markdown formatting. Just the raw question."
         )
+    },
+    "normalizer_fallback": {
+        "system": (
+            "You are an elementary school STEM text normalizer (Grades 1-6).\n"
+            "The student language is {lang}.\n"
+            "Correct spelling, grammatical errors, and transcribed OCR glitches while PRESERVING ALL numbers and math operators exactly as intended.\n"
+            "Do NOT solve the problem. Do NOT add new numbers or explanations.\n\n"
+            "Input text: \"{text}\"\n"
+            "Normalized text:"
+        )
     }
 }
 
 class PromptController:
     """
-    Manages and formats prompt templates for the Socratic Tutor Orchestrator.
+    Central Dynamic Prompt Controller for the Socratic Tutor Orchestrator.
+    Manages, compiles, and formats dynamic prompt templates with YAML override support.
     """
-    def __init__(self):
+    def __init__(self, templates_path: Optional[str] = None):
+        self.templates_path = templates_path
         self.templates = self._load_templates()
 
     def _load_templates(self) -> Dict[str, Any]:
         """
-        Dynamically loads templates from local templates.yml file.
+        Dynamically loads templates from templates.yml file with fallback merge.
         """
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        yaml_path = os.path.join(current_dir, "templates.yml")
+        if self.templates_path:
+            yaml_path = self.templates_path
+        else:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            yaml_path = os.path.join(current_dir, "templates.yml")
+
         if os.path.exists(yaml_path):
             try:
                 with open(yaml_path, "r", encoding="utf-8") as f:
-                    templates = yaml.safe_load(f)
-                    if templates:
-                        # Merge loaded templates with fallback to ensure all keys exist
+                    loaded = yaml.safe_load(f)
+                    if loaded and isinstance(loaded, dict):
+                        # Deep-merge loaded templates with defaults to ensure all keys exist
                         merged = DEFAULT_TEMPLATES.copy()
-                        merged.update(templates)
+                        for k, v in loaded.items():
+                            if isinstance(v, dict) and k in merged:
+                                merged[k] = {**merged[k], **v}
+                            else:
+                                merged[k] = v
                         return merged
             except Exception as e:
-                print(f"Warning: Failed to load templates.yml: {e}. Using DEFAULT_TEMPLATES fallbacks.")
-        return DEFAULT_TEMPLATES
+                print(f"Warning: Failed to load templates.yml ({e}). Using in-code DEFAULT_TEMPLATES fallbacks.")
+        return DEFAULT_TEMPLATES.copy()
+
+    def reload_templates(self):
+        """Forces reloading templates from YAML."""
+        self.templates = self._load_templates()
 
     def get_classification_prompt(self, query: str) -> str:
-        """
-        Formats the classification prompt for Gemini.
-        """
+        """Formats the subject classification prompt for Gemini."""
         system = self.templates["classification"]["system"]
         user = self.templates["classification"]["user"].format(query=query)
         return f"{system}\n\n{user}"
 
     def get_intent_prompt(self, query: str, chat_history: str) -> str:
-        """
-        Formats the intent classification prompt.
-        """
+        """Formats the intent classification prompt."""
         system = self.templates["intent_classification"]["system"]
         user = self.templates["intent_classification"]["user"].format(query=query, chat_history=chat_history)
         return f"{system}\n\n{user}"
 
     def get_coreference_prompt(self, query: str, chat_history: str) -> str:
-        """
-        Formats the contextual coreference resolution prompt.
-        """
+        """Formats the contextual coreference resolution prompt."""
         system = self.templates["coreference_resolution"]["system"]
         user = self.templates["coreference_resolution"]["user"].format(query=query, chat_history=chat_history)
         return f"{system}\n\n{user}"
 
     def get_concept_prompt(self, query: str) -> str:
-        """
-        Formats the concept/keyword extraction prompt for RAG search.
-        """
+        """Formats the concept/keyword extraction prompt for RAG search."""
         system = self.templates["concept_extraction"]["system"]
         user = self.templates["concept_extraction"]["user"].format(query=query)
         return f"{system}\n\n{user}"
 
     def get_translation_to_english_prompt(self, text: str) -> str:
-        """
-        Formats the Khmer to English translation prompt.
-        """
+        """Formats the Khmer to English translation prompt."""
         system = self.templates["translate_khmer_to_english"]["system"]
         user = self.templates["translate_khmer_to_english"]["user"].format(text=text)
         return f"{system}\n\n{user}"
 
     def get_translation_to_khmer_prompt(self, text: str) -> str:
-        """
-        Formats the English to Khmer translation prompt.
-        """
+        """Formats the English to Khmer translation prompt."""
         system = self.templates["translate_english_to_khmer"]["system"]
         user = self.templates["translate_english_to_khmer"]["user"].format(text=text)
         return f"{system}\n\n{user}"
-
 
     def get_tutor_prompt(
         self,
@@ -212,12 +229,10 @@ class PromptController:
         expected_expression = expected_step.get("expression", "N/A")
         predefined_hint = expected_step.get("hint", "N/A")
         
-        # Get grade details
         grade_info = GRADE_LEVELS.get(grade_level, GRADE_LEVELS["grade_4_6"])
         grade_group = grade_info["group"]
         grade_guidelines = grade_info["guidelines"]
 
-        # Calculate hint guidance level dynamically based on hint_count
         if hint_count == 0:
             hint_guidance = (
                 f"This is the student's first attempt. If their answer is wrong, "
@@ -252,19 +267,20 @@ class PromptController:
         
         return f"{system}\n\n{user}"
 
+    def get_general_tutor_prompt(self, query: str) -> str:
+        """Formats the general science question prompt for direct educational response."""
+        system_tmpl = self.templates.get("general_tutor_explanation", {}).get("system", "")
+        return system_tmpl.format(query=query)
+
     def get_practice_prompt(self, original_query: str, subject: str) -> str:
-        """
-        Formats the prompt to generate an analogous practice question.
-        """
+        """Formats the prompt to generate an analogous practice question."""
         return self.templates["practice_generator"]["system"].format(
             original_query=original_query,
             subject=subject
         )
 
     def get_rolling_summary_prompt(self, rolling_summary: str, evicted_turns: str) -> str:
-        """
-        Formats the rolling summary prompt for conversation history compaction.
-        """
+        """Formats the rolling summary prompt for conversation history compaction."""
         system = self.templates["rolling_summary"]["system"]
         user = self.templates["rolling_summary"]["user"].format(
             rolling_summary=rolling_summary,
@@ -272,6 +288,11 @@ class PromptController:
         )
         return f"{system}\n\n{user}"
 
+    def get_normalizer_prompt(self, text: str, lang: str = "english") -> str:
+        """Formats the prompt for Tier-2 NLU bilingual/OCR text normalization fallback."""
+        system_tmpl = self.templates.get("normalizer_fallback", {}).get("system", "")
+        return system_tmpl.format(text=text, lang=lang)
 
-# Instantiate global prompt controller
+
+# Global singleton instance of PromptController
 prompt_controller = PromptController()
