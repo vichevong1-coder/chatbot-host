@@ -131,6 +131,79 @@ class TestInvariantSafety:
         assert verify_invariants(raw, corrupted) is False
 
 
+class TestMathSymbolAndUnitStandardization:
+    """Test Day 3 Math Symbol, Operator, Fraction, and Scientific Unit Standardization."""
+
+    def test_multiplication_variants(self):
+        cases = [
+            ("3 x 4", "3 * 4"),
+            ("3 X 4", "3 * 4"),
+            ("3 times 4", "3 * 4"),
+            ("3 multiplied by 4", "3 * 4"),
+            ("3 · 4", "3 * 4"),
+            ("3 × 4", "3 * 4"),
+            ("3 * 4", "3 * 4"),
+        ]
+        for raw, expected in cases:
+            assert normalize_text_sync(raw) == expected
+
+    def test_division_variants(self):
+        cases = [
+            ("10 / 2", "10 / 2"),
+            ("10 divided by 2", "10 / 2"),
+            ("10 : 2", "10 / 2"),
+            ("10 ÷ 2", "10 / 2"),
+            ("10 over 2", "10 / 2"),
+        ]
+        for raw, expected in cases:
+            assert normalize_text_sync(raw) == expected
+
+    def test_addition_and_subtraction(self):
+        assert normalize_text_sync("5 plus 3") == "5 + 3"
+        assert normalize_text_sync("8 minus 2") == "8 - 2"
+
+    def test_equivalence_and_relations(self):
+        assert normalize_text_sync("5 + 3 equals 8") == "5 + 3 = 8"
+        assert normalize_text_sync("5 + 3 is equal to 8") == "5 + 3 = 8"
+        assert normalize_text_sync("5 + 3 equal to 8") == "5 + 3 = 8"
+        assert normalize_text_sync("10 is greater than or equal to 5") == "10 >= 5"
+        assert normalize_text_sync("4 is less than or equal to 9") == "4 <= 9"
+
+    def test_fraction_standardization(self):
+        assert normalize_text_sync("3/4th") == "3/4"
+        assert normalize_text_sync("3/4ths") == "3/4"
+        assert normalize_text_sync("1/2nd") == "1/2"
+        assert normalize_text_sync("2/3rds") == "2/3"
+        assert normalize_text_sync("three fourths") == "3/4"
+        assert normalize_text_sync("one half") == "1/2"
+        assert normalize_text_sync("3 / 4") == "3/4"
+        assert normalize_text_sync("1 and 1/2") == "1 1/2"
+        assert normalize_text_sync("½") == "1/2"
+        assert normalize_text_sync("2½") == "2 1/2"
+
+    def test_unit_spacing_and_exponents(self):
+        assert normalize_text_sync("5cm") == "5 cm"
+        assert normalize_text_sync("10kg") == "10 kg"
+        assert normalize_text_sync("250ml") == "250 ml"
+        assert normalize_text_sync("15km/h") == "15 km/h"
+        assert normalize_text_sync("100km/h") == "100 km/h"
+        assert normalize_text_sync("cm²") == "cm^2"
+        assert normalize_text_sync("m³") == "m^3"
+        assert normalize_text_sync("x²") == "x^2"
+        assert normalize_text_sync("cm2") == "cm^2"
+        assert normalize_text_sync("m3") == "m^3"
+        assert normalize_text_sync("25cm²") == "25 cm^2"
+        assert normalize_text_sync("50m3") == "50 m^3"
+
+    def test_parentheses_and_equation_formatting(self):
+        assert normalize_text_sync("( 3 + 4 )") == "(3 + 4)"
+        assert normalize_text_sync("(  10 / 2  )") == "(10 / 2)"
+
+    def test_complex_elementary_equations(self):
+        assert normalize_text_sync("what is 4 x 5cm plus 1/2") == "what is 4 * 5 cm + 1/2"
+        assert normalize_text_sync("calculate ( 6 x 8 ) divided by 2") == "calculate (6 * 8) / 2"
+
+
 class TestPerformanceBenchmark:
     """Ensure normalization runs in under 1ms for sub-millisecond latency."""
 
