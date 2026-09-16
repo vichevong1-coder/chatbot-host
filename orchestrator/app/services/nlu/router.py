@@ -44,8 +44,8 @@ _MATH_TERMS_RE = re.compile(
 
 # Regex patterns for Science detection
 _SCIENCE_TERMS_RE = re.compile(
-    r'\b(?:plant|plants|leaf|leaves|chlorophyll|photosynthesis|seed|flower|root|roots|'
-    r'animal|animals|mammal|bird|fish|insect|predator|prey|habitat|ecosystem|'
+    r'\b(?:plant|plants|leaf|leaves|chlorophyll|chloroplast|photosynthesis|seed|flower|root|roots|'
+    r'cell|cells|organelle|organism|animal|animals|mammal|bird|fish|insect|predator|prey|habitat|ecosystem|'
     r'matter|solid|liquid|gas|evaporation|condensation|precipitation|freeze|melting|'
     r'gravity|force|forces|motion|friction|magnet|magnetic|sound|light|energy|heat|'
     r'planet|planets|earth|moon|sun|solar|star|stars|space|weather|cloud|rain|rock|soil|'

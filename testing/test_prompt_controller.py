@@ -123,6 +123,19 @@ class TestPromptController:
         assert "english" in prompt
         assert text in prompt
 
+    def test_off_topic_redirection_prompt(self):
+        query = "do you play roblox?"
+        step = {"step_number": 1, "question": "What is 3 + 3?"}
+        prompt = prompt_controller.get_off_topic_redirection_prompt(
+            query=query,
+            current_step=step,
+            grade_level="grade_1_3"
+        )
+        assert "Grade 1-3" in prompt
+        assert "What is 3 + 3?" in prompt
+        assert query in prompt
+        assert "under 25 words" in prompt
+
     def test_custom_controller_fallback_resilience(self):
         """Ensure PromptController handles missing YAML by falling back to DEFAULT_TEMPLATES."""
         controller = PromptController(templates_path="/non/existent/path/templates.yml")

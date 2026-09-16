@@ -15,6 +15,13 @@ from app.services.nlu.normalizer import (
     detect_language,
     verify_invariants,
 )
+from app.services.nlu.clarify import (
+    AmbiguityType,
+    AmbiguityResult,
+    detect_ambiguity,
+    is_gibberish_sync,
+    get_kid_friendly_reprompt,
+)
 from app.services.nlu.intent import (
     IntentType,
     IntentResult,
@@ -25,6 +32,8 @@ from app.services.nlu.intent import (
     extract_core_answer,
     disambiguate_step_input,
     is_step_active,
+    get_off_topic_redirection_prompt,
+    generate_off_topic_redirection_llm,
 )
 from app.services.nlu.router import (
     RoutingResult,
@@ -34,6 +43,10 @@ from app.services.nlu.router import (
     route_subject_and_grade,
     route_subject_and_grade_sync,
     route_subject_and_grade_heuristic,
+)
+from app.services.nlu.pipeline import (
+    process_nlu,
+    process_nlu_sync,
 )
 
 __all__ = [
@@ -45,6 +58,11 @@ __all__ = [
     "normalize_text_sync",
     "detect_language",
     "verify_invariants",
+    "AmbiguityType",
+    "AmbiguityResult",
+    "detect_ambiguity",
+    "is_gibberish_sync",
+    "get_kid_friendly_reprompt",
     "IntentType",
     "IntentResult",
     "classify_intent",
@@ -54,6 +72,8 @@ __all__ = [
     "extract_core_answer",
     "disambiguate_step_input",
     "is_step_active",
+    "get_off_topic_redirection_prompt",
+    "generate_off_topic_redirection_llm",
     "RoutingResult",
     "route_subject",
     "route_subject_sync",
@@ -61,4 +81,6 @@ __all__ = [
     "route_subject_and_grade",
     "route_subject_and_grade_sync",
     "route_subject_and_grade_heuristic",
+    "process_nlu",
+    "process_nlu_sync",
 ]

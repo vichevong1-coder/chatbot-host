@@ -204,55 +204,51 @@ orchestrator/app/services/nlu/
 - **Verification**: Validated with 52 test cases in `testing/test_nlu_disambiguation.py` (100% green, 112/112 tests across full NLU suite passing in 0.19s).
 
 
-#### Day 10: Master Pipeline Runner
+#### Day 10: Master Pipeline Runner `[COMPLETED ✅]`
 - **File Created**: `orchestrator/app/services/nlu/pipeline.py`
-- **Function**:
-  ```python
-  async def process_nlu(raw_query: str, current_context: Optional[dict] = None) -> NLUResult:
-      # Step 1: Deterministic fast clean
-      cleaned = normalize_student_input(raw_query)
-      
-      # Step 2: Intent & Answer classification
-      intent_data = await classify_intent(cleaned, current_context)
-      
-      # Step 3: Subject & Grade routing
-      route_data = await route_subject_and_grade(cleaned)
-      
-      # Step 4: Construct and validate Golden Schema
-      return NLUResult(
-          raw_query=raw_query,
-          cleaned_text=cleaned,
-          intent=intent_data.intent,
-          confidence=intent_data.confidence,
-          subject=route_data.subject,
-          subtopic=route_data.subtopic,
-          grade_level=route_data.grade_level,
-          extracted_answer=intent_data.extracted_answer,
-          is_ambiguous=intent_data.is_ambiguous
-      )
-  ```
-- **Done Criteria**: Single async function call takes raw text and outputs valid `NLUResult`.
+- **Logic & Implementation**:
+  - Implemented `process_nlu()` (async) and `process_nlu_sync()` (synchronous fast-path, `<2ms`).
+  - Orchestrates the 4-stage pipeline:
+    1. **Normalizer**: Deterministic cleaning of typos, slang, math symbols, fractions, and units.
+    2. **Intent & Answer Classifier**: Classifies student intent and extracts core answers with active step disambiguation.
+    3. **Subject Router**: Routes domain (`math`, `science`, `general`), tags granular subtopics, and preserves session grade tier.
+    4. **Golden Schema Assembler**: Constructs and validates standard `NLUResult` with fallback safety.
+  - Exported `process_nlu` and `process_nlu_sync` cleanly in `orchestrator/app/services/nlu/__init__.py`.
+- **Verification**: Validated with 13 test cases in `testing/test_nlu_pipeline.py` (100% green, 125/125 tests passing across entire NLU suite).
 
 ---
 
 ### 🔵 PHASE 3: Clarifications, Integration & Hand-Off (Days 11–15)
 *Objective: Build ambiguity fallbacks, complete test coverage, wrap into LangGraph, and merge to staging.*
 
-#### Day 11: Ambiguity & Gibberish Handler
-- **File Created**: `orchestrator/app/services/nlu/clarify.py`
-- **Logic**:
-  - Detect keyboard smashes (e.g. `"asdfghjkl"`, `"?????"`), ultra-short non-answers (`"k"`, `"um"`).
-  - Mark `is_ambiguous = True`.
-  - Generate a friendly, encouraging prompt to gently ask the student to rephrase:
-    - *"I didn't quite catch that! Could you tell me what number or word you're thinking of?"*
-- **Verification**: Test 10 gibberish and empty queries.
+#### Day 11: Ambiguity & Gibberish Handler `[COMPLETED ✅]`
+- **Files Created / Updated**:
+  - `orchestrator/app/services/nlu/clarify.py`
+  - `orchestrator/app/services/nlu/pipeline.py`
+  - `orchestrator/app/services/nlu/__init__.py`
+  - `testing/test_nlu_clarify.py`
+- **Logic & Heuristics Implemented**:
+  - Detect keyboard smashes (e.g. `"asdfghjkl"`, `"qwertyuiop"`), punctuation storms (`"???!!!"`), repeated character bursts (`"aaaaa"`), empty/whitespace strings, and non-academic filler utterances (`"k"`, `"um"`, `"uh"`).
+  - Fast-path deterministic evaluation ($<0.2\text{ms}$) with zero LLM overhead.
+  - False-positive protection for valid consonant-rich words (`rhythm`, `fly`, `dry`, `length`), valid short answers (`4`, `1/2`, `yes`), and multi-word STEM questions.
+  - Generates encouraging, grade-tiered, context-aware Socratic re-prompts (`clarification_prompt`) based on active step status.
+  - Sets `is_ambiguous = True`, `intent = StudentIntent.REQUEST_CLARIFICATION`, and `confidence = 0.0`.
+- **Verification**: Validated with 18 unit tests in `testing/test_nlu_clarify.py` (100% green, 143/143 passing across full NLU suite in 0.39s).
 
-#### Day 12: Off-Topic Deflection Tagging
-- **File Updated**: `orchestrator/app/services/nlu/intent.py`
-- **Logic**:
-  - Identify non-academic distractions (games, YouTube, pop culture, personal questions).
-  - Mark `intent = "OFF_TOPIC"` and attach friendly redirection context for Vicheka's guardrails.
-- **Verification**: Test `"Do you like Fortnite?"` $\rightarrow$ `intent: OFF_TOPIC`.
+#### Day 12: Off-Topic Deflection Tagging `[COMPLETED ✅]`
+- **Files Created / Updated**:
+  - `orchestrator/app/services/prompts/templates.yml`
+  - `orchestrator/app/services/prompts/controller.py`
+  - `orchestrator/app/services/nlu/intent.py`
+  - `orchestrator/app/services/nlu/pipeline.py`
+  - `orchestrator/app/services/nlu/__init__.py`
+  - `testing/test_nlu_off_topic.py`
+- **Logic & Heuristics Implemented**:
+  - **Two-tier detection**: Fast deterministic regex ($<0.2\text{ms}$) catching video games (Fortnite, Roblox, Minecraft, Brawl Stars, Pokemon), pop culture / memes (MrBeast, TikTok, Skibidi Toilet), and bot persona inquiries ("are you real?", "how old are you?"), backed by Gemini Flash LLM classification.
+  - **False-Positive Math Guard**: Detects and protects word problems mentioning gaming characters/blocks (e.g. `"Steve has 12 blocks in Minecraft..."` $\rightarrow$ `INITIAL_QUESTION`).
+  - **Socratic Redirection Generators**: Generates grade-tiered redirection responses via `get_off_topic_redirection_prompt()` and async LLM `generate_off_topic_redirection_llm()`.
+  - **Schema Mapping**: Emits `NLUResult(intent=StudentIntent.OFF_TOPIC, extracted_answer=None, confidence=0.95)`.
+- **Verification**: Validated with 10 unit tests in `testing/test_nlu_off_topic.py` (100% green, 153/153 passing across full NLU suite in 0.32s).
 
 #### Day 13: 50-Case Comprehensive Test Suite
 - **File Created**: `testing/test_nlu_suite.py`
@@ -304,7 +300,7 @@ orchestrator/app/services/nlu/
 ## 4. Daily Execution Checklist for Deth
 
 | Day | Module | Task Description | Target File | Status |
-| :---: | :--- | :--- | :--- | :---: |
+| :---: | :--- | :--- | :--- | :--- |
 | **Day 1** | Schema | Define `NLUResult` & `StudentIntent` Pydantic models | `services/nlu/schema.py` | ✅ |
 | **Day 2** | Normalizer | Implement hybrid bilingual normalizer, OCR/voice cleaner & regex dictionary | `services/nlu/normalizer.py` | ✅ |
 | **Day 3** | Normalizer | Implement math symbol, fraction & unit standardizer | `services/nlu/normalizer.py` | ✅ |
@@ -314,9 +310,9 @@ orchestrator/app/services/nlu/
 | **Day 7** | Intent | Implement `extracted_answer` clean parser | `services/nlu/intent.py` | ✅ |
 | **Day 8** | Router | Build Math/Science & Subtopic classifier | `services/nlu/router.py` | ✅ |
 | **Day 9** | Intent | Implement step context disambiguation for short answers | `services/nlu/intent.py` | ✅ |
-| **Day 10** | Pipeline | Assemble master `process_nlu()` async function | `services/nlu/pipeline.py` | 🔲 |
-| **Day 11** | Clarify | Implement ambiguity & gibberish handler | `services/nlu/clarify.py` | 🔲 |
-| **Day 12** | Guard | Implement off-topic deflection tagger | `services/nlu/intent.py` | 🔲 |
+| **Day 10** | Pipeline | Assemble master `process_nlu()` async function | `services/nlu/pipeline.py` | ✅ |
+| **Day 11** | Clarify | Implement ambiguity & gibberish handler | `services/nlu/clarify.py` | ✅ |
+| **Day 12** | Guard | Implement off-topic deflection tagger | `services/nlu/intent.py` | ✅ |
 | **Day 13** | Testing | Build & validate 50-case integration test suite | `testing/test_nlu_suite.py` | 🔲 |
 | **Day 14** | LangGraph | Build `nlu_node()` wrapper for Vicheka's graph | `services/nlu/node.py` | 🔲 |
 | **Day 15** | Delivery | Final QA, docs & PR merge to `staging` | `feat/nlu-pipeline` PR | 🔲 |

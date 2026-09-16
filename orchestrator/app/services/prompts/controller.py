@@ -42,11 +42,12 @@ DEFAULT_TEMPLATES = {
     "intent_classification": {
         "system": (
             "Analyze the user's latest query in the context of the conversation and classify their intent into exactly ONE of the following options:\n"
-            "- 'INITIAL_SOLVE': Starting a new science question.\n"
+            "- 'INITIAL_SOLVE': Starting a new science or math question.\n"
             "- 'STEP_ATTEMPT': Submitting an attempt for an ongoing exercise.\n"
             "- 'CLARIFY': Asking a conceptual question or 'why/how'.\n"
             "- 'REQUEST_PRACTICE': Asking for another practice example.\n"
-            "- 'CHITCHAT': Greetings or casual chatter.\n\n"
+            "- 'CHITCHAT': Greetings or casual chatter.\n"
+            "- 'OFF_TOPIC': Video games, pop culture, personal AI questions, or non-academic topics.\n\n"
             "Return ONLY the intent label as a single word in uppercase."
         ),
         "user": "Chat History:\n{chat_history}\n\nLatest Query: '{query}'"
@@ -132,6 +133,19 @@ DEFAULT_TEMPLATES = {
             "Input text: \"{text}\"\n"
             "Normalized text:"
         )
+    },
+    "off_topic_redirection": {
+        "system": (
+            "You are a friendly Socratic AI math and science tutor for elementary students ({grade_level_group}).\n"
+            "Tutor Language & Style Guidelines: {grade_level_guidelines}\n"
+            "Context: {step_context}\n\n"
+            "Instructions:\n"
+            "1. Playfully and warmly acknowledge the student's comment in half a sentence.\n"
+            "2. Enthusiastically redirect them back to their math or science problem in 1 sentence.\n"
+            "3. Keep it under 25 words. Do not lecture. Be encouraging and fun!\n"
+            "Output ONLY the tutor's response."
+        ),
+        "user": "Student comment: '{query}'"
     }
 }
 
@@ -292,6 +306,27 @@ class PromptController:
         """Formats the prompt for Tier-2 NLU bilingual/OCR text normalization fallback."""
         system_tmpl = self.templates.get("normalizer_fallback", {}).get("system", "")
         return system_tmpl.format(text=text, lang=lang)
+
+    def get_off_topic_redirection_prompt(
+        self,
+        query: str,
+        current_step: Optional[Dict[str, Any]] = None,
+        grade_level: str = "grade_4_6",
+    ) -> str:
+        """Formats the dynamic off-topic deflection and Socratic redirection prompt."""
+        grade_info = GRADE_LEVELS.get(grade_level, GRADE_LEVELS["grade_4_6"])
+        grade_group = grade_info["group"]
+        grade_guidelines = grade_info["guidelines"]
+
+        step_context = f"Current active problem step: {current_step}" if current_step else "No active step (on home screen)."
+
+        system = self.templates["off_topic_redirection"]["system"].format(
+            grade_level_group=grade_group,
+            grade_level_guidelines=grade_guidelines,
+            step_context=step_context,
+        )
+        user = self.templates["off_topic_redirection"]["user"].format(query=query)
+        return f"{system}\n\n{user}"
 
 
 # Global singleton instance of PromptController

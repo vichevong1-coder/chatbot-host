@@ -3,6 +3,7 @@ Intent Classification & Structured Answer Extraction Engine for Elementary STEM 
 - Structured Gemini 2.5 Flash intent classifier returning JSON adhering to StudentIntent.
 - Structured core answer extractor cleaning conversational filler ('I think 12' -> '12').
 - High-speed deterministic fallback heuristic for offline/sub-millisecond evaluation (<1ms).
+- Off-topic distraction detector and Socratic redirection prompt generator (Day 12).
 """
 
 import os
@@ -20,6 +21,7 @@ class IntentType(str, Enum):
     CLARIFY = "CLARIFY"
     REQUEST_PRACTICE = "REQUEST_PRACTICE"
     CHITCHAT = "CHITCHAT"
+    OFF_TOPIC = "OFF_TOPIC"
 
 class IntentResult(BaseModel):
     intent: IntentType = Field(..., description="Classified Intent Label")
@@ -32,7 +34,8 @@ _CHITCHAT_RE = re.compile(
     r'^(?:hi|hello|hey|greetings|good\s+(?:morning|afternoon|evening)|'
     r'thanks(?:\s+(?:a\s+lot|so\s+much|very\s+much))?|'
     r'thank\s+you(?:\s+(?:so\s+much|very\s+much))?|'
-    r'thx|ty|tysm|bye|goodbye|see\s+ya|cya)[\s!.]*$',
+    r'thx|ty|tysm|bye|goodbye|see\s+ya|cya)'
+    r'(?:\s+(?:there|tutor|bot|teacher|friend|ai))?[\s!.]*$',
     flags=re.IGNORECASE
 )
 
@@ -61,6 +64,89 @@ _HELP_SEEKING_RE = re.compile(
     r')[\s!.]*$',
     flags=re.IGNORECASE
 )
+
+# Off-topic gaming, internet pop culture, and AI personal questions
+_OFF_TOPIC_RE = re.compile(
+    r'(?:'
+    r'fortnite|roblox|minecraft|brawl\s+stars|pokemon|pokémon|fifa|gta|among\s+us|'
+    r'play\s+(?:a\s+)?game|video\s+game|gamer|'
+    r'mrbeast|mr\s+beast|tiktok|tik\s+tok|youtube|youtuber|skibidi|anime|taylor\s+swift|'
+    r'are\s+you\s+(?:a\s+)?(?:real\s+)?(?:human|robot|ai|person|living|alive)|'
+    r'are\s+you\s+real|'
+    r'how\s+old\s+are\s+you|what\s+is\s+your\s+age|'
+    r'where\s+do\s+you\s+live|who\s+made\s+you|who\s+created\s+you|'
+    r'do\s+you\s+have\s+(?:a\s+)?(?:girlfriend|boyfriend|friends|feelings)|'
+    r'tell\s+me\s+a\s+(?:bedtime\s+)?story|write\s+(?:me\s+)?a\s+poem'
+    r')',
+    flags=re.IGNORECASE
+)
+
+def get_off_topic_redirection_prompt(
+    current_step: Optional[Dict[str, Any]] = None,
+    grade_level: str = "grade_4_6",
+) -> str:
+    """
+    Generates a playful, encouraging redirection prompt to guide elementary
+    students back to their math or science learning.
+    """
+    has_step = bool(
+        current_step
+        and (
+            current_step.get("question")
+            or current_step.get("step_number")
+            or current_step.get("expected_answer")
+        )
+    )
+    is_early_elementary = "1_3" in str(grade_level).lower()
+
+    if has_step:
+        if is_early_elementary:
+            return "That sounds fun, but let's finish our puzzle first! What number or word do you think is next?"
+        return "Haha, that's cool, but let's stay focused on our problem for now! What do you think is the answer to this step?"
+    else:
+        if is_early_elementary:
+            return "Haha, I love games and stories, but my superpower is science and math! What fun question shall we solve?"
+        return "I'd love to chat about that, but I'm your math and science buddy! What problem or concept would you like to explore today?"
+
+
+async def generate_off_topic_redirection_llm(
+    query: str,
+    current_step: Optional[Dict[str, Any]] = None,
+    grade_level: str = "grade_4_6",
+) -> str:
+    """
+    Uses Gemini Flash to generate a personalized Socratic redirection response.
+    Uses dynamic prompt templates from PromptController with offline/timeout fallback.
+    """
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return get_off_topic_redirection_prompt(current_step, grade_level)
+
+    prompt = prompt_controller.get_off_topic_redirection_prompt(
+        query=query,
+        current_step=current_step,
+        grade_level=grade_level,
+    )
+
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+
+        async def _call():
+            loop = asyncio.get_event_loop()
+            resp = await loop.run_in_executor(
+                None,
+                lambda: client.models.generate_content(
+                    model="gemini-3.6-flash",
+                    contents=prompt
+                )
+            )
+            return resp.text.strip()
+
+        return await asyncio.wait_for(_call(), timeout=1.5)
+    except Exception:
+        return get_off_topic_redirection_prompt(current_step, grade_level)
+
 
 # Clarification question patterns
 _CLARIFY_RE = re.compile(
@@ -175,8 +261,16 @@ def disambiguate_step_input(
     if _CLARIFY_RE.match(q) and not any(op in q for op in ['+', '-', '*', '/', '=']):
         return IntentResult(intent=IntentType.CLARIFY, confidence=0.90)
 
+    # 4.5. Off-topic distractions during active step
+    if _OFF_TOPIC_RE.search(q) and not re.search(r'\d+\s*[+\-*/=]\s*\d+', q):
+        return IntentResult(
+            intent=IntentType.OFF_TOPIC,
+            confidence=0.95,
+            extracted_answer=None,
+            raw_response="step_off_topic"
+        )
+
     # 5. Short student answer attempt
-    # Clean answer to remove conversational hedging (e.g. 'I think 12' -> '12')
     extracted = extract_core_answer(q)
     word_count = len(q.split())
     extracted_word_count = len(extracted.split()) if extracted else 0
@@ -193,7 +287,7 @@ def disambiguate_step_input(
 
     return None
 
-    
+
 def format_chat_history(
     history: Optional[Union[str, List[Dict[str, Any]]]] = None,
     rolling_summary: Optional[str] = None,
@@ -262,6 +356,20 @@ def classify_intent_heuristic(
     # 1. Greetings / Pleasantries
     if _CHITCHAT_RE.match(q):
         return IntentResult(intent=IntentType.CHITCHAT, confidence=0.98)
+
+    # 1.5. Off-topic distractions (with word problem protection)
+    if _OFF_TOPIC_RE.search(q):
+        is_math_word_problem = bool(
+            re.search(r'\b(?:how\s+(?:many|much)|calculate|solve|find|total|equals?|plus|minus|times|divided)\b', q, re.IGNORECASE)
+            or re.search(r'\d+\s*[+\-*/=]\s*\d+', q)
+        )
+        if not is_math_word_problem:
+            return IntentResult(
+                intent=IntentType.OFF_TOPIC,
+                confidence=0.95,
+                extracted_answer=None,
+                raw_response="heuristic_off_topic"
+            )
 
     # 2. Help & Stuck expressions -> CLARIFY
     if _HELP_SEEKING_RE.match(q):
