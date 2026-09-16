@@ -14,6 +14,7 @@ ORCHESTRATOR_DIR = os.path.join(BASE_DIR, "orchestrator")
 if ORCHESTRATOR_DIR not in sys.path:
     sys.path.insert(0, ORCHESTRATOR_DIR)
 
+# pyrefly: ignore [missing-import]
 from app.services.nlu import (
     nlu_node,
     nlu_node_sync,
@@ -21,6 +22,7 @@ from app.services.nlu import (
     SubjectArea,
     GradeTier,
 )
+# pyrefly: ignore [missing-import]
 from app.services.nlu.node import _extract_query, _extract_current_step
 
 
