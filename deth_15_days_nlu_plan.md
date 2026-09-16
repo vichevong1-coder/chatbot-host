@@ -264,30 +264,25 @@ orchestrator/app/services/nlu/
   - Total execution time for all 50 full pipeline passes: **3.22 ms** (~**0.064 ms per query**), far exceeding the $<2\text{ms}$ latency target.
 - **Verification**: 52/52 tests in `testing/test_nlu_suite.py` passing 100% green; 217/217 total tests across the entire NLU suite passing in 0.42s.
 
-#### Day 14: LangGraph Node Integration Wrapper
-- **File Created**: `orchestrator/app/services/nlu/node.py`
-- **Function**:
-  ```python
-  from app.services.nlu.pipeline import process_nlu
-
-  async def nlu_node(state: dict) -> dict:
-      """
-      LangGraph Node entrypoint for Socratic graph execution.
-      Called at the start of every student turn.
-      """
-      user_input = state.get("user_input", "")
-      current_step = state.get("current_step", {})
-      
-      nlu_result = await process_nlu(user_input, current_context=current_step)
-      
-      return {
-          "nlu_result": nlu_result.model_dump(),
-          "intent": nlu_result.intent,
-          "cleaned_input": nlu_result.cleaned_text,
-          "extracted_answer": nlu_result.extracted_answer
-      }
-  ```
-- **Done Criteria**: `nlu_node` can be imported directly into `graph.py` by Vicheka.
+#### Day 14: LangGraph Node Integration Wrapper `[COMPLETED ✅]`
+- **Files Created / Updated**:
+  - `orchestrator/app/services/nlu/node.py`
+  - `orchestrator/app/services/nlu/__init__.py`
+  - `testing/test_nlu_node.py`
+- **Logic & Implementation**:
+  - Implemented `nlu_node(state)` (async) and `nlu_node_sync(state)` (sync fast-path).
+  - Robust query extraction supporting `user_input`, `student_attempt`, `query`, and `message`.
+  - Reconstructs active step context dynamically from either explicit `current_step` dict or `solved_steps[current_step_index]`.
+  - Emits standard state update payload containing:
+    - `"nlu_result"`: full serialized Pydantic model dictionary.
+    - `"intent"`, `"user_intent"`: standardized intent string.
+    - `"cleaned_input"`, `"query"`, `"original_raw_query"`.
+    - `"extracted_answer"`: cleaned answer value (`12`, `chloroplast`, `3/4`).
+    - `"subject"`, `"subtopic"`, `"grade_level"`.
+    - `"is_ambiguous"`, `"clarification_prompt"`.
+  - Graceful fallback: handles `None`, empty dicts, or unhandled exceptions without crashing the LangGraph execution flow.
+  - Exported `nlu_node` and `nlu_node_sync` cleanly in `orchestrator/app/services/nlu/__init__.py`.
+- **Verification**: 14/14 unit tests in `testing/test_nlu_node.py` passing 100% green; 231/231 total tests across the entire NLU suite passing in 0.42s.
 
 #### Day 15: Documentation, Final Verification & Merge to Staging
 - **Deliverables**:
@@ -316,7 +311,7 @@ orchestrator/app/services/nlu/
 | **Day 11** | Clarify | Implement ambiguity & gibberish handler | `services/nlu/clarify.py` | ✅ |
 | **Day 12** | Guard | Implement off-topic deflection tagger | `services/nlu/intent.py` | ✅ |
 | **Day 13** | Testing | Build & validate 50-case integration test suite | `testing/test_nlu_suite.py` | ✅ |
-| **Day 14** | LangGraph | Build `nlu_node()` wrapper for Vicheka's graph | `services/nlu/node.py` | 🔲 |
+| **Day 14** | LangGraph | Build `nlu_node()` wrapper for Vicheka's graph | `services/nlu/node.py` | ✅ |
 | **Day 15** | Delivery | Final QA, docs & PR merge to `staging` | `feat/nlu-pipeline` PR | 🔲 |
 
 ---

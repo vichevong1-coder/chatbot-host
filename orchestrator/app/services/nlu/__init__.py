@@ -48,6 +48,10 @@ from app.services.nlu.pipeline import (
     process_nlu,
     process_nlu_sync,
 )
+from app.services.nlu.node import (
+    nlu_node,
+    nlu_node_sync,
+)
 
 __all__ = [
     "StudentIntent",
@@ -83,4 +87,6 @@ __all__ = [
     "route_subject_and_grade_heuristic",
     "process_nlu",
     "process_nlu_sync",
+    "nlu_node",
+    "nlu_node_sync",
 ]
