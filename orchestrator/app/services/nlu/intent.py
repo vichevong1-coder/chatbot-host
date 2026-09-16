@@ -43,25 +43,23 @@ _CHITCHAT_RE = re.compile(
 _HELP_SEEKING_RE = re.compile(
     r'^(?:'
     r'idk|'
-    r'i\s+don\'?t\s+know|'
-    r'i\s+dont\s+know|'
+    r'i\s+(?:do\s+not|don\'?t|dont)\s+know|'
+    r'i\s+(?:do\s+not|don\'?t|dont)\s+understand(?:\s+this\s+step)?|'
+    r'i\s+(?:do\s+not|don\'?t|dont)\s+get\s+it|'
     r'help(?:\s+me)?|'
     r'hint(?:\s+please)?|'
     r'give\s+me\s+a\s+hint|'
     r'can\s+i\s+have\s+a\s+hint|'
     r'clue(?:\s+please)?|'
     r'give\s+me\s+a\s+clue|'
-    r'what\s+next|'
-    r'what\s+do\s+i\s+do|'
+    r'what\s+(?:do\s+i\s+do|should\s+i\s+do|should\s+i\s+calculate|next|to\s+do)(?:\s+next)?|'
     r'i\'?m\s+stuck|'
     r'im\s+stuck|'
     r'not\s+sure|'
-    r'i\s+don\'?t\s+get\s+it|'
-    r'i\s+dont\s+get\s+it|'
     r'i\s+need\s+help|'
     r'can\s+you\s+help(?:\s+me)?|'
     r'no\s+idea'
-    r')[\s!.]*$',
+    r')[\s!.\?]*$',
     flags=re.IGNORECASE
 )
 
@@ -378,6 +376,12 @@ def classify_intent_heuristic(
     # 3. Practice requests
     if _PRACTICE_RE.search(q):
         return IntentResult(intent=IntentType.REQUEST_PRACTICE, confidence=0.95)
+
+    # 3.5. Conceptual clarification & definition questions
+    is_math_calc = bool(re.search(r'\d+\s*[+\-*/=]\s*\d+|\b(?:calculate|solve|how\s+many|how\s+much)\b', q, re.I))
+    if not is_math_calc and not any(op in q for op in ['+', '-', '*', '/', '=']):
+        if re.search(r'\b(?:mean|meaning|definition|define|explain|what\s+is\s+(?:a|an)\s+\w+|how\s+does\s+\w+\s+work)\b', q, re.I):
+            return IntentResult(intent=IntentType.CLARIFY, confidence=0.90)
 
     has_history = bool(history or (rolling_summary and rolling_summary.strip()))
     # 4. If no conversation history exists yet, it's starting a new question

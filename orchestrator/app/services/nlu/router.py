@@ -45,10 +45,10 @@ _MATH_TERMS_RE = re.compile(
 # Regex patterns for Science detection
 _SCIENCE_TERMS_RE = re.compile(
     r'\b(?:plant|plants|leaf|leaves|chlorophyll|chloroplast|photosynthesis|seed|flower|root|roots|'
-    r'cell|cells|organelle|organism|animal|animals|mammal|bird|fish|insect|predator|prey|habitat|ecosystem|'
-    r'matter|solid|liquid|gas|evaporation|condensation|precipitation|freeze|melting|'
-    r'gravity|force|forces|motion|friction|magnet|magnetic|sound|light|energy|heat|'
-    r'planet|planets|earth|moon|sun|solar|star|stars|space|weather|cloud|rain|rock|soil|'
+    r'cell|cells|organelle|organism|animal|animals|frog|frogs|amphibian|mammal|bird|fish|insect|predator|prey|habitat|ecosystem|'
+    r'matter|solid|solids|liquid|liquids|gas|gases|water|ice|steam|vapor|state|states|evaporation|condensation|precipitation|freeze|melting|'
+    r'gravity|gravitational|fall|falling|drop|objects?|ground|force|forces|motion|friction|magnet|magnetic|sound|light|energy|heat|'
+    r'planet|planets|earth|moon|sun|solar|star|stars|orbit|space|weather|cloud|rain|rock|soil|'
     r'heart|lung|lungs|brain|stomach|skeleton|bone|muscle|organ|human\s+body)\b',
     flags=re.IGNORECASE
 )
@@ -68,11 +68,11 @@ _MATH_SUBTOPICS = [
 ]
 
 _SCIENCE_SUBTOPICS = [
-    ("plants_biology", re.compile(r'\b(?:plant|plants|leaf|leaves|chlorophyll|photosynthesis|seed|flower|root|roots)\b', re.I)),
-    ("animals_ecosystem", re.compile(r'\b(?:animal|animals|habitat|ecosystem|predator|prey|mammal|bird|fish|insect)\b', re.I)),
-    ("matter_chemistry", re.compile(r'\b(?:solid|liquid|gas|matter|evaporation|condensation|precipitation|freeze|melting)\b', re.I)),
-    ("forces_physics", re.compile(r'\b(?:gravity|force|forces|motion|friction|magnet|magnetic|energy|sound|light)\b', re.I)),
-    ("earth_space", re.compile(r'\b(?:planet|planets|earth|moon|sun|solar|star|stars|space|weather|cloud|rain|rock|soil)\b', re.I)),
+    ("plants_biology", re.compile(r'\b(?:plant|plants|leaf|leaves|chlorophyll|chloroplast|photosynthesis|seed|flower|root|roots)\b', re.I)),
+    ("animals_ecosystem", re.compile(r'\b(?:animal|animals|frog|frogs|amphibian|habitat|ecosystem|predator|prey|mammal|bird|fish|insect)\b', re.I)),
+    ("matter_chemistry", re.compile(r'\b(?:solid|solids|liquid|liquids|gas|gases|matter|ice|water|steam|vapor|state|states|evaporation|condensation|precipitation|freeze|melting)\b', re.I)),
+    ("forces_physics", re.compile(r'\b(?:gravity|gravitational|fall|falling|drop|ground|force|forces|motion|friction|magnet|magnetic|energy|sound|light)\b', re.I)),
+    ("earth_space", re.compile(r'\b(?:planet|planets|earth|moon|sun|solar|star|stars|orbit|space|weather|cloud|rain|rock|soil)\b', re.I)),
 ]
 
 

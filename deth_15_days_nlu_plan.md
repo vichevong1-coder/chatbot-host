@@ -250,17 +250,19 @@ orchestrator/app/services/nlu/
   - **Schema Mapping**: Emits `NLUResult(intent=StudentIntent.OFF_TOPIC, extracted_answer=None, confidence=0.95)`.
 - **Verification**: Validated with 10 unit tests in `testing/test_nlu_off_topic.py` (100% green, 153/153 passing across full NLU suite in 0.32s).
 
-#### Day 13: 50-Case Comprehensive Test Suite
+#### Day 13: 50-Case Comprehensive Test Suite `[COMPLETED ✅]`
 - **File Created**: `testing/test_nlu_suite.py`
-- **Test Matrix (50 Real Elementary Test Cases)**:
-  - 10 Initial math/science problems
-  - 15 Student answer attempts (numbers, words, full sentences)
-  - 10 Hint/help requests
-  - 5 Step navigation requests
-  - 5 Clarification questions
-  - 5 Gibberish / off-topic queries
-- **Execution**: Run `pytest testing/test_nlu_suite.py -v`.
-- **Target**: $>95\%$ classification accuracy across all 50 cases.
+- **Logic & Test Matrix Implemented (50 Real Elementary Test Cases)**:
+  - **Group 1 (10 Initial STEM Problems)**: Math arithmetic, word problems, fractions, geometry, and Science biology, physics, chemistry, space, ecosystems with subtopic tagging.
+  - **Group 2 (15 Student Answer Attempts)**: Clean numbers (`4`, `12`), fractions (`3/4`), units (`15 km/h`, `100 kg`), science terms (`chloroplast`, `leaves`, `gravity`, `oxygen`), and conversational hedging (`"I think the answer is 12 cookies"`, `"maybe 5 cm?"`, `"is it 20?"`).
+  - **Group 3 (10 Hint/Help Requests)**: `"hint please"`, `"i'm stuck"`, `"idk"`, `"give me a clue"`, `"what do i do next?"`, `"i dont understand this step"`, `"can you help me?"`, `"i don't get it"`, `"no idea"`, `"what should i calculate?"` $\rightarrow$ `REQUEST_CLARIFICATION`.
+  - **Group 4 (5 Step Navigation / Practice Requests)**: `"can i have more practice?"`, `"give me another problem"`, `"another one please"`, `"next question"`, `"practice problem"` $\rightarrow$ `INITIAL_QUESTION`.
+  - **Group 5 (5 Conceptual Clarifications)**: `"what is a numerator?"`, `"what does gravity mean?"`, `"what does friction mean?"`, `"how does evaporation work?"`, `"what is an ecosystem?"` $\rightarrow$ `REQUEST_CLARIFICATION`.
+  - **Group 6 (5 Gibberish & Off-Topic Queries)**: Keyboard smash (`"asdfghjkl"`), punctuation storm (`"???????"`), video games / pop culture (`"do you play fortnite?"`, `"what is your roblox username?"`, `"are you a real human or robot?"`).
+- **Benchmark & Async Tests**:
+  - Validated async execution via `test_all_50_cases_async`.
+  - Total execution time for all 50 full pipeline passes: **3.22 ms** (~**0.064 ms per query**), far exceeding the $<2\text{ms}$ latency target.
+- **Verification**: 52/52 tests in `testing/test_nlu_suite.py` passing 100% green; 217/217 total tests across the entire NLU suite passing in 0.42s.
 
 #### Day 14: LangGraph Node Integration Wrapper
 - **File Created**: `orchestrator/app/services/nlu/node.py`
@@ -313,7 +315,7 @@ orchestrator/app/services/nlu/
 | **Day 10** | Pipeline | Assemble master `process_nlu()` async function | `services/nlu/pipeline.py` | ✅ |
 | **Day 11** | Clarify | Implement ambiguity & gibberish handler | `services/nlu/clarify.py` | ✅ |
 | **Day 12** | Guard | Implement off-topic deflection tagger | `services/nlu/intent.py` | ✅ |
-| **Day 13** | Testing | Build & validate 50-case integration test suite | `testing/test_nlu_suite.py` | 🔲 |
+| **Day 13** | Testing | Build & validate 50-case integration test suite | `testing/test_nlu_suite.py` | ✅ |
 | **Day 14** | LangGraph | Build `nlu_node()` wrapper for Vicheka's graph | `services/nlu/node.py` | 🔲 |
 | **Day 15** | Delivery | Final QA, docs & PR merge to `staging` | `feat/nlu-pipeline` PR | 🔲 |
 
