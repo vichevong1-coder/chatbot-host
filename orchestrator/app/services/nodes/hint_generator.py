@@ -53,8 +53,8 @@ async def generate_hint_node(state: SocraticTutorState) -> dict:
         final_prompt = (
             f"{full_prompt}\n\n"
             f"--- RECENT CONVERSATION HISTORY ---\n"
-            + "\n".join(chat_context) + "\n"
-            f"Tutor Response (hint):"
+            + "\n".join(chat_context) + "\n\n"
+            "Output ONLY the tutor's hint response. No preamble, no labels, no markdown headers."
         )
         
         response = model.generate_content(final_prompt)

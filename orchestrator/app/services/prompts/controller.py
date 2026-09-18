@@ -83,9 +83,10 @@ DEFAULT_TEMPLATES = {
     "rolling_summary": {
         "system": (
             "You are a summarization assistant. Update the following running summary of a tutoring conversation "
-            "with these newly evicted turns. Keep the summary concise and focused on the student's progress and active task."
+            "with these newly evicted turns. Keep the summary concise and focused on the student's progress and active task.\n"
+            "Return ONLY the updated summary text. No preamble, no labels, no markdown."
         ),
-        "user": "Current Summary: '{rolling_summary}'\n\nNew Turns:\n{evicted_turns}\n\nNew updated summary (keep it under 400 characters):"
+        "user": "Current Summary: '{rolling_summary}'\n\nNew Turns:\n{evicted_turns}\n\nUpdated summary (under 400 characters):"
     },
     "socratic_tutor": {
         "system": (
@@ -104,35 +105,41 @@ DEFAULT_TEMPLATES = {
             "1. Be extremely supportive. Praise correct logic, but nudge them gently for mistakes.\n"
             "2. Keep your responses short (2-3 sentences max) to maintain high engagement.\n"
             "3. Use LaTeX formatting for mathematical expressions (e.g., $2x + 4 = 10$).\n"
-            "4. Do not include markdown code blocks or tell the student about the 'expected steps' context variables."
+            "4. Do not include markdown code blocks or tell the student about the 'expected steps' context variables.\n"
+            "Output ONLY the tutor's response text. No preamble, no labels, no headers."
         ),
         "user": "Student's latest step attempt: '{student_attempt}'"
     },
     "general_tutor_explanation": {
         "system": (
-            "You are a friendly Socratic science tutor.\n"
-            "The student asked a general science question: '{query}'.\n"
-            "Provide a helpful, educational, and user-friendly explanation.\n"
-            "Break it down step-by-step so it's easy to read. Encourage the user to ask follow-up questions."
-        )
+            "You are a friendly Socratic science tutor for elementary and primary students.\n"
+            "The student has asked a general science or math question. Provide a helpful, educational, and "
+            "age-appropriate explanation. Break it down step-by-step so it is easy to read.\n"
+            "Encourage the student to ask follow-up questions.\n"
+            "Constraints: Keep the response under 5 sentences. If you are unsure about a fact, say so rather than guessing.\n"
+            "Output ONLY the tutor's explanation. Do not include headers, labels, preamble, or markdown wrappers."
+        ),
+        "user": "Student's question: '{query}'"
     },
     "practice_generator": {
         "system": (
-            "You are an educational curriculum creator.\n"
-            "The student has successfully solved the following query: '{original_query}'.\n"
-            "Generate a SIMILAR practice exercise for the subject '{subject}' with a similar difficulty level.\n"
-            "Return ONLY the new exercise text as a single plain-text question. Do not include answers, explanations, greetings, or markdown formatting. Just the raw question."
-        )
+            "You are an educational curriculum creator for elementary students (Grades 1-6).\n"
+            "The student has just successfully solved a problem. Generate a SIMILAR practice exercise "
+            "at the same difficulty level and on the same subject.\n"
+            "Return ONLY the new exercise text as a single plain-text question. "
+            "Do not include answers, explanations, greetings, or markdown formatting. Just the raw question."
+        ),
+        "user": "Original solved problem: '{original_query}'\nSubject: '{subject}'"
     },
     "normalizer_fallback": {
         "system": (
             "You are an elementary school STEM text normalizer (Grades 1-6).\n"
             "The student language is {lang}.\n"
             "Correct spelling, grammatical errors, and transcribed OCR glitches while PRESERVING ALL numbers and math operators exactly as intended.\n"
-            "Do NOT solve the problem. Do NOT add new numbers or explanations.\n\n"
-            "Input text: \"{text}\"\n"
-            "Normalized text:"
-        )
+            "Do NOT solve the problem. Do NOT add new numbers or explanations.\n"
+            "Return ONLY the normalized text. No explanations, no labels, no preamble."
+        ),
+        "user": "Input text: \"{text}\""
     },
     "off_topic_redirection": {
         "system": (
@@ -283,15 +290,20 @@ class PromptController:
 
     def get_general_tutor_prompt(self, query: str) -> str:
         """Formats the general science question prompt for direct educational response."""
-        system_tmpl = self.templates.get("general_tutor_explanation", {}).get("system", "")
-        return system_tmpl.format(query=query)
+        template = self.templates.get("general_tutor_explanation", {})
+        system = template.get("system", "")
+        user = template.get("user", "Student's question: '{query}'").format(query=query)
+        return f"{system}\n\n{user}"
 
     def get_practice_prompt(self, original_query: str, subject: str) -> str:
         """Formats the prompt to generate an analogous practice question."""
-        return self.templates["practice_generator"]["system"].format(
+        template = self.templates.get("practice_generator", {})
+        system = template.get("system", "")
+        user = template.get("user", "Original solved problem: '{original_query}'\nSubject: '{subject}'").format(
             original_query=original_query,
             subject=subject
         )
+        return f"{system}\n\n{user}"
 
     def get_rolling_summary_prompt(self, rolling_summary: str, evicted_turns: str) -> str:
         """Formats the rolling summary prompt for conversation history compaction."""
@@ -304,8 +316,10 @@ class PromptController:
 
     def get_normalizer_prompt(self, text: str, lang: str = "english") -> str:
         """Formats the prompt for Tier-2 NLU bilingual/OCR text normalization fallback."""
-        system_tmpl = self.templates.get("normalizer_fallback", {}).get("system", "")
-        return system_tmpl.format(text=text, lang=lang)
+        template = self.templates.get("normalizer_fallback", {})
+        system = template.get("system", "").format(lang=lang)
+        user = template.get("user", "Input text: \"{text}\"").format(text=text)
+        return f"{system}\n\n{user}"
 
     def get_off_topic_redirection_prompt(
         self,
