@@ -4,7 +4,7 @@ Description: LangGraph node that generates analogous science practice problems u
              the dynamic PromptController and resets the tutor step loop.
 """
 
-import google.generativeai as genai
+from app.services.llm import llm_service, ModelTier
 from app.core.config import settings
 from app.core.logging import logger
 from app.services.state import SocraticTutorState
@@ -20,12 +20,11 @@ async def generate_practice_node(state: SocraticTutorState) -> dict:
     logger.info(f"Practice Generator Node: Creating similar example for: '{original_query}'")
     
     try:
-        model = genai.GenerativeModel("gemini-flash-latest")
         prompt = prompt_controller.get_practice_prompt(original_query, subject)
-        response = model.generate_content(prompt)
+        response = llm_service.generate_text(prompt, model_tier=ModelTier.REASONING)
         new_query = response.text.strip()
     except Exception as e:
-        logger.error(f"Gemini practice generation failed: {e}")
+        logger.error(f"LLM practice generation failed: {e}")
         if subject == "MATH":
             new_query = "solve 3*x + 6 = 15"
         else:

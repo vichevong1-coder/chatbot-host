@@ -17,9 +17,9 @@
 | :--- | :--- | :--- | :---: |
 | **Part 1: 4-Part Socratic Card & Stepper Serializer** | Pydantic data schemas, 4-part card generator, Stepper payload models, Markdown serializer, Socratic prompt templates & controller | ✅ **DONE** | 8/8 Tests Passing (`test_card_schema.py`) |
 | **Part 2: LangGraph State Machine & 3-Tier Hint Engine** | LangGraph StateGraph, `TutorState`, 3-tier progressive hint engine (Nudge $\rightarrow$ Visual $\rightarrow$ Worked), multi-turn Socratic loop | ✅ **DONE** | 8/8 Tests Passing (`test_socratic_state.py`) |
-| **Part 3: Domain Solvers & Answer Validator** | Elementary Math & Science decomposition into 2–4 verified steps, ground truth targets, fuzzy/conceptual equivalence checking | ✅ **DONE** | 16/16 Tests Passing (`test_solvers.py`) |
-| **Part 4: Child Safety Guardrails & Deflection** | PII redaction, inappropriate content filtering, non-homework educational scope deflection | ⏳ Pending | Pending |
-| **Part 5: Session Persistence & Step Navigation** | Redis session state management, rolling AI summary of previous turns, step-jumping navigation (`/api/step/navigate`) | ⏳ Pending | Pending |
+| **Part 3: Domain Solvers & Answer Validator** | Elementary Math & Science decomposition into 2–4 verified steps, ground truth targets, fuzzy/conceptual equivalence checking | ✅ **DONE** | 19/19 Tests Passing (`test_solvers.py`) |
+| **Part 4: Child Safety Guardrails & Deflection** | PII redaction, inappropriate content filtering, non-homework educational scope deflection | ✅ **DONE** | 17/17 Tests Passing (`test_guardrails.py`) |
+| **Part 5: Session Persistence & Step Navigation** | Redis session state management, rolling AI summary of previous turns, step-jumping navigation (`/api/step/navigate`) | ✅ **DONE** | 13/13 Tests Passing (`test_session_nav.py`) |
 | **Part 6: OCR & Vision Extraction (With Mock Fallback)** | Gemini 2.5 Vision worksheet extraction, `POST /api/upload/ocr`, zero-model simulated fallback mode | ⏳ Pending | Pending |
 
 ---
@@ -215,31 +215,32 @@ Science_chatbot/
 
 ---
 
-### ⏳ Part 4: Child Safety Guardrails & Educational Scope Deflector
-- **Status**: ⏳ **Pending**
+### ✅ Part 4: Child Safety Guardrails & Educational Scope Deflector (COMPLETED)
+- **Status**: ✅ **Done**
 - **Target Files**:
   - `orchestrator/app/services/guardrails/__init__.py`
   - `orchestrator/app/services/guardrails/safety_filter.py`
   - `orchestrator/app/services/guardrails/educational_scope.py`
   - `testing/test_guardrails.py`
 - **Checklist**:
-  - [ ] `safety_filter.py`: Pre-filter redacting PII (phone numbers, addresses, real full names) and blocking inappropriate content.
-  - [ ] `educational_scope.py`: Deflect non-homework questions (e.g. Fortnite, Roblox, gossip, Minecraft) back to active homework step.
-  - [ ] Unit test 100% deflection on inappropriate / off-topic queries.
+  - [x] `safety_filter.py`: Pre-filter redacting PII (phone numbers, addresses, real full names) and blocking inappropriate content.
+  - [x] `educational_scope.py`: Deflect non-homework questions (e.g. Fortnite, Roblox, gossip, Minecraft) back to active homework step.
+  - [x] Unit test 100% deflection on inappropriate / off-topic queries (17/17 tests passing).
 
 ---
 
-### ⏳ Part 5: Session Persistence & Step Navigation Endpoint
-- **Status**: ⏳ **Pending**
+### ✅ Part 5: Session Persistence & Step Navigation Endpoint (COMPLETED)
+- **Status**: ✅ **Done**
 - **Target Files**:
   - `orchestrator/app/services/session.py`
   - `orchestrator/app/api/endpoints.py`
   - `testing/test_session_nav.py`
 - **Checklist**:
-  - [ ] Redis session state persistence saving `StepWidgetPayload` and conversation history.
-  - [ ] Implement `POST /api/step/navigate` endpoint for clicking numbered dots `( 1 )  ● 2 ●  ( 3 )` or Next/Back buttons.
-  - [ ] Implement `GET /api/session/{session_id}` returning restored stepper card state.
-  - [ ] Add rolling AI conversation summarization for long dialogues.
+  - [x] Redis session state persistence saving `StepWidgetPayload` and conversation history.
+  - [x] Implement `POST /api/step/navigate` endpoint for clicking numbered dots `( 1 )  ● 2 ●  ( 3 )` or Next/Back buttons.
+  - [x] Implement `GET /api/session/{session_id}` returning restored stepper card state.
+  - [x] Add rolling AI conversation summarization for long dialogues.
+  - [x] Automated unit and integration test suite passing 13/13 tests (`testing/test_session_nav.py`).
 
 ---
 
@@ -264,7 +265,7 @@ Science_chatbot/
 | :--- | :--- | :--- |
 | **Part 1** | `testing/test_card_schema.py` | ✅ **8/8 PASSED** (Strict 4-part card, JSON serialization, Markdown generation) |
 | **Part 2** | `testing/test_socratic_state.py` | ✅ **8/8 PASSED** (Multi-turn state transitions, 3-tier progressive hint escalation) |
-| **Part 3** | `testing/test_solvers.py` | ✅ **16/16 PASSED** (Grade 1–3 math/science step breakdown, multi-modal & conceptual equivalence) |
-| **Part 4** | `testing/test_guardrails.py` | ⏳ 100% deflection of gaming/off-topic chat, PII redacted |
-| **Part 5** | `testing/test_session_nav.py` | ⏳ Redis session recovery and `/api/step/navigate` response correctness |
+| **Part 3** | `testing/test_solvers.py` | ✅ **19/19 PASSED** (Grade 1–3 math/science step breakdown, multi-modal & conceptual equivalence) |
+| **Part 4** | `testing/test_guardrails.py` | ✅ **17/17 PASSED** (100% deflection of gaming/off-topic chat, PII redacted, safe boundaries) |
+| **Part 5** | `testing/test_session_nav.py` | ✅ **13/13 PASSED** (Redis session recovery, multi-mode `/api/step/navigate`, restored stepper card, rolling AI compaction) |
 | **Part 6** | `testing/test_ocr_upload.py` | ⏳ Image upload to clean text transcription & simulated mode |

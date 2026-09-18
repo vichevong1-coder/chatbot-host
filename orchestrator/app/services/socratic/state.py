@@ -27,6 +27,14 @@ class TutorState(TypedDict, total=False):
     subject: str                   # "math" | "science" | "general" (from NLU)
     subtopic: Optional[str]        # "arithmetic", "photosynthesis", etc.
 
+    # --- Safety & Guardrails (Part 4) ---
+    is_safe: bool
+    safety_violation: Optional[str]
+    has_pii: bool
+    redacted_input: Optional[str]
+    is_deflected: bool
+    deflection_message: Optional[str]
+
     # --- Problem Context ---
     problem_text: str              # Problem statement as student sees it
     total_steps_count: int         # 2 to 4 decomposition steps

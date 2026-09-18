@@ -67,9 +67,14 @@ def verify_science_concept(student_attempt: str, expected_concept: str) -> bool:
     # 1. Fast-path checks:
     # - Exact match: s_clean == e_clean (e.g. "evaporation" == "evaporation")
     # - Sentence match: e_clean in s_clean (e.g. "the answer is evaporation" contains "evaporation")
-    # - Keyword match: s_clean in e_clean (e.g. "photosynthesis" in "photosynthesis reaction")
-    if s_clean == e_clean or e_clean in s_clean or s_clean in e_clean:
+    if s_clean == e_clean or e_clean in s_clean:
         return True
+
+    # Check bounded full-word keyword match in expected (avoiding sub-word substrings like "is" in "photosynthesis")
+    common_stopwords = {"the", "a", "an", "is", "it", "to", "of", "and", "in", "by", "for", "that", "its", "into", "on", "at", "no", "yes"}
+    if len(s_clean) >= 3 and s_clean not in common_stopwords:
+        if re.search(rf'\b{re.escape(s_clean)}\b', e_clean):
+            return True
 
     # Check synonym dictionary
     for concept, synonyms in SCIENCE_SYNONYMS.items():

@@ -1,8 +1,19 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    GEMINI_API_KEY: str
+    GEMINI_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+    LLM_PRIMARY_PROVIDER: str = "gemini"
+    LLM_FALLBACK_PROVIDER: str = "ollama"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama3.2:3b"
+    OLLAMA_FAST_MODEL: str = "llama3.2:3b"
+    OLLAMA_REASONING_MODEL: str = "llama3.2:3b"
+    GEMINI_TEMPERATURE: float = 0.7
+    OPENAI_TEMPERATURE: float = 0.7
+    OLLAMA_TEMPERATURE: float = 0.2
     ORCHESTRATOR_PORT: int = 9000
+
     MATH_SERVICE_PORT: int = 9001
     SCIENCE_SERVICE_PORT: int = 9002
     

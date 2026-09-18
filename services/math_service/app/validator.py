@@ -9,7 +9,7 @@ from fractions import Fraction
 from typing import Optional
 from sympy import sympify, simplify
 
-ALLOWED_PATTERN = re.compile(r'^[a-zA-Z0-9\s\+\-\*\/\^\(\)\=\,\.\_\!\%\:]*$')
+ALLOWED_PATTERN = re.compile(r'^[a-zA-Z0-9\s\+\-\*\/\^\(\)\=\,\.\_\!\%\:\?\'\"\$]*$')
 
 WORD_TO_NUMBER = {
     "zero": 0.0, "one": 1.0, "two": 2.0, "three": 3.0, "four": 4.0,
@@ -98,10 +98,11 @@ def verify_equivalence(student_input: str, expected_step: str) -> bool:
     # 2. SymPy Symbolic Algebraic Equivalence
     try:
         def to_zero_expr(eq_str: str):
-            eq_str = eq_str.replace('^', '**')
+            eq_str = eq_str.replace('^', '**').replace('==', '=')
             if '=' in eq_str:
-                lhs_str, rhs_str = eq_str.split('=')
-                return sympify(lhs_str.strip()) - sympify(rhs_str.strip())
+                parts = [p.strip() for p in eq_str.split('=', 1)]
+                if len(parts) == 2:
+                    return sympify(parts[0]) - sympify(parts[1])
             return sympify(eq_str.strip())
 
         student_expr = to_zero_expr(student_input)

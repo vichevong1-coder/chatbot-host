@@ -15,6 +15,8 @@ from app.services.socratic.state import TutorState
 from app.services.socratic.hint_engine import HintEngine
 from app.services.socratic.clarify import SocraticClarifier
 from app.services.socratic.prompts.controller import SocraticPromptController
+from app.services.guardrails.safety_filter import SafetyFilter
+from app.services.guardrails.educational_scope import EducationalScopeDeflector
 from app.services.nlu.schema import StudentIntent
 
 logger = logging.getLogger("orchestrator.socratic.graph")
@@ -22,6 +24,8 @@ logger = logging.getLogger("orchestrator.socratic.graph")
 hint_engine = HintEngine()
 clarifier = SocraticClarifier()
 controller = SocraticPromptController()
+safety_filter = SafetyFilter()
+scope_deflector = EducationalScopeDeflector()
 
 
 # -------------------------------------------------------------------------
@@ -52,9 +56,15 @@ def _is_answer_equivalent(student_attempt: str, expected_answer: str) -> bool:
     # Fast-path checks:
     # 1. Exact match: s_clean == e_clean (e.g. "evaporation" == "evaporation")
     # 2. Sentence containment: e_clean in s_clean (e.g. "the answer is evaporation" contains "evaporation")
-    # 3. Keyword containment: s_clean in e_clean (e.g. "photosynthesis" in "photosynthesis reaction")
-    if s_clean == e_clean or e_clean in s_clean or s_clean in e_clean:
+    if s_clean == e_clean or e_clean in s_clean:
         return True
+
+    # 3. Bounded full-word keyword match in expected (avoiding sub-word substrings like "is" in "photosynthesis")
+    import re
+    common_stopwords = {"the", "a", "an", "is", "it", "to", "of", "and", "in", "by", "for", "that", "its", "into", "on", "at", "no", "yes"}
+    if len(s_clean) >= 3 and s_clean not in common_stopwords:
+        if re.search(rf'\b{re.escape(s_clean)}\b', e_clean):
+            return True
 
     import re
     from typing import Optional
@@ -137,10 +147,20 @@ def process_nlu_node(state: TutorState) -> Dict[str, Any]:
         else:
             intent = StudentIntent.STEP_ANSWER_ATTEMPT.value
 
+    subject = state.get("subject")
+    subtopic = state.get("subtopic")
+    if not subject:
+        from app.services.nlu.router import route_subject_heuristic
+        route_res = route_subject_heuristic(raw_input)
+        subject = route_res.subject.value
+        subtopic = route_res.subtopic
+
     return {
         "raw_user_input": raw_input,
         "student_attempt": raw_input,
-        "detected_intent": intent
+        "detected_intent": intent,
+        "subject": subject,
+        "subtopic": subtopic
     }
 
 
@@ -167,17 +187,25 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
             expected_operation=s.get("clue", ""),
             grade_level=grade_level
         )
+        def _safe_str(val: Any) -> str:
+            if isinstance(val, dict):
+                return " ".join(f"{v}" for v in val.values() if v)
+            elif isinstance(val, list):
+                return " ".join(str(item) for item in val)
+            return str(val) if val is not None else ""
+
         step_obj = SocraticStep(
             step_number=step_num,
             title=s.get("title", f"Step {step_num}"),
             status="in_progress" if idx == 0 else "pending",
-            mission=card_content["mission"],
-            clue=card_content["clue"],
-            helpful_example=card_content["helpful_example"],
-            your_turn=card_content["your_turn"],
+            mission=_safe_str(card_content.get("mission")),
+            clue=_safe_str(card_content.get("clue")),
+            helpful_example=_safe_str(card_content.get("helpful_example")),
+            your_turn=_safe_str(card_content.get("your_turn")),
             expected_answer=s.get("expected_answer", str(step_num)),
             concept=s.get("concept", "")
         )
+
         socratic_steps.append(step_obj)
 
     widget = StepWidgetPayload(
@@ -362,6 +390,106 @@ def clarify_node(state: TutorState) -> Dict[str, Any]:
     }
 
 
+def guardrails_node(state: TutorState) -> Dict[str, Any]:
+    """
+    Evaluates child safety, redacts PII, and detects off-topic distractions.
+    """
+    raw_input = state.get("raw_user_input", "").strip()
+    widget = _get_widget_from_state(state)
+    active_step = widget.get_active_step() if widget else None
+
+    # 1. Safety & PII check
+    safety_res = safety_filter.evaluate(raw_input)
+    if not safety_res.is_safe:
+        return {
+            "is_safe": False,
+            "safety_violation": safety_res.categories_detected[0].value if safety_res.categories_detected else "UNSAFE",
+            "feedback_message": safety_res.safe_response,
+            "is_deflected": True,
+            "detected_intent": "GUARDRAIL_BLOCKED"
+        }
+
+    # 2. Pure PII check (kid typed only personal info without homework question)
+    if safety_res.has_pii:
+        import re
+        stripped = re.sub(
+            r'\[(PHONE|EMAIL|ADDRESS|NAME)_REDACTED\]', '', safety_res.redacted_text, flags=re.IGNORECASE
+        )
+        stripped = re.sub(
+            r'\b(my\s+name\s+is|i\s+am|call\s+me|at|to|please|here\s+is|my\s+phone|my\s+number|my\s+address|i\s+live)\b',
+            '',
+            stripped,
+            flags=re.IGNORECASE
+        ).strip(' .,!?:;-\t\n')
+
+        # If no actual homework problem/attempt remains
+        if len(stripped) < 3:
+            notice = safety_res.pii_notice or "🔒 *Privacy Tip: Keep your secret information safe! Never share real phone numbers or addresses online.*"
+            if active_step:
+                pii_redirect = (
+                    f"{notice}\n\n"
+                    f"Let's get back to our mission for Step {active_step.step_number}! 🚀\n\n"
+                    f"👉 **Your Turn:** {active_step.your_turn}"
+                )
+            else:
+                pii_redirect = (
+                    f"{notice}\n\n"
+                    f"What science or math homework problem should we work on together? ✏️"
+                )
+            return {
+                "is_safe": True,
+                "has_pii": True,
+                "redacted_input": safety_res.redacted_text,
+                "student_attempt": safety_res.redacted_text,
+                "is_deflected": True,
+                "deflection_message": pii_redirect,
+                "feedback_message": pii_redirect,
+                "detected_intent": "OFF_TOPIC_DEFLECTED"
+            }
+
+    # 3. Educational Scope Deflection check
+    scope_res = scope_deflector.check_scope(safety_res.redacted_text)
+    if scope_res.is_off_topic:
+        deflection_msg = scope_deflector.build_deflection(
+            text=safety_res.redacted_text,
+            category=scope_res.category,
+            active_step=active_step
+        )
+        return {
+            "is_safe": True,
+            "has_pii": safety_res.has_pii,
+            "redacted_input": safety_res.redacted_text,
+            "student_attempt": safety_res.redacted_text,
+            "is_deflected": True,
+            "deflection_message": deflection_msg,
+            "feedback_message": deflection_msg,
+            "detected_intent": "OFF_TOPIC_DEFLECTED"
+        }
+
+    # Clean text with PII safely sanitized
+    updates: Dict[str, Any] = {
+        "is_safe": True,
+        "has_pii": safety_res.has_pii,
+        "redacted_input": safety_res.redacted_text,
+        "student_attempt": safety_res.redacted_text,
+        "is_deflected": False
+    }
+    if safety_res.pii_notice:
+        updates["feedback_message"] = safety_res.pii_notice
+
+    return updates
+
+
+def deflect_node(state: TutorState) -> Dict[str, Any]:
+    """
+    Emits deflection message preserving existing widget.
+    """
+    msg = state.get("deflection_message") or state.get("feedback_message", "Let's focus on homework!")
+    return {
+        "feedback_message": msg
+    }
+
+
 def compile_response_node(state: TutorState) -> Dict[str, Any]:
     """
     Compiles final SocraticResponse with synchronized Markdown and JSON widget.
@@ -372,7 +500,9 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
     active_hint = state.get("active_hint")
     is_complete = state.get("is_problem_complete", False) or state.get("is_problem_solved", False)
 
-    if widget:
+    if state.get("is_safe") is False:
+        formatted_md = feedback or "Let's use kind and friendly words here!"
+    elif widget:
         socratic_resp = SocraticResponse.from_step_widget(
             session_id=session_id,
             widget=widget,
@@ -396,7 +526,9 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
 def route_by_intent(state: TutorState) -> str:
     intent = state.get("detected_intent", StudentIntent.INITIAL_QUESTION.value)
 
-    if intent == StudentIntent.REQUEST_HINT.value:
+    if intent in ("GUARDRAIL_BLOCKED", "OFF_TOPIC_DEFLECTED"):
+        return "deflect"
+    elif intent == StudentIntent.REQUEST_HINT.value:
         return "request_hint"
     elif intent == "NAVIGATION_JUMP":
         return "navigate_step"
@@ -421,6 +553,8 @@ def build_socratic_graph(checkpointer=None):
 
     # Nodes
     builder.add_node("process_nlu", process_nlu_node)
+    builder.add_node("guardrails", guardrails_node)
+    builder.add_node("deflect", deflect_node)
     builder.add_node("initial_problem", initial_problem_node)
     builder.add_node("validate_attempt", validate_attempt_node)
     builder.add_node("request_hint", request_hint_node)
@@ -430,11 +564,13 @@ def build_socratic_graph(checkpointer=None):
 
     # Edges
     builder.add_edge(START, "process_nlu")
+    builder.add_edge("process_nlu", "guardrails")
 
     builder.add_conditional_edges(
-        "process_nlu",
+        "guardrails",
         route_by_intent,
         {
+            "deflect": "deflect",
             "initial_problem": "initial_problem",
             "validate_attempt": "validate_attempt",
             "request_hint": "request_hint",
@@ -443,6 +579,7 @@ def build_socratic_graph(checkpointer=None):
         }
     )
 
+    builder.add_edge("deflect", "compile_response")
     builder.add_edge("initial_problem", "compile_response")
     builder.add_edge("validate_attempt", "compile_response")
     builder.add_edge("request_hint", "compile_response")

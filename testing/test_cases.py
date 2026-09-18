@@ -5,10 +5,15 @@ Description: Automated integration test suite. Sends pre-configured test queries
              Requires zero dependencies (uses Python's standard urllib).
 """
 
+import os
+import sys
 import json
 import urllib.request
 import urllib.error
 import uuid
+
+# Ensure orchestrator path is included
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "orchestrator")))
 
 GATEWAY_URL = "http://localhost:9000/api/query"
 
@@ -91,6 +96,30 @@ def main():
     print("\n==================================================")
     print(f"Test Summary: {success_count}/{len(TEST_CASES)} passed.")
     print("==================================================")
+
+
+# Pytest compatibility wrapper
+try:
+    # pyrefly: ignore [missing-import]
+    import pytest
+    # pyrefly: ignore [missing-import]
+    from app.services.socratic.graph import socratic_graph
+
+    @pytest.mark.parametrize("case", TEST_CASES, ids=[c["name"] for c in TEST_CASES])
+    def test_case_execution(case):
+        config = {"configurable": {"thread_id": f"pytest_{uuid.uuid4().hex[:6]}"}}
+        result = socratic_graph.invoke(
+            {
+                "raw_user_input": case["query"],
+                "grade_level": case["grade_level"],
+                "detected_intent": "INITIAL_QUESTION"
+            },
+            config=config
+        )
+        assert result is not None
+        assert result.get("formatted_markdown") is not None
+except ImportError:
+    pass
 
 if __name__ == "__main__":
     main()

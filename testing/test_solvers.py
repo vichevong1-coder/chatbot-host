@@ -161,3 +161,25 @@ def test_science_service_solve_and_validate_endpoints():
     res_val = science_client.post("/validate", json={"student_attempt": "it evaporates", "expected_step": "evaporation"})
     assert res_val.status_code == 200
     assert res_val.json()["equivalent"] is True
+
+
+def test_science_false_positive_prevention():
+    assert verify_science_concept("is", "photosynthesis") is False
+    assert verify_science_concept("to", "photosynthesis") is False
+    assert verify_science_concept("in", "condensation") is False
+    assert verify_science_concept("no", "photosynthesis") is False
+    assert verify_science_concept("a", "evaporation") is False
+
+
+def test_math_punctuation_and_double_equals():
+    from services.math_service.app.validator import validate_expression
+    assert validate_expression("What is 5 + 5?") is True
+    assert validate_expression("Lily's 10 apples") is True
+    assert math_verify("x == 3", "x = 3") is True
+
+
+def test_math_offline_multiplication_and_division():
+    mul_res = solve_math("3 boxes with 4 cookies each")
+    assert mul_res["solution"] == "12"
+    div_res = solve_math("12 candies shared equally among 3 friends")
+    assert div_res["solution"] == "4"

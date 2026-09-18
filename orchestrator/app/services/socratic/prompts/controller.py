@@ -11,8 +11,10 @@ import logging
 import yaml
 from typing import Dict, Any, Optional, List, Tuple
 from app.services.socratic.card_schema import SocraticStep, StepWidgetPayload, SocraticResponse
+from app.services.llm import llm_service, ModelTier
 
 logger = logging.getLogger("orchestrator.socratic.prompts")
+
 
 GRADE_LEVELS = {
     "grade_1_3": {
@@ -268,19 +270,17 @@ class SocraticPromptController:
         return None
 
     def _call_gemini_llm(self, prompt: str) -> Optional[str]:
-        """Invokes Gemini LLM if GEMINI_API_KEY is configured in the environment."""
-        api_key = os.getenv("GEMINI_API_KEY", "")
-        if not api_key:
-            return None
+        """
+        Invokes LLM via unified llm_service (Primary: Gemini Cloud, Fallback: Ollama Local).
+        Falls back to Curricular Engine only if both cloud and local models fail.
+        """
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(prompt)
-            if response and response.text:
-                return response.text.strip()
+            resp = llm_service.generate_text(prompt, model_tier=ModelTier.REASONING)
+            if resp and resp.text and (resp.provider != "mock" or resp.text != "Mock LLM generated response."):
+                logger.info(f"SocraticPromptController received response from [{resp.provider}/{resp.model_name}]")
+                return resp.text.strip()
         except Exception as e:
-            logger.warning(f"Gemini LLM call failed in SocraticPromptController: {e}. Falling back to Curricular Engine.")
+            logger.warning(f"LLM call failed in SocraticPromptController: {e}. Falling back to Curricular Engine.")
         return None
 
     def breakdown_problem_into_steps(
@@ -843,8 +843,17 @@ class SocraticPromptController:
         if llm_resp:
             parsed = self._extract_json(llm_resp)
             if isinstance(parsed, dict) and all(k in parsed for k in ["mission", "clue", "helpful_example", "your_turn"]):
-                logger.info(f"Successfully generated Step {step_number} card using Gemini LLM.")
-                return parsed
+                def _to_clean_str(val: Any) -> str:
+                    if isinstance(val, dict):
+                        return " ".join(f"{v}" for v in val.values() if v)
+                    elif isinstance(val, list):
+                        return " ".join(str(item) for item in val)
+                    return str(val)
+
+                sanitized = {k: _to_clean_str(parsed[k]) for k in ["mission", "clue", "helpful_example", "your_turn"]}
+                logger.info(f"Successfully generated Step {step_number} card using Gemini/Ollama LLM.")
+                return sanitized
+
 
         # 2. Curricular Domain Registry (Offline / Deterministic Fallback)
         numbers = [int(n) for n in re.findall(r"\b\d+\b", homework_problem)]

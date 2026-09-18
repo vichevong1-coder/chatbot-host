@@ -4,7 +4,7 @@ Description: LangGraph node that generates Socratic hints using the Dynamic Prom
              shaping explanations dynamically based on mistake count.
 """
 
-import google.generativeai as genai
+from app.services.llm import llm_service, ModelTier
 from app.core.config import settings
 from app.core.logging import logger
 from app.services.state import SocraticTutorState
@@ -25,12 +25,11 @@ async def generate_hint_node(state: SocraticTutorState) -> dict:
     # 1. General Subject Query: Answer directly but educationally
     if subject == "GENERAL":
         try:
-            model = genai.GenerativeModel("gemini-flash-latest")
             prompt = prompt_controller.get_general_tutor_prompt(query)
-            response = model.generate_content(prompt)
+            response = llm_service.generate_text(prompt, model_tier=ModelTier.REASONING)
             return {"tutor_feedback": response.text.strip()}
         except Exception as e:
-            logger.error(f"General query Gemini helper failed: {e}")
+            logger.error(f"General query LLM helper failed: {e}")
             return {"tutor_feedback": "I am having trouble connecting to my Socratic engine right now. Let's try that again in a moment!"}
 
     # 2. Math/Science step hints: Build dynamic adaptive Socratic prompt from prompt_controller
@@ -44,8 +43,6 @@ async def generate_hint_node(state: SocraticTutorState) -> dict:
     )
     
     try:
-        model = genai.GenerativeModel("gemini-flash-latest")
-        
         chat_context = []
         for msg in state.get("history", [])[-6:]:
             chat_context.append(f"{msg['role']}: {msg['content']}")
@@ -57,10 +54,10 @@ async def generate_hint_node(state: SocraticTutorState) -> dict:
             "Output ONLY the tutor's hint response. No preamble, no labels, no markdown headers."
         )
         
-        response = model.generate_content(final_prompt)
+        response = llm_service.generate_text(final_prompt, model_tier=ModelTier.REASONING)
         feedback = response.text.strip()
     except Exception as e:
-        logger.error(f"Gemini hint generation failed: {e}")
+        logger.error(f"LLM hint generation failed: {e}")
         if subject == "GENERAL":
             feedback = "I am having trouble connecting to my Socratic engine right now. Let's try that again in a moment!"
         else:

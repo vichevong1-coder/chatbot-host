@@ -85,10 +85,24 @@ def solve_math_ai(expression: str, grade_level: str) -> dict:
         nums = re.findall(r'\d+', expression)
         if len(nums) >= 2:
             n1, n2 = int(nums[0]), int(nums[1])
-            res = n1 + n2 if any(w in expression.lower() for w in ["total", "together", "plus", "add"]) else max(n1, n2) - min(n1, n2)
+            expr_lower = expression.lower()
+            if any(w in expr_lower for w in ["times", "each", "groups of", "multiply", "multiplied"]):
+                res = n1 * n2
+                op_name = "multiplication"
+            elif any(w in expr_lower for w in ["divided", "split", "share", "shared equally", "divide"]):
+                big, small = max(n1, n2), min(n1, n2)
+                res = big // small if small > 0 else 0
+                op_name = "division"
+            elif any(w in expr_lower for w in ["total", "together", "plus", "add", "altogether", "combined"]):
+                res = n1 + n2
+                op_name = "addition"
+            else:
+                res = max(n1, n2) - min(n1, n2)
+                op_name = "subtraction"
+
             steps = [
                 f"Identify the given quantities: {n1} and {n2}",
-                f"Determine the operation from the story problem",
+                f"Determine the operation ({op_name}) from the story problem",
                 f"Calculate the final result: {res}"
             ]
             return {
