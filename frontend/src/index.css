@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-black dark:text-white;
+  }
+}
+
+.katex-display {
+  @apply overflow-x-auto py-2;
+}

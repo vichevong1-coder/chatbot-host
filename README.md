@@ -115,6 +115,9 @@ This starts:
 - **Orchestrator**: Port `9000`
 - **Math Service**: Port `9001`
 - **Science Service**: Port `9002`
+- **Frontend UI**: Port `3000`
+
+Once started, open `http://localhost:3000` in your browser to interact with the WEG MVP Chatbot!
 
 ---
 

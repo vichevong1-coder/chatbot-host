@@ -1,4 +1,4 @@
-version: '1.0'
+
 
 services:
   # State Checkpointing & Cache
@@ -77,6 +77,19 @@ services:
       - "${SCIENCE_SERVICE_PORT:-9002}:${SCIENCE_SERVICE_PORT:-9002}"
     env_file:
       - .env
+    networks:
+      - science-network
+
+  # Frontend Client
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: science-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - orchestrator
     networks:
       - science-network
 
