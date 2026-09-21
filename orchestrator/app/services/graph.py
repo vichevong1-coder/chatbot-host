@@ -68,11 +68,20 @@ builder.add_edge("generate_hint", END)
 # Practice Generator loops back to Tutor Loop to solve the new exercise
 builder.add_edge("generate_practice", "tutor_loop")
 
-# Compile with Redis checkpoint saver
-checkpointer = RedisSaver(redis_client=session_manager.redis_client)
+# Compile with Redis checkpoint saver (with MemorySaver fallback when Redis is offline)
+checkpointer = None
 try:
-    checkpointer.setup()
+    if session_manager.redis_client:
+        session_manager.redis_client.ping()
+        checkpointer = RedisSaver(redis_client=session_manager.redis_client)
+        checkpointer.setup()
 except Exception as e:
-    logger.error(f"Failed to setup RedisSaver checkpointer: {e}")
+    logger.warning(f"RedisSaver unavailable ({e}). Falling back to MemorySaver checkpointer.")
+    from langgraph.checkpoint.memory import MemorySaver
+    checkpointer = MemorySaver()
+
+if checkpointer is None:
+    from langgraph.checkpoint.memory import MemorySaver
+    checkpointer = MemorySaver()
 
 socratic_graph = builder.compile(checkpointer=checkpointer)

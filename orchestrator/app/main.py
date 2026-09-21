@@ -1,17 +1,28 @@
 import asyncio
 import time
-import httpx
 from fastapi import FastAPI, Request
 from app.api.endpoints import router as api_router
-from app.services.session import session_manager
+from app.api.health_routes import health_router
 from app.core.config import settings
 from app.core.logging import logger
 from app.infrastructure.database import init_db
+from app.infrastructure.clients import initialize_service_clients, get_service_registry
+from app.infrastructure.health_checks import (
+    initialize_health_check_service,
+    get_health_check_service,
+    check_redis_health,
+    check_qdrant_health,
+    check_postgres_health,
+)
+from app.services.session import session_manager
 
+app = FastAPI(
+    title="Science Chatbot - Orchestrator Gateway",
+    description="Orchestrator Gateway with Socratic Tutoring, Microservice Monitoring, and Resilient Circuit Breaking.",
+    version="2.0.0",
+)
 
-app = FastAPI(title="Science Chatbot - Orchestrator Gateway")
-
-# Register HTTP Middleware to track incoming request response times
+# Request duration middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
@@ -23,85 +34,64 @@ async def log_requests(request: Request, call_next):
     )
     return response
 
+# Register API routers
+app.include_router(health_router)
 app.include_router(api_router, prefix="/api")
 
-@app.get("/health")
-def health():
-    return {"status": "healthy"}
 
-# Downstream health checking background task functions
-async def check_service_health(name: str, url: str) -> bool:
-    async with httpx.AsyncClient() as client:
-        try:
-            start_time = time.time()
-            response = await client.get(url, timeout=3.0)
-            duration = (time.time() - start_time) * 1000
-            if response.status_code == 200:
-                logger.info(f"Health Check: {name} is HEALTHY - Duration: {duration:.2f}ms")
-                return True
-            else:
-                logger.warning(f"Health Check: {name} is UNHEALTHY - Status: {response.status_code} - Duration: {duration:.2f}ms")
-                return False
-        except Exception as e:
-            logger.error(f"Health Check: {name} is UNREACHABLE - Error: {e}")
-            return False
-
-async def check_redis_health() -> bool:
-    if not session_manager.redis_client:
-        logger.error("Health Check: Redis is UNHEALTHY (client not initialized)")
-        return False
-    try:
-        start_time = time.time()
-        session_manager.redis_client.ping()
-        duration = (time.time() - start_time) * 1000
-        logger.info(f"Health Check: Redis is HEALTHY - Duration: {duration:.2f}ms")
-        return True
-    except Exception as e:
-        logger.error(f"Health Check: Redis is UNHEALTHY - Error: {e}")
-        return False
-
-async def check_qdrant_health() -> bool:
-    url = f"http://{settings.QDRANT_HOST}:{settings.QDRANT_PORT}/readyz"
-    async with httpx.AsyncClient() as client:
-        try:
-            start_time = time.time()
-            response = await client.get(url, timeout=3.0)
-            duration = (time.time() - start_time) * 1000
-            if response.status_code == 200:
-                logger.info(f"Health Check: Qdrant is HEALTHY - Duration: {duration:.2f}ms")
-                return True
-            else:
-                logger.warning(f"Health Check: Qdrant is UNHEALTHY - Status: {response.status_code} - Duration: {duration:.2f}ms")
-                return False
-        except Exception as e:
-            logger.error(f"Health Check: Qdrant is UNREACHABLE - Error: {e}")
-            return False
-
+# Periodic background health monitoring task
 async def periodic_health_check():
-    # Wait initially for service startup
-    await asyncio.sleep(5.0)
+    await asyncio.sleep(5.0)  # Initial grace period
+    health_service = get_health_check_service()
+    registry = get_service_registry()
+
     while True:
-        logger.info("-------------------- Downstream Dependencies Health Report --------------------")
-        await check_redis_health()
-        await check_qdrant_health()
-        await check_service_health("Math Service", f"{settings.MATH_SERVICE_URL}/health")
-        await check_service_health("Physics Service", f"{settings.PHYSICS_SERVICE_URL}/health")
-        await check_service_health("Chemistry Service", f"{settings.CHEMISTRY_SERVICE_URL}/health")
-        await check_service_health("Biology Service", f"{settings.BIOLOGY_SERVICE_URL}/health")
-        logger.info("--------------------------------------------------------------------------------")
-        await asyncio.sleep(30.0)
+        try:
+            clients = registry.get_all_clients()
+            if clients:
+                system_health = await health_service.check_all_services(clients)
+                logger.info(
+                    f"[HealthCheck] Overall: {system_health.overall_status.value.upper()} | "
+                    f"Readiness: {system_health.readiness.value.upper()} | "
+                    + " | ".join([f"{name}: {h.status.value.upper()} ({h.response_time_ms:.1f}ms)" for name, h in system_health.services.items()])
+                )
+
+            # Check core storage dependencies
+            r_status = check_redis_health(session_manager.redis_client)
+            q_status = await check_qdrant_health(settings.QDRANT_HOST, settings.QDRANT_PORT)
+            p_status = await check_postgres_health(settings.DATABASE_URL)
+            logger.info(f"[Dependencies] Redis: {r_status.upper()} | Qdrant: {q_status.upper()} | Postgres: {p_status.upper()}")
+
+        except Exception as e:
+            logger.warning(f"[HealthCheck] Periodic health monitor encountered error: {e}")
+
+        await asyncio.sleep(float(settings.HEALTH_CHECK_INTERVAL_SEC))
+
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("Starting Orchestrator Gateway...")
+    logger.info("Starting Science Chatbot Orchestrator Gateway...")
     await init_db()
-    # Spawn background task
+
+    # Initialize microservice clients registry
+    logger.info("Initializing Microservice Client Registry...")
+    initialize_service_clients(settings)
+
+    # Initialize health check monitoring service
+    logger.info("Initializing Health Check Service...")
+    initialize_health_check_service(
+        check_timeout_sec=settings.HEALTH_CHECK_TIMEOUT_SEC,
+        failure_threshold=settings.CIRCUIT_FAILURE_THRESHOLD,
+        degraded_response_time_ms=settings.DEGRADED_LATENCY_THRESHOLD_MS,
+    )
+
+    # Launch background health check task
     asyncio.create_task(periodic_health_check())
+    logger.info("Orchestrator Gateway initialized successfully.")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Shutting down Orchestrator Gateway...")
-    from app.infrastructure.clients import solver_client
-    await solver_client.close()
-
-
+    registry = get_service_registry()
+    await registry.close_all()

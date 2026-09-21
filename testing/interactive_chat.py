@@ -1,17 +1,32 @@
 """
 File: testing/interactive_chat.py
-Description: Interactive terminal-based Socratic tutor test client. 
-             Connects to the Orchestrator Gateway at http://localhost:9000/api/query.
-             Requires zero dependencies (uses Python's standard urllib).
+Description: Interactive terminal-based Socratic tutor test client.
+             Supports both Direct In-Memory LangGraph execution (zero server required)
+             and HTTP Gateway connection to http://localhost:9000/api/query.
 """
 
-import json
-import urllib.request
-import urllib.error
-import uuid
+import os
 import sys
+import json
+import uuid
 
-# Color codes for terminal beauty
+# Reconfigure stdout for UTF-8 emoji support on Windows terminal
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+# Ensure orchestrator is on sys.path for direct in-memory execution
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ORCHESTRATOR_DIR = os.path.join(BASE_DIR, "orchestrator")
+if ORCHESTRATOR_DIR not in sys.path:
+    sys.path.insert(0, ORCHESTRATOR_DIR)
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+# pyrefly: ignore [missing-import]
+from app.services.socratic.graph import socratic_graph
+
+# Terminal formatting
+CYAN = "\033[96m"
 BLUE = "\033[94m"
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
@@ -19,112 +34,112 @@ RED = "\033[91m"
 BOLD = "\033[1m"
 RESET = "\033[0m"
 
-GATEWAY_URL = "http://localhost:9000/api/query"
-
-def send_query(query: str, session_id: str, grade_level: str, language: str) -> dict:
-    """
-    Sends the user query or student step attempt to the Orchestrator gateway.
-    """
-    data = {
-        "query": query,
-        "session_id": session_id,
-        "grade_level": grade_level,
-        "language": language
-    }
-    json_data = json.dumps(data).encode("utf-8")
-    
-    req = urllib.request.Request(
-        GATEWAY_URL,
-        data=json_data,
-        headers={"Content-Type": "application/json"},
-        method="POST"
-    )
-    
-    try:
-        with urllib.request.urlopen(req) as response:
-            if response.status == 200:
-                return json.loads(response.read().decode("utf-8"))
-    except urllib.error.URLError as e:
-        print(f"\n{RED}{BOLD}[ERROR]{RESET} Cannot connect to Orchestrator Gateway at http://localhost:9000.")
-        print("Please make sure your docker containers are running (`docker compose up`).")
-        print(f"Details: {e}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\n{RED}{BOLD}[ERROR]{RESET} Failed to process request: {e}")
-        sys.exit(1)
 
 def main():
-    print(f"{BLUE}{BOLD}==================================================")
-    print("      SOCRATIC TUTOR INTERACTIVE CLI CLIENT       ")
-    print(f"=================================================={RESET}\n")
+    print(f"\n{CYAN}{BOLD}========================================================")
+    print("   🚀 SOCRATIC STEM TUTOR - INTERACTIVE CLI (Grade 1-3) ")
+    print(f"========================================================{RESET}\n")
 
-    # 1. Choose Language
-    print(f"{BOLD}Select Preferred Language:{RESET}")
-    print("1. English [Default]")
-    print("2. Khmer")
-    lang_choice = input("\nEnter choice (1-2): ").strip()
-    language = "khmer" if lang_choice == "2" else "en"
-    print(f"\n{GREEN}Selected Language: {language.upper()}{RESET}\n")
-
-    # 2. Select student grade level (Grades 1-6)
-    print(f"{BOLD}Select Student Grade Level (Elementary School):{RESET}")
-    print("1. Grade 1-3 (Early Elementary)")
-    print("2. Grade 4-6 (Upper Elementary) [Default]")
+    # Select Grade Level (Defaults to Grade 1-3)
+    print(f"{BOLD}Select Student Grade Level:{RESET}")
+    print("1. Grade 1-3 (Early Elementary - Active Default)")
+    print("2. Grade 4-6 (Upper Elementary)")
     
-    choice = input("\nEnter choice (1-2): ").strip()
-    grade_map = {
-        "1": "grade_1_3",
-        "2": "grade_4_6"
+    choice = input("\nEnter choice (1-2) [Default: 1]: ").strip()
+    grade_level = "grade_4_6" if choice == "2" else "grade_1_3"
+    print(f"\n{GREEN}✅ Active Mode: {grade_level.upper()}{RESET}\n")
+
+    session_id = f"cli_{uuid.uuid4().hex[:6]}"
+    config = {"configurable": {"thread_id": session_id}}
+
+    print(f"{BOLD}Enter the homework problem you want to solve:{RESET}")
+    print(f"{YELLOW}Grade 1-3 Examples:{RESET}")
+    print("  • Math: 'Leo has 15 candies and ate 6 candies'")
+    print("  • Math: 'What is 8 + 7?'")
+    print("  • Physics: 'Why do magnets stick to the fridge?'")
+    print("  • Physics: 'What makes a shadow?'")
+    print("  • Physics: 'Does a wooden stick sink or float in water?'")
+    print("  • Biology: 'How does a caterpillar turn into a butterfly?'")
+    print("  • Biology: 'Why do birds have feathers?'")
+    print("  • Earth: 'Why is the sky dark at night?'")
+    print("  • Earth: 'What are clouds made of and why does it rain?'")
+    print("  • Chemistry: 'What happens when water boils?'")
+    print("  • General: 'Why do cats purr?' (Or any other question!)")
+
+    initial_problem = input(f"\n{BOLD}Problem: {RESET}").strip()
+    if not initial_problem:
+        print("No problem entered. Exiting.")
+        return
+
+    print(f"\n{CYAN}⏳ Decomposing problem into 4-Part Socratic Steps...{RESET}\n")
+
+    # Initial State invoke
+    state = {
+        "session_id": session_id,
+        "raw_user_input": initial_problem,
+        "problem_text": initial_problem,
+        "grade_level": grade_level,
+        "detected_intent": "INITIAL_QUESTION"
     }
-    grade_level = grade_map.get(choice, "grade_4_6")
-    print(f"\n{GREEN}Selected Grade Level: {grade_level}{RESET}\n")
 
-    # 3. Enter initial math/science exercise
-    session_id = f"cli_{uuid.uuid4().hex[:8]}"
-    print(f"{BOLD}Enter the science exercise or question you want to solve:{RESET}")
-    if language == "khmer":
-        print("Example: ដោះស្រាយសមីការ 3*x + 9 = 18")
-    else:
-        print("Example: solve 3*x + 9 = 18")
-        
-    initial_query = input("\nQuestion: ").strip()
-    if not initial_query:
-        print("Empty question. Exiting.")
-        sys.exit(0)
+    try:
+        res = socratic_graph.invoke(state, config=config)
+    except Exception as e:
+        print(f"{RED}Error generating card: {e}{RESET}")
+        return
 
-    print(f"\n{YELLOW}Initializing Socratic session with Gateway...{RESET}")
-    response = send_query(initial_query, session_id, grade_level, language)
+    # Print first Socratic Card
+    print(f"{GREEN}{res.get('formatted_markdown', '')}{RESET}\n")
 
-    # 4. Chat loop
+    # Interactive Socratic Dialogue Loop
     while True:
-        category = response.get("category", "GENERAL")
-        solution = response.get("solution", "")
-        steps = response.get("steps", [])
-        step_idx = response.get("current_step_index", 0)
-        hint_count = response.get("hint_count", 0)
-        practice_mode = response.get("practice_mode", False)
-
-        print(f"\n{BLUE}{BOLD}--- TUTOR RESPONSE ---{RESET}")
-        print(f"{BOLD}Subject Category:{RESET} {category}")
-        if practice_mode:
-            print(f"{BOLD}Mode:{RESET} Practice Problem")
-        print(f"{BOLD}Tutor Feedback:{RESET}\n{GREEN}{solution}{RESET}")
-        print(f"{BLUE}{BOLD}----------------------{RESET}")
-
-        # Show debugging/telemetry metrics
-        debug_info = f"[Step Index: {step_idx}/{len(steps)} | Mistakes: {hint_count}]"
-        print(f"{YELLOW}{debug_info}{RESET}")
-
-        # Prompt student for their attempt
-        student_input = input(f"\n{BOLD}Your Step / Answer (or type 'exit' to quit): {RESET}").strip()
-        if not student_input:
-            continue
-        if student_input.lower() in ["exit", "quit", "q"]:
-            print(f"\n{BLUE}Goodbye! Keep learning!{RESET}")
+        # Check if problem was fully completed
+        if res.get("is_problem_complete") or res.get("is_problem_solved"):
+            print(f"\n{YELLOW}{BOLD}🎉 Problem Complete! Great job!{RESET}\n")
             break
 
-        print(f"\n{YELLOW}Sending step attempt...{RESET}")
-        response = send_query(student_input, session_id, grade_level, language)
+        print(f"{CYAN}--------------------------------------------------------{RESET}")
+        user_input = input(f"{BOLD}Your Answer (or type 'hint', 'jump 2', 'quit'): {RESET}").strip()
+
+        if not user_input:
+            continue
+        if user_input.lower() in ["quit", "exit", "q"]:
+            print(f"\n{BLUE}Goodbye! Keep exploring science & math! ⭐{RESET}\n")
+            break
+
+        # Route user attempt or hint request
+        lower = user_input.lower()
+        if lower.startswith("jump") or lower.startswith("step"):
+            target_idx = 0
+            for part in lower.split():
+                if part.isdigit():
+                    target_idx = max(0, int(part) - 1)
+            step_state = {
+                "session_id": session_id,
+                "raw_user_input": user_input,
+                "target_nav_index": target_idx,
+                "detected_intent": "NAVIGATION_JUMP"
+            }
+        elif any(h in lower for h in ["hint", "clue", "help", "stuck", "don't know", "dont know"]):
+            step_state = {
+                "session_id": session_id,
+                "raw_user_input": user_input,
+                "detected_intent": "REQUEST_HINT"
+            }
+        else:
+            step_state = {
+                "session_id": session_id,
+                "raw_user_input": user_input,
+                "student_attempt": user_input,
+                "detected_intent": "STEP_ANSWER_ATTEMPT"
+            }
+
+        try:
+            res = socratic_graph.invoke(step_state, config=config)
+            print(f"\n{GREEN}{res.get('formatted_markdown', '')}{RESET}\n")
+        except Exception as e:
+            print(f"{RED}Error processing response: {e}{RESET}")
+
 
 if __name__ == "__main__":
     main()

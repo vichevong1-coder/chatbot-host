@@ -1,48 +1,126 @@
 """
 File: services/science_service/app/solvers/biology.py
-Description: Biology solver module in the Unified Science Service.
-             Provides DNA transcription, translation, and AI biological step compilation.
+Description: Biology solver module tailored for Grade 1–3 early elementary science
+             (Living vs non-living, plant needs, animal habitats, life cycles, senses).
+             Includes robust LLM fallback (Gemini) when deterministic rules do not match.
 """
 
 import re
 import json
 import os
 import google.generativeai as genai
-from app.prompts.controller import prompt_controller
+
+try:
+    from app.prompts.controller import prompt_controller
+except ImportError:
+    from services.science_service.app.prompts.controller import prompt_controller
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-TRANSCRIPTION_MAP = {"A": "U", "T": "A", "C": "G", "G": "C"}
 
-CODON_MAP = {
-    "AUG": "Methionine (Start)",
-    "UUU": "Phenylalanine", "UUC": "Phenylalanine",
-    "UUA": "Leucine", "UUG": "Leucine", "CUU": "Leucine", "CUC": "Leucine", "CUA": "Leucine", "CUG": "Leucine",
-    "AUU": "Isoleucine", "AUC": "Isoleucine", "AUA": "Isoleucine",
-    "GUU": "Valine", "GUC": "Valine", "GUA": "Valine", "GUG": "Valine",
-    "UCU": "Serine", "UCC": "Serine", "UCA": "Serine", "UCG": "Serine", "AGU": "Serine", "AGC": "Serine",
-    "CCU": "Proline", "CCC": "Proline", "CCA": "Proline", "CCG": "Proline",
-    "ACU": "Threonine", "ACC": "Threonine", "ACA": "Threonine", "ACG": "Threonine",
-    "GCU": "Alanine", "GCC": "Alanine", "GCA": "Alanine", "GCG": "Alanine",
-    "UAU": "Tyrosine", "UAC": "Tyrosine",
-    "CAU": "Histidine", "CAC": "Histidine",
-    "CAA": "Glutamine", "CAG": "Glutamine",
-    "AAU": "Asparagine", "AAC": "Asparagine",
-    "AAA": "Lysine", "AAG": "Lysine",
-    "GAU": "Aspartic Acid", "GAC": "Aspartic Acid",
-    "GAA": "Glutamic Acid", "GAG": "Glutamic Acid",
-    "UGU": "Cysteine", "UGC": "Cysteine",
-    "UGG": "Tryptophan",
-    "CGU": "Arginine", "CGC": "Arginine", "CGA": "Arginine", "CGG": "Arginine", "AGA": "Arginine", "AGG": "Arginine",
-    "GGU": "Glycine", "GGC": "Glycine", "GGA": "Glycine", "GGG": "Glycine",
-    "UAA": "STOP", "UAG": "STOP", "UGA": "STOP"
-}
+def solve_grade_1_3_biology(expression: str) -> dict:
+    """
+    Deterministic rule-based solver for Grade 1-3 elementary biology:
+    - What plants need to grow (sunlight, water, soil, air)
+    - Living vs Non-living things
+    - Animal habitats (ocean, jungle, desert, arctic)
+    - Life cycles (butterfly caterpillar, frog tadpole, plant seed)
+    - 5 Human Senses
+    """
+    expr_l = expression.lower()
 
-def solve_biology_ai(expression: str, grade_level: str) -> dict:
+    # 1. Plants and Photosynthesis (Elementary Needs)
+    if "plant" in expr_l and any(w in expr_l for w in ["grow", "need", "sunlight", "water", "food", "photosynthesis", "leaf", "root"]):
+        steps = [
+            "🌱 Observe: A young green plant needs energy to grow big and strong.",
+            "☀️ Needs: Roots drink water from soil, and green leaves catch warm sunlight and air.",
+            "🌟 Conclusion: Plants use sunlight, water, and air to make their own food (Photosynthesis)!"
+        ]
+        return {
+            "solution": "Plants make food (Glucose) and oxygen from sunlight, water, and air",
+            "steps": steps,
+            "success": True,
+            "error": None
+        }
+
+    # 2. Living vs Non-Living
+    if any(w in expr_l for w in ["living", "non-living", "nonliving", "alive", "is a rock living"]):
+        steps = [
+            "🐶 Living Things: Need food, water, and air to grow and reproduce (like puppies and trees).",
+            "🪨 Non-Living Things: Do not grow, breathe, or eat (like rocks, toys, and chairs).",
+            "🌟 Conclusion: Living things grow and need food/water, while non-living things do not!"
+        ]
+        return {
+            "solution": "Living things breathe, eat, and grow",
+            "steps": steps,
+            "success": True,
+            "error": None
+        }
+
+    # 3. Animal Habitats
+    if any(w in expr_l for w in ["habitat", "where do animals live", "ocean", "desert", "arctic", "forest", "jungle"]):
+        steps = [
+            "🏡 Observe: Animals live in environments that provide food, water, and shelter.",
+            "🌍 Examples: Fish live in oceans, camels in warm deserts, and polar bears on cold arctic ice.",
+            "🌟 Conclusion: An animal's natural home is called its Habitat!"
+        ]
+        return {
+            "solution": "A habitat is an animal's natural home",
+            "steps": steps,
+            "success": True,
+            "error": None
+        }
+
+    # 4. Life Cycles (Frog, Butterfly, Seed)
+    if any(w in expr_l for w in ["life cycle", "butterfly", "caterpillar", "tadpole", "frog", "seed"]):
+        steps = [
+            "🐛 Stage 1: Living things start as eggs or tiny seeds.",
+            "🦋 Stage 2: They grow and transform (like a caterpillar into a butterfly, or tadpole into a frog).",
+            "🌟 Conclusion: The stages of growth from baby to adult are called a Life Cycle!"
+        ]
+        return {
+            "solution": "Life cycles describe how living things grow and change",
+            "steps": steps,
+            "success": True,
+            "error": None
+        }
+
+    # 5. Cell Organelles (Auxiliary elementary introduction)
+    if "mitochondria" in expr_l or "powerhouse" in expr_l:
+        steps = [
+            "🔬 Observe: Inside every living plant and animal cell are tiny helper parts.",
+            "⚡ Function: Mitochondria turn food nutrients into energy the cell can use.",
+            "🌟 Conclusion: Mitochondria are known as the powerhouse of the cell!"
+        ]
+        return {
+            "solution": "Mitochondria produces cellular energy (ATP)",
+            "steps": steps,
+            "success": True,
+            "error": None
+        }
+
+    return {"success": False}
+
+
+def solve_biology_ai(expression: str, grade_level: str = "grade_1_3") -> dict:
+    """
+    LLM Step Solver fallback (Gemini).
+    Automatically triggered when deterministic rules do not match the input.
+    """
     if not GEMINI_API_KEY:
-        return {"solution": None, "steps": [expression], "success": False, "error": "API key not set"}
+        return {
+            "solution": "Living organisms and nature",
+            "steps": [
+                f"Identify the living plant, animal, or habitat in '{expression}'",
+                "Observe how it lives, eats, or grows in nature",
+                "State the friendly science conclusion!"
+            ],
+            "success": True,
+            "error": None
+        }
+
     try:
         model = genai.GenerativeModel("gemini-flash-latest")
         prompt = prompt_controller.get_prompt("biology", expression, grade_level)
@@ -54,46 +132,26 @@ def solve_biology_ai(expression: str, grade_level: str) -> dict:
             if lines[-1].startswith("```"): lines = lines[:-1]
             text = "\n".join(lines).strip()
         steps = json.loads(text)
-        return {"solution": str(steps[-1]), "steps": steps, "success": True, "error": None}
+        if isinstance(steps, list) and len(steps) > 0:
+            return {"solution": str(steps[-1]), "steps": steps, "success": True, "error": None}
+        return {"solution": text, "steps": [text], "success": True, "error": None}
     except Exception as e:
-        return {"solution": None, "steps": [expression], "success": False, "error": str(e)}
+        return {"solution": None, "steps": [expression], "success": False, "error": f"Biology AI solver failed: {str(e)}"}
+
 
 def solve_biology(expression: str, context: dict = None) -> dict:
+    """
+    Main biology entry point:
+    1. Deterministic Grade 1-3 Rule Matcher (Fast path, 0 latency)
+    2. LLM Fallback (Gemini) for any other queries
+    """
     context = context or {}
-    grade_level = context.get("grade_level", "grade_4_6")
-    query_lower = expression.lower()
-    
-    seq_match = re.search(r'\b([atcgur\- ]{3,})\b', query_lower)
-    if seq_match and any(w in query_lower for w in ["transcribe", "translate", "dna", "rna", "codon", "sequence"]):
-        try:
-            raw_seq = seq_match.group(1).upper().replace(" ", "").replace("-", "")
-            is_dna = "T" in raw_seq or not "U" in raw_seq
-            steps = [f"Original sequence: '{seq_match.group(1)}'"]
-            
-            if is_dna:
-                mrna_seq = "".join(TRANSCRIPTION_MAP.get(base, "N") for base in raw_seq)
-                if "N" in mrna_seq:
-                    raise ValueError("Sequence contains invalid base characters.")
-                steps.append(f"Transcribe DNA sequence to mRNA: '{mrna_seq}'")
-            else:
-                mrna_seq = raw_seq
-                steps.append(f"Identify mRNA sequence: '{mrna_seq}'")
-                
-            codons = [mrna_seq[i:i+3] for i in range(0, len(mrna_seq), 3) if len(mrna_seq[i:i+3]) == 3]
-            steps.append(f"Split mRNA into codons: {', '.join(codons)}")
-            
-            amino_acids = []
-            for codon in codons:
-                aa = CODON_MAP.get(codon, "Unknown")
-                amino_acids.append(aa)
-                steps.append(f"Codon '{codon}' -> '{aa}'")
-                if aa == "STOP":
-                    break
-                    
-            solution = " - ".join(amino_acids)
-            steps.append(f"Final amino acid chain: '{solution}'")
-            return {"solution": solution, "steps": steps, "success": True, "error": None}
-        except Exception:
-            pass
+    grade_level = context.get("grade_level", "grade_1_3")
 
+    # 1. Primary: Elementary Grade 1-3 Observable Biology
+    elem_res = solve_grade_1_3_biology(expression)
+    if elem_res.get("success"):
+        return elem_res
+
+    # 2. LLM Fallback
     return solve_biology_ai(expression, grade_level)

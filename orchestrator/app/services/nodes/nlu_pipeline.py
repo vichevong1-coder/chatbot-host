@@ -7,25 +7,17 @@ Description: Implementation of the 5-Layered Query Understanding NLU Pipeline
 import re
 import os
 from typing import List, Dict, Any, Tuple
-import google.generativeai as genai
+from app.services.llm import llm_service, ModelTier
 from app.services.prompts import prompt_controller
 from app.core.config import settings
 from app.core.logging import logger
 
-# Initialize Gemini safely from settings or environment
-GEMINI_API_KEY = getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-
 class NLUPipeline:
     """
-    Executes the 5-layered Query Understanding NLU pipeline.
+    Executes the 5-layered Query Understanding NLU pipeline via LLM Management Service.
     """
     def __init__(self):
-        api_key = getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
-        if api_key and not GEMINI_API_KEY:
-            genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("gemini-flash-latest") if (api_key or GEMINI_API_KEY) else None
+        pass
 
     def layer_1_normalize(self, query: str) -> str:
         """
@@ -61,22 +53,16 @@ class NLUPipeline:
         """
         Layer 2: Intent Classification (LLM).
         """
-        # Fast pathway for empty history (usually starting a new solve)
         if history_len == 0:
-            # Check for simple greetings
             if query.lower() in ["hi", "hello", "hey", "hola", "greetings", "thanks", "thank you"]:
                 return "CHITCHAT"
             return "INITIAL_SOLVE"
 
-        if not self.model:
-            return "INITIAL_SOLVE"
-
         try:
             prompt = prompt_controller.get_intent_prompt(query, formatted_history)
-            response = self.model.generate_content(prompt)
+            response = llm_service.generate_text(prompt, model_tier=ModelTier.FAST)
             intent = response.text.strip().upper()
             
-            # Map back to valid categories
             valid_intents = {"INITIAL_SOLVE", "STEP_ATTEMPT", "CLARIFY", "REQUEST_PRACTICE", "CHITCHAT"}
             for valid in valid_intents:
                 if valid in intent:
@@ -90,12 +76,9 @@ class NLUPipeline:
         """
         Layer 3: Subject Routing (LLM).
         """
-        if not self.model:
-            return "GENERAL"
-
         try:
             prompt = prompt_controller.get_classification_prompt(query)
-            response = self.model.generate_content(prompt)
+            response = llm_service.generate_text(prompt, model_tier=ModelTier.FAST)
             subject = response.text.strip().upper()
             
             if "MATH" in subject:
@@ -112,12 +95,12 @@ class NLUPipeline:
         Layer 4: Conversational Coreference Resolution (LLM).
         Resolves pronouns like 'it', 'this' to their reference terms.
         """
-        if history_len == 0 or not self.model:
+        if history_len == 0:
             return query
 
         try:
             prompt = prompt_controller.get_coreference_prompt(query, formatted_history)
-            response = self.model.generate_content(prompt)
+            response = llm_service.generate_text(prompt, model_tier=ModelTier.FAST)
             resolved = response.text.strip()
             return resolved if resolved else query
         except Exception as e:
@@ -129,11 +112,9 @@ class NLUPipeline:
         Layer 0: Input Translation (Khmer -> English).
         Translates raw input query if language context is set to Khmer.
         """
-        if not self.model:
-            return query
         try:
             prompt = prompt_controller.get_translation_to_english_prompt(query)
-            response = self.model.generate_content(prompt)
+            response = llm_service.generate_text(prompt, model_tier=ModelTier.TRANSLATION)
             translated = response.text.strip()
             return translated if translated else query
         except Exception as e:
@@ -144,12 +125,9 @@ class NLUPipeline:
         """
         Layer 5: RAG Concept & Search Term Extractor (LLM).
         """
-        if not self.model:
-            return query
-
         try:
             prompt = prompt_controller.get_concept_prompt(query)
-            response = self.model.generate_content(prompt)
+            response = llm_service.generate_text(prompt, model_tier=ModelTier.FAST)
             keywords = response.text.strip()
             return keywords if keywords else query
         except Exception as e:
