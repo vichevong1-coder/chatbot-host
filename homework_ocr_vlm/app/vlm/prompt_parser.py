@@ -116,14 +116,10 @@ UNIVERSAL EXTRACTION RULES:
 - Never drop unnumbered context, quadrant titles, helper facts, or sub-headers (including letter prefixes like "A.", "B.", "1a."). Capture unnumbered introductory text in the section/question "instructions" or "elements".
 - If a section contains only a single question or matching group, place the introductory text exclusively in the question "prompt" and leave the section "instructions" null to avoid duplication.
 - When multiple continuous fill-in sentences, statements, or prompt items follow a single numbered header (e.g. circled "1" followed by 3 animal grouping statements, or circled "2" followed by a list of animal names), group them together under that numbered parent question using the "sub_questions" array (e.g., parent question 1 with sub_questions 1a, 1b, 1c), or organize them under unified sections (Section 1 and Section 2) with their introductory text in section "instructions"/"title", rather than generating disconnected flat questions with null numbers.
-5. Response Zones & Labeling Tasks: Identify every place intended for student input (blank lines, empty boxes, checkboxes, table cells, circle targets, matching dots) as an "answer_area" with normalized [x1, y1, x2, y2] bounding boxes on a 0-1000 scale (0 = top/left, 1000 = bottom/right). If a question instructs the user/student to "Label" or mark a figure but provides no explicit printed blank lines, you MUST generate an "answer_area" (e.g., kind "blank_box" or "image_label") mapped to the bounding box of the associated figure, allowing the user a designated interactive space to interact with the image.
+5. Response Zones & Labeling Tasks: Identify every place intended for student input (blank lines, empty boxes, checkboxes, table cells, circle targets, matching dots) as an "answer_area" with normalized [x1, y1, x2, y2] bounding boxes on a 0-1000 scale where x1 < x2 and y1 < y2 (x1=left, y1=top, x2=right, y2=bottom). Never invert coordinates (do not output x2 < x1 or y2 < y1). If a question instructs the user/student to "Label" or mark a figure but provides no explicit printed blank lines, you MUST generate an "answer_area" (e.g., kind "blank_box" or "image_label") mapped to the bounding box of the associated figure, allowing the user a designated interactive space to interact with the image.
 6. Student Work: Transcribe any student handwriting, markings, ticks, circles, or drawn lines in "student_answer". If unmarked, use null. If unreadable, use "?".
-7. Multi-Column & Boxed Card Grids (2-Column & Tile Worksheets):
-- When questions are laid out in a 2-column grid or separate boxed cards (e.g., Q1, Q3, Q5, Q7, Q9 in the left column; Q2, Q4, Q6, Q8, Q10 in the right column):
-  - Treat EACH boxed tile or card as an independent, self-contained Question object in numerical order (Q1, Q2, Q3, Q4, Q5, Q6, Q7, Q8, Q9, Q10).
-  - NEVER read horizontally across card boundaries (do not merge left-column and right-column text).
-  - Include both the card title and all sub-parts (e.g., "Q1. Addition & Number Bonds\na) Calculate: 9 + 2 + 3 + 1 = ___\nb) Find the missing number: 35 + ___ = 100").
-  - For tables inside cards (like 3D shapes or property charts), extract them as "type": "table" with all row headers and answer cells.
+7. Multi-Column & Matching Layouts (Text & Image Grids):
+- Transcribe each column, item, and visual target strictly in its physical top-to-bottom sequence as printed. Never pre-pair or re-sequence items to match opposite columns.
 - For matching sections (whether text cards or image-based grids), extract each item in the left column as an independent question object (e.g., "b1", "b2", "b3") with its associated figure/text and connection dot, and extract each target item in the right column as completely separate, independent objects (e.g., "b_img1", "b_img2") with "type": "other" in their exact top-to-bottom visual order. Do not lump multi-item matching grids into a single monolithic figure.
 - When extracting purely visual/image items from a matching grid, place the overarching directions in the section-level "title" or "instructions", and strictly set the "prompt" field to null for the individual image objects (both left-column and right-column items).
 - If connecting lines are drawn by a student, record them in "matches" as {{"pair": [left_item, right_item], "is_example": false}}, otherwise null.
@@ -297,6 +293,20 @@ def _parse_figure(raw: Any) -> Optional[FigureInfo]:
     )
 
 
+def _norm_bbox(raw: Any) -> Optional[list[float]]:
+    """Validate and normalize bounding box coordinates to [x1, y1, x2, y2] where x1 < x2 and y1 < y2."""
+    if not isinstance(raw, list) or len(raw) != 4:
+        return None
+    try:
+        coords = [float(v) for v in raw]
+        x1, y1, x2, y2 = coords[0], coords[1], coords[2], coords[3]
+        if x1 > x2 or y1 > y2:
+            logger.warning("Normalizing inverted bounding box coordinates: %s", coords)
+        return [min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)]
+    except (ValueError, TypeError):
+        return None
+
+
 def _parse_answer_areas(raw: Any) -> list[AnswerAreaEntry]:
     if not isinstance(raw, list):
         return []
@@ -304,13 +314,7 @@ def _parse_answer_areas(raw: Any) -> list[AnswerAreaEntry]:
     for item in raw:
         if not isinstance(item, dict):
             continue
-        bbox_raw = item.get("bbox")
-        bbox = None
-        if isinstance(bbox_raw, list) and len(bbox_raw) == 4:
-            try:
-                bbox = [float(v) for v in bbox_raw]
-            except (ValueError, TypeError):
-                pass
+        bbox = _norm_bbox(item.get("bbox"))
         result.append(AnswerAreaEntry(kind=_norm_kind(item.get("kind")), bbox=bbox))
     return result
 
@@ -362,12 +366,12 @@ def _parse_elements(raw: Any) -> list[Any]:
             result.append(MatchingElement(
                 left_item=item.get("left_item"),
                 right_item=item.get("right_item"),
-                bbox=item.get("bbox"),
+                bbox=_norm_bbox(item.get("bbox")),
             ))
         elif etype == "text" or "text" in item:
             result.append(TextElement(
                 text=str(item.get("text", "")),
-                bbox=item.get("bbox"),
+                bbox=_norm_bbox(item.get("bbox")),
             ))
         else:
             result.append(item)

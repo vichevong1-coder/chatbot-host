@@ -6,6 +6,7 @@ Description: Google Gemini Adapter implementing BaseLLMProvider.
 import os
 import time
 import logging
+import asyncio
 from typing import Optional, Dict, Any
 import google.generativeai as genai
 
@@ -22,17 +23,21 @@ class GeminiProvider(BaseLLMProvider):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        fast_model: str = "gemini-flash-latest",
-        reasoning_model: str = "gemini-flash-latest",
-        translation_model: str = "gemini-flash-latest",
-        temperature: Optional[float] = None
+        fast_model: Optional[str] = None,
+        reasoning_model: Optional[str] = None,
+        translation_model: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_retries: int = 2
     ):
         configured_temp = temperature if temperature is not None else getattr(settings, "GEMINI_TEMPERATURE", 0.7)
         super().__init__(name="gemini", default_temperature=configured_temp)
         self.api_key = api_key or getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
-        self.fast_model_name = fast_model
-        self.reasoning_model_name = reasoning_model
-        self.translation_model_name = translation_model
+        
+        default_model = getattr(settings, "GEMINI_MODEL", "") or os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+        self.fast_model_name = fast_model or default_model
+        self.reasoning_model_name = reasoning_model or default_model
+        self.translation_model_name = translation_model or default_model
+        self.max_retries = max_retries
         self._configured = False
 
         if self.api_key:
@@ -79,9 +84,21 @@ class GeminiProvider(BaseLLMProvider):
             max_output_tokens=max_tokens if max_tokens else None
         )
 
-        response = model.generate_content(prompt, generation_config=generation_config)
-        latency_ms = (time.time() - start_time) * 1000
+        response = None
+        last_exc = None
+        for attempt in range(1, self.max_retries + 2):
+            try:
+                response = model.generate_content(prompt, generation_config=generation_config)
+                break
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(f"Gemini generation attempt {attempt}/{self.max_retries + 1} failed ({exc})")
+                if attempt <= self.max_retries:
+                    time.sleep(1.0 * attempt)
+                else:
+                    raise last_exc
 
+        latency_ms = (time.time() - start_time) * 1000
         text = response.text.strip() if response and response.text else ""
 
         # Extract token usage metadata if available
@@ -125,9 +142,21 @@ class GeminiProvider(BaseLLMProvider):
             max_output_tokens=max_tokens if max_tokens else None
         )
 
-        response = await model.generate_content_async(prompt, generation_config=generation_config)
-        latency_ms = (time.time() - start_time) * 1000
+        response = None
+        last_exc = None
+        for attempt in range(1, self.max_retries + 2):
+            try:
+                response = await model.generate_content_async(prompt, generation_config=generation_config)
+                break
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(f"Gemini async generation attempt {attempt}/{self.max_retries + 1} failed ({exc})")
+                if attempt <= self.max_retries:
+                    await asyncio.sleep(1.0 * attempt)
+                else:
+                    raise last_exc
 
+        latency_ms = (time.time() - start_time) * 1000
         text = response.text.strip() if response and response.text else ""
 
         usage = getattr(response, "usage_metadata", None)

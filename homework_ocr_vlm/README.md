@@ -75,7 +75,7 @@ cp .env.example .env
 # 4. Run
 python run.py
 # or
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 9003
 ```
 
 ## API
@@ -90,7 +90,7 @@ uvicorn app.main:app --reload --port 8000
 Upload a homework image or PDF:
 
 ```bash
-curl -X POST http://localhost:8000/process-homework \
+curl -X POST http://localhost:9003/process-homework \
   -F "file=@homework.jpg"
 ```
 
@@ -127,7 +127,7 @@ Response (abbreviated):
 }
 ```
 
-Interactive docs: http://localhost:8000/docs
+Interactive docs: http://localhost:9003/docs
 
 ## Configuration (`.env`)
 

@@ -134,7 +134,10 @@ def _estimate_skew(img: np.ndarray) -> float:
 
     angles = []
     for line in lines:
-        x1, y1, x2, y2 = line[0]
+        pts = line.reshape(-1)
+        if len(pts) < 4:
+            continue
+        x1, y1, x2, y2 = pts[:4]
         if x2 != x1:
             angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
             # Only consider near-horizontal lines (within ±45°)

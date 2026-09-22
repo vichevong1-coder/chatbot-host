@@ -62,23 +62,39 @@ class HomeworkProcessor:
                 confidence_threshold=settings.ocr_confidence_threshold,
             )
 
-    def _build_vlm(self):
-        """Construct the configured VLM provider."""
-        provider = settings.vlm_provider.lower()
-        if provider == "gemini":
+    def _build_single_vlm(self, provider: str, model: str, api_key: str = "", base_url: str = ""):
+        p = provider.lower()
+        if p == "gemini":
             from app.vlm.gemini_vlm import GeminiVLM
-            return GeminiVLM(
-                api_key=settings.gemini_api_key,
-                model_name=settings.vlm_model,
-            )
-        if provider == "ollama":
+            return GeminiVLM(api_key=api_key or settings.gemini_api_key, model_name=model)
+        if p == "ollama":
             from app.vlm.ollama_vlm import OllamaVLM
             return OllamaVLM(
-                api_key=settings.ollama_api_key,
-                model_name=settings.vlm_model,
-                base_url=settings.ollama_base_url,
+                api_key=api_key or settings.ollama_api_key,
+                model_name=model,
+                base_url=base_url or settings.ollama_base_url,
             )
-        raise ValueError(f"Unknown VLM provider: {provider!r}. Supported: gemini, ollama")
+        raise ValueError(f"Unknown VLM provider: {p!r}. Supported: gemini, ollama")
+
+    def _build_vlm(self):
+        """Construct the configured primary and fallback VLM providers."""
+        primary = self._build_single_vlm(
+            provider=settings.vlm_provider,
+            model=settings.vlm_model,
+            api_key=settings.gemini_api_key if settings.vlm_provider.lower() == "gemini" else settings.ollama_api_key,
+            base_url=settings.ollama_base_url,
+        )
+        fb_provider = getattr(settings, "vlm_fallback_provider", "").strip().lower()
+        if fb_provider and fb_provider != "none":
+            from app.vlm.resilient_vlm import ResilientVLM
+            fallback = self._build_single_vlm(
+                provider=fb_provider,
+                model=getattr(settings, "vlm_fallback_model", "gemma4:31b"),
+                api_key=getattr(settings, "ollama_fallback_api_key", "") or settings.ollama_api_key,
+                base_url=getattr(settings, "ollama_fallback_base_url", "") or settings.ollama_base_url,
+            )
+            return ResilientVLM(primary=primary, fallback=fallback)
+        return primary
 
     # ------------------------------------------------------------------
     # Public entry point

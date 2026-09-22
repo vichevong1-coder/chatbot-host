@@ -123,7 +123,8 @@ def solve_math_ai(expression: str, grade_level: str) -> dict:
         }
 
     try:
-        model = genai.GenerativeModel("gemini-flash-latest")
+        model_name = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+        model = genai.GenerativeModel(model_name)
         prompt = prompt_controller.get_solver_prompt(expression, grade_level)
         response = model.generate_content(prompt)
         text = response.text.strip()

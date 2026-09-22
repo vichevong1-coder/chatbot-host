@@ -662,6 +662,35 @@ class TestPromptMarkerStrippingAndNormalization:
         assert page.sections[0].questions[0].question_no is None
         assert page.sections[0].questions[1].question_no is None
 
+    def test_inverted_bbox_normalization(self):
+        from app.vlm.prompt_parser import _norm_bbox, parse_vlm_response
+
+        # Test direct helper
+        inverted = [311, 275, 189, 229]
+        normalized = _norm_bbox(inverted)
+        assert normalized == [189.0, 229.0, 311.0, 275.0]
+
+        # Test within VLM parse flow
+        data = {
+            "sections": [
+                {
+                    "section_id": "1",
+                    "questions": [
+                        {
+                            "id": "q1",
+                            "answer_areas": [
+                                {"kind": "blank_box", "bbox": [311, 275, 189, 229]}
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        page = parse_vlm_response(data, 1, [])
+        area = page.sections[0].questions[0].answer_areas[0]
+        assert area.bbox == [189.0, 229.0, 311.0, 275.0]
+
+
 
 
 

@@ -14,8 +14,14 @@ class Settings(BaseSettings):
     )
 
     # VLM — provider selection
-    vlm_provider: str = Field(default="ollama", alias="VLM_PROVIDER")
-    vlm_model: str = Field(default="gemma4:31b", alias="VLM_MODEL")
+    vlm_provider: str = Field(default="gemini", alias="VLM_PROVIDER")
+    vlm_model: str = Field(default="gemini-flash-latest", alias="VLM_MODEL")
+
+    # Fallback VLM (automatic failover)
+    vlm_fallback_provider: str = Field(default="ollama", alias="VLM_FALLBACK_PROVIDER")
+    vlm_fallback_model: str = Field(default="gemma4:31b", alias="VLM_FALLBACK_MODEL")
+    ollama_fallback_base_url: str = Field(default="https://ollama.com", alias="OLLAMA_FALLBACK_BASE_URL")
+    ollama_fallback_api_key: str = Field(default="", alias="OLLAMA_FALLBACK_API_KEY")
 
     # Gemini (legacy / optional)
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
@@ -44,7 +50,7 @@ class Settings(BaseSettings):
 
     # API server
     app_host: str = Field(default="0.0.0.0", alias="APP_HOST")
-    app_port: int = Field(default=8000, alias="APP_PORT")
+    app_port: int = Field(default=9003, alias="APP_PORT")
     debug: bool = Field(default=False, alias="DEBUG")
 
     @property

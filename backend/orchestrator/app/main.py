@@ -1,8 +1,10 @@
+from contextlib import asynccontextmanager
 import asyncio
 import time
 from fastapi import FastAPI, Request
 from app.api.endpoints import router as api_router
 from app.api.health_routes import health_router
+from app.api.upload import upload_router
 from app.core.config import settings
 from app.core.logging import logger
 from app.infrastructure.database import init_db
@@ -15,28 +17,6 @@ from app.infrastructure.health_checks import (
     check_postgres_health,
 )
 from app.services.session import session_manager
-
-app = FastAPI(
-    title="Science Chatbot - Orchestrator Gateway",
-    description="Orchestrator Gateway with Socratic Tutoring, Microservice Monitoring, and Resilient Circuit Breaking.",
-    version="2.0.0",
-)
-
-# Request duration middleware
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = (time.time() - start_time) * 1000
-    logger.info(
-        f"Incoming Request: {request.method} {request.url.path} - "
-        f"Status: {response.status_code} - Duration: {process_time:.2f}ms"
-    )
-    return response
-
-# Register API routers
-app.include_router(health_router)
-app.include_router(api_router, prefix="/api")
 
 
 # Periodic background health monitoring task
@@ -62,14 +42,16 @@ async def periodic_health_check():
             p_status = await check_postgres_health(settings.DATABASE_URL)
             logger.info(f"[Dependencies] Redis: {r_status.upper()} | Qdrant: {q_status.upper()} | Postgres: {p_status.upper()}")
 
+        except asyncio.CancelledError:
+            break
         except Exception as e:
             logger.warning(f"[HealthCheck] Periodic health monitor encountered error: {e}")
 
         await asyncio.sleep(float(settings.HEALTH_CHECK_INTERVAL_SEC))
 
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     logger.info("Starting Science Chatbot Orchestrator Gateway...")
     await init_db()
 
@@ -86,12 +68,41 @@ async def startup_event():
     )
 
     # Launch background health check task
-    asyncio.create_task(periodic_health_check())
+    health_task = asyncio.create_task(periodic_health_check())
     logger.info("Orchestrator Gateway initialized successfully.")
+    try:
+        yield
+    finally:
+        logger.info("Shutting down Orchestrator Gateway...")
+        health_task.cancel()
+        try:
+            await health_task
+        except (asyncio.CancelledError, Exception):
+            pass
+        registry = get_service_registry()
+        await registry.close_all()
 
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("Shutting down Orchestrator Gateway...")
-    registry = get_service_registry()
-    await registry.close_all()
+app = FastAPI(
+    title="Science Chatbot - Orchestrator Gateway",
+    description="Orchestrator Gateway with Socratic Tutoring, Microservice Monitoring, and Resilient Circuit Breaking.",
+    version="2.0.0",
+    lifespan=lifespan,
+)
+
+# Request duration middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = (time.time() - start_time) * 1000
+    logger.info(
+        f"Incoming Request: {request.method} {request.url.path} - "
+        f"Status: {response.status_code} - Duration: {process_time:.2f}ms"
+    )
+    return response
+
+# Register API routers
+app.include_router(health_router)
+app.include_router(api_router, prefix="/api")
+app.include_router(upload_router, prefix="/api")

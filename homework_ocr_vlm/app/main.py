@@ -2,7 +2,7 @@
 FastAPI application entry point.
 
 Run with:
-    python -m uvicorn app.main:app --reload --port 8000
+    python -m uvicorn app.main:app --reload --port 9003
 
 Or using the helper script:
     python run.py

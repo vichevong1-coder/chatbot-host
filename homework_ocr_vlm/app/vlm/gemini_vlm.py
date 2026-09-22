@@ -27,16 +27,23 @@ logger = logging.getLogger(__name__)
 class GeminiVLM(VLMProvider):
     """Google Gemini Vision provider using the new google-genai SDK."""
 
-    def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash"):
+    def __init__(self, api_key: str, model_name: str = "gemini-flash-lite-latest"):
         from google import genai
         from google.genai import types as genai_types
         self._client = genai.Client(api_key=api_key)
-        self._model_name = model_name
+        
+        # Google has sunset 2.5-flash for new users; map seamlessly to fastest available flash-lite
+        alias_map = {
+            "gemini-2.5-flash": "gemini-flash-lite-latest",
+            "gemini-2.5-flash-lite": "gemini-flash-lite-latest",
+            "gemini-2.0-flash": "gemini-flash-lite-latest",
+        }
+        self._model_name = alias_map.get(model_name, model_name)
         self._genai_types = genai_types
         self._prompt_hash = hashlib.sha256(PAGE_ANALYSIS_PROMPT.encode()).hexdigest()[:12]
         logger.info(
-            "GeminiVLM initialised (model=%s, sdk=google-genai, prompt_hash=%s)",
-            model_name, self._prompt_hash,
+            "GeminiVLM initialised (requested=%s, model=%s, sdk=google-genai, prompt_hash=%s)",
+            model_name, self._model_name, self._prompt_hash,
         )
 
     def _image_part(self, data_uri: str):
@@ -46,8 +53,8 @@ class GeminiVLM(VLMProvider):
         image_bytes = base64.b64decode(b64data)
         return self._genai_types.Part.from_bytes(data=image_bytes, mime_type=mime)
 
-    def _call_model(self, contents: list, max_retries: int = 3) -> str:
-        """Call Gemini with retry on transient errors."""
+    def _call_model(self, contents: list, max_retries: int = 1) -> str:
+        """Call Gemini with quick retry before failover to fallback."""
         for attempt in range(1, max_retries + 1):
             try:
                 response = self._client.models.generate_content(
@@ -62,7 +69,7 @@ class GeminiVLM(VLMProvider):
             except Exception as exc:
                 logger.warning("Gemini attempt %d/%d failed: %s", attempt, max_retries, exc)
                 if attempt < max_retries:
-                    time.sleep(2 ** attempt)
+                    time.sleep(1.0)
                 else:
                     raise
 

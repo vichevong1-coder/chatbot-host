@@ -42,7 +42,7 @@ services:
   # ──────────────────────────────────────────────
   orchestrator:
     build:
-      context: ./orchestrator
+      context: ./backend/orchestrator
       dockerfile: Dockerfile
     container_name: science-orchestrator
     ports:
@@ -63,7 +63,7 @@ services:
 
   math-service:
     build:
-      context: ./services/math_service
+      context: ./backend/services/math_service
       dockerfile: Dockerfile
     container_name: math-service
     ports:
@@ -79,7 +79,7 @@ services:
 
   science-service:
     build:
-      context: ./services/science_service
+      context: ./backend/services/science_service
       dockerfile: Dockerfile
     container_name: science-service
     ports:
@@ -98,7 +98,7 @@ services:
   # ──────────────────────────────────────────────
   homework-scanner:
     build:
-      context: ./services/homework_scanner
+      context: ./homework_ocr_vlm
       dockerfile: Dockerfile
     container_name: homework-scanner
     ports:

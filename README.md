@@ -38,21 +38,23 @@ Science_chatbot/
 │   ├── src/services/               # geminiService.ts, ocrService.ts
 │   └── Dockerfile
 │
-├── orchestrator/                   # 🧠 Main Gateway API & LangGraph State Machine (Port 9000)
-│   ├── Dockerfile
-│   └── app/                        # REST endpoints, Socratic graph, NLU, guardrails
+├── homework_ocr_vlm/               # 📷 Universal VLM Homework Extraction Microservice (Port 9003)
+│   ├── app/                        # Layout, OCR, Preprocessing, VLM
+│   ├── sample_inputs/              # Test images (test1.png)
+│   ├── sample_outputs/             # Benchmark JSON extractions
+│   ├── scripts/                    # test_image_scanner.py, run_worksheet_test.py
+│   └── tests/                      # Pytest pipeline tests & fixtures
 │
-├── services/                       # 🔬 Scientific Solvers & Multimodal Scanner
-│   ├── math_service/               # Math solver (SymPy + LLM validator, Port 9001)
-│   ├── science_service/            # Science solver (Physics, Chemistry, Biology, Port 9002)
-│   └── homework_scanner/           # Universal VLM homework extraction engine (Port 9003)
-│
-├── testing/                        # 🧪 Test Suites & Developer Playgrounds
-│   ├── unit/                       # Gateway, Guardrails, NLU, Socratic, Solvers
-│   ├── integration/                # End-to-end multi-service tests
-│   └── tools/                      # interactive_chat.py, interactive_nlu_tester.py
-│
-└── ingestion/                      # 📚 Qdrant Vector Data Ingestion Pipeline
+└── backend/                        # 🧠 Socratic Tutoring Backend System
+    ├── orchestrator/               # Main Gateway API & LangGraph State Machine (Port 9000)
+    ├── services/
+    │   ├── math_service/           # Math solver (SymPy + LLM validator, Port 9001)
+    │   └── science_service/        # Science solver (Physics, Chemistry, Biology, Port 9002)
+    ├── testing/                    # Test Suites & Developer Playgrounds
+    │   ├── unit/                   # Gateway, Guardrails, NLU, Socratic, Solvers
+    │   ├── integration/            # End-to-end multi-service tests
+    │   └── tools/                  # interactive_chat.py, interactive_nlu_tester.py
+    └── ingestion/                  # Qdrant Vector Data Ingestion Pipeline
 ```
 
 ---
