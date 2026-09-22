@@ -1,7 +1,9 @@
-version: '1.0'
+version: '3.8'
 
 services:
-  # State Checkpointing & Cache
+  # ──────────────────────────────────────────────
+  # Stateful Infrastructure
+  # ──────────────────────────────────────────────
   redis:
     image: redis/redis-stack-server:latest
     container_name: science-redis
@@ -10,7 +12,6 @@ services:
     networks:
       - science-network
 
-  # Persistent Logs Database (Postgres)
   db:
     image: postgres:15-alpine
     container_name: science-postgres
@@ -26,7 +27,6 @@ services:
     networks:
       - science-network
 
-  # Vector DB for Physics & Biology RAG
   qdrant:
     image: qdrant/qdrant:latest
     container_name: science-qdrant
@@ -37,7 +37,9 @@ services:
     networks:
       - science-network
 
-  # Main API Gateway
+  # ──────────────────────────────────────────────
+  # Backend Microservices
+  # ──────────────────────────────────────────────
   orchestrator:
     build:
       context: ./orchestrator
@@ -54,9 +56,11 @@ services:
       - qdrant
       - db
     networks:
-      - science-network
+      science-network:
+        aliases:
+          - science-orchestrator
+          - weg-orchestrator
 
-  # Math Solver
   math-service:
     build:
       context: ./services/math_service
@@ -69,9 +73,10 @@ services:
     environment:
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
     networks:
-      - science-network
+      science-network:
+        aliases:
+          - weg-math-service
 
-  # Unified Science Solver (Physics, Chemistry, Biology)
   science-service:
     build:
       context: ./services/science_service
@@ -84,9 +89,13 @@ services:
     environment:
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
     networks:
-      - science-network
+      science-network:
+        aliases:
+          - weg-science-service
 
-  # Homework Scanner & OCR Pipeline
+  # ──────────────────────────────────────────────
+  # Homework Scanner & OCR Pipeline Microservice
+  # ──────────────────────────────────────────────
   homework-scanner:
     build:
       context: ./services/homework_scanner
@@ -98,6 +107,25 @@ services:
       - .env
     environment:
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
+    networks:
+      science-network:
+        aliases:
+          - ocr-service
+          - weg-ocr-service
+
+  # ──────────────────────────────────────────────
+  # Frontend Web UI
+  # ──────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: science-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - orchestrator
+      - homework-scanner
     networks:
       - science-network
 

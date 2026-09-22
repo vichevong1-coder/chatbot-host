@@ -1,7 +1,17 @@
-# Environment variables
+# Environment variables & secrets
 .env
 *.env
+*.env.local
 !.env.example
+
+# Dependencies
+node_modules/
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
 
 # Python
 __pycache__/
@@ -10,7 +20,6 @@ __pycache__/
 *.so
 .Python
 build/
-develop-eggs/
 dist/
 downloads/
 eggs/
@@ -27,21 +36,14 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual Environments
-.venv/
-venv/
-ENV/
-env/
-env.bak/
-venv.bak/
-
-# IDE / Editor files
+# IDE / Editor / OS files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
+Thumbs.db
 
 # Testing / Coverage
 .pytest_cache/
@@ -51,6 +53,9 @@ htmlcov/
 .nox/
 .hypothesis/
 
-# Data / Uploads / Temporary files
+# Logs & Database Persistence
 *.log
 scratch/
+sample_outputs/
+postgres_data/
+qdrant_data/

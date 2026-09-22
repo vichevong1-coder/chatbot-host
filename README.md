@@ -1,180 +1,98 @@
-# WEG MVP Socratic Chatbot 🎓
+# WEG Homework AI & Socratic Tutoring Ecosystem 🎓
 
-> **Minimum Viable Product (MVP)** for an AI-powered Socratic tutoring chatbot designed for elementary school students (Grades 1–6) in **Math** and **Science** (Physics, Chemistry, Biology), supporting both **English** and **Khmer**.
-
----
-
-## 📌 MVP Overview & Purpose
-
-The **WEG MVP Chatbot** is built to guide students step-by-step using the **Socratic method** rather than simply providing answers. It breaks down complex exercises into digestible milestones, validates student reasoning, generates progressive multi-tier hints upon errors, and offers reinforcement practice problems upon completion.
-
-### Key Capabilities in this MVP:
-- 🧠 **Socratic Tutoring Loop**: Step-by-step guidance that never directly gives away the answer.
-- 📐 **Domain Solvers**:
-  - **Math Service**: Symbolic math parsing and step-by-step algebra breakdown powered by SymPy & LLM.
-  - **Science Service**: Dedicated Physics, Chemistry, and Biology solvers integrated with domain knowledge.
-- 🔍 **RAG Knowledge Ingestion**: Vector search with **Qdrant** for contextual science reference retrieval.
-- 🌐 **Multilingual & Grade-Aware**: Supports **English** and **Khmer** with tailored vocabulary for Grades 1–3 and Grades 4–6.
-- ⚡ **Stateful Architecture**: Session checkpointing with **Redis** and persistent logging with **PostgreSQL**.
+> **Integrated multimodal homework digitization and AI Socratic tutoring system** for elementary school students (Grades 1–6) in **Math** and **Science** (Physics, Chemistry, Biology), supporting both **English** and **Khmer**.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture Overview
 
-```
-                       ┌─────────────────────────┐
-                       │   Student / Frontend    │
-                       │   (Web / CLI Client)    │
-                       └────────────┬────────────┘
-                                    │ HTTP / REST
-                                    ▼
-                       ┌─────────────────────────┐
-                       │   Orchestrator Gateway  │ (Port 9000)
-                       │  (FastAPI + LangGraph)  │
-                       └──────┬────────────┬─────┘
-                              │            │
-             ┌────────────────┘            └────────────────┐
-             ▼                                              ▼
-   ┌───────────────────┐                          ┌───────────────────┐
-   │    Math Service   │ (Port 9001)              │  Science Service  │ (Port 9002)
-   │ (SymPy + Algebra) │                          │ (Phys/Chem/Bio)   │
-   └───────────────────┘                          └─────────┬─────────┘
-                                                            │ Vector Search
-                                                            ▼
-   ┌───────────────────┐  ┌───────────────────┐   ┌───────────────────┐
-   │   Redis Cache     │  │ Postgres Database │   │   Qdrant Vector   │
-   │ (Session State)   │  │ (Session History) │   │     Database      │
-   └───────────────────┘  └───────────────────┘   └───────────────────┘
+```text
+                      ┌─────────────────────────────────────────┐
+                      │    Homework Scanner & OCR (Port 9003)   │
+                      │   Universal VLM + Precision Geometry    │
+                      └────────────────────┬────────────────────┘
+                                           │ Scanned JSON
+                                           ▼
+┌─────────────────────────────────────┐                  ┌─────────────────────────────────────────┐
+│        Frontend Web UI (Port 5173)  │ ──── /api/query ─▶│      Backend Orchestrator (Port 9000)   │
+│ - React 19 + Vite + Tailwind CSS    │                  │ - LangGraph Socratic State Machine      │
+│ - Tunsay Mascot & Stepper Card      │◀─── Socratic ────│ - Math Microservice (Port 9001)         │
+│ - Multi-Exercise Worksheet Bar      │     Responses    │ - Science Microservice (Port 9002)      │
+└─────────────────────────────────────┘                  │ - Redis + Postgres + Qdrant Databases   │
+                                                         └─────────────────────────────────────────┘
 ```
 
 ---
 
 ## 📂 Project Structure
 
-```
-WEG_MVP_Chatbot/
-├── .env.example                 # Example environment configuration
-├── docker-compose.yml           # Multi-container orchestration (Redis, DB, Qdrant, Services)
-├── mvp_development_roadmap.md   # Architectural roadmap and MVP specifications
-├── proposed_mvp_file_structure.md
-├── ingestion/                   # RAG dataset and Qdrant ingestion scripts
-│   ├── data_sources/            # Science reference data
-│   └── ingest_data.py
-├── orchestrator/                # Main API gateway & LangGraph state machine
+```text
+Science_chatbot/
+├── docker-compose.yml              # Unified Multi-Service Docker Orchestration
+├── start_all.ps1                   # One-click Windows PowerShell startup script
+├── .env.example                    # Example environment configuration
+├── pytest.ini                      # Central pytest configuration
+│
+├── frontend/                       # 🌐 Student-Facing Web App (React 19, Vite, Tailwind CSS)
+│   ├── src/components/             # ChatView, StepCard, HomeworkScanner, Stepper
+│   ├── src/services/               # geminiService.ts, ocrService.ts
+│   └── Dockerfile
+│
+├── orchestrator/                   # 🧠 Main Gateway API & LangGraph State Machine (Port 9000)
 │   ├── Dockerfile
-│   ├── requirements.txt
-│   └── app/
-│       ├── api/                 # REST endpoints (/api/query, /health)
-│       ├── core/                # Configuration and logging
-│       ├── infrastructure/      # Redis, PostgreSQL, and HTTP clients
-│       └── services/            # LangGraph nodes (NLU, router, hint, practice)
-├── services/
-│   ├── math_service/            # Math microservice (SymPy + LLM validator)
-│   │   ├── Dockerfile
-│   │   ├── requirements.txt
-│   │   └── app/
-│   └── science_service/         # Science microservice (Physics, Chem, Bio RAG)
-│       ├── Dockerfile
-│       ├── requirements.txt
-│       └── app/
-└── testing/                     # Test suites and CLI interface
-    ├── interactive_chat.py      # Terminal-based Socratic tutor test client
-    └── test_cases.py            # End-to-end integration test suite
+│   └── app/                        # REST endpoints, Socratic graph, NLU, guardrails
+│
+├── services/                       # 🔬 Scientific Solvers & Multimodal Scanner
+│   ├── math_service/               # Math solver (SymPy + LLM validator, Port 9001)
+│   ├── science_service/            # Science solver (Physics, Chemistry, Biology, Port 9002)
+│   └── homework_scanner/           # Universal VLM homework extraction engine (Port 9003)
+│
+├── testing/                        # 🧪 Test Suites & Developer Playgrounds
+│   ├── unit/                       # Gateway, Guardrails, NLU, Socratic, Solvers
+│   ├── integration/                # End-to-end multi-service tests
+│   └── tools/                      # interactive_chat.py, interactive_nlu_tester.py
+│
+└── ingestion/                      # 📚 Qdrant Vector Data Ingestion Pipeline
 ```
 
 ---
 
 ## 🚀 Quick Start Guide
 
-### 1. Prerequisites
-- [Docker](https://www.docker.com/) & Docker Compose
-- Python 3.10+ (for local CLI test client)
-- Google Gemini API Key
-
-### 2. Environment Setup
-Copy `.env.example` to `.env` and provide your Gemini API key:
-```bash
-cp .env.example .env
-```
-Edit `.env`:
-```env
-GEMINI_API_KEY=your_actual_gemini_api_key_here
-ORCHESTRATOR_PORT=9000
-MATH_SERVICE_PORT=9001
-SCIENCE_SERVICE_PORT=9002
-```
-
-### 3. Launch Services with Docker Compose
+### Option 1: Full Docker Stack (Recommended)
 ```bash
 docker compose up --build
 ```
-This starts:
-- **Redis**: Port `6379`
-- **PostgreSQL**: Port `5432`
-- **Qdrant**: Port `6333`
-- **Orchestrator**: Port `9000`
-- **Math Service**: Port `9001`
-- **Science Service**: Port `9002`
+This launches:
+- **Frontend UI**: `http://localhost:80`
+- **Orchestrator Gateway**: `http://localhost:9000`
+- **Homework Scanner**: `http://localhost:9003`
+- **Math Service**: `http://localhost:9001`
+- **Science Service**: `http://localhost:9002`
+- **Databases**: Redis (`6379`), PostgreSQL (`5432`), Qdrant (`6333`)
+
+### Option 2: Local Development
+1. **Launch all backend microservices and frontend dev server**:
+   ```powershell
+   .\start_all.ps1
+   ```
+2. Open `http://localhost:5173` in your browser.
 
 ---
 
-## 🧪 Testing the MVP
+## 🧪 Testing
 
-### Interactive CLI Tutor
-Experience the live Socratic loop directly from your terminal:
-```bash
-python testing/interactive_chat.py
-```
-1. Select language (**English** or **Khmer**).
-2. Select student grade tier (**Grade 1–3** or **Grade 4–6**).
-3. Type a math or science problem (e.g., `solve 3*x + 9 = 18` or `how do plants make food?`).
-4. Step through the solution conversationally.
-
-### Automated End-to-End Tests
-Run the test suite against the running orchestrator:
-```bash
-python testing/test_cases.py
+Run all unit tests:
+```powershell
+.\.venv\Scripts\python.exe -m pytest testing/unit
 ```
 
----
-
-## 📡 API Endpoints
-
-### `POST /api/query`
-Main endpoint for submitting student prompts and step responses.
-
-**Request Body:**
-```json
-{
-  "query": "Solve 2x + 4 = 10",
-  "session_id": "student_session_123",
-  "grade_level": "grade_4_6",
-  "language": "en"
-}
+Run Homework Scanner tests:
+```powershell
+.\.venv\Scripts\python.exe -m pytest services/homework_scanner/tests/test_pipeline.py -m "not integration"
 ```
 
-**Response Body:**
-```json
-{
-  "session_id": "student_session_123",
-  "category": "MATH_ALGEBRA",
-  "solution": "Let's start! What should we do to both sides to isolate the 2x term?",
-  "current_step_index": 0,
-  "hint_count": 0,
-  "practice_mode": false,
-  "completed": false
-}
+Interactive Socratic CLI Tutor:
+```powershell
+.\.venv\Scripts\python.exe testing/tools/interactive_chat.py
 ```
-
-### `GET /health`
-Returns system health and connectivity status of downstream services and databases.
-
----
-
-## 🗺️ Roadmap & Next Steps
-- [x] LangGraph Socratic State Machine & Routing
-- [x] Math & Science Microservices with SymPy + RAG
-- [x] Multilingual Support (English & Khmer)
-- [x] Elementary Grade Adaptations (Grades 1–6)
-- [ ] Speech-to-Text (STT) and Text-to-Speech (TTS) Integration
-- [ ] Mobile & Web Frontend Interfaces
