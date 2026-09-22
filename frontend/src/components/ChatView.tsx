@@ -1,0 +1,532 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { ChatMessage, HomeworkProblem, UserProfile } from '../types';
+import { TunsayAvatar } from './TunsayAvatar';
+import { StepTrail } from './StepTrail';
+import { StepCard } from './StepCard';
+import { HintSheet } from './HintSheet';
+import { ExplanationCard } from './ExplanationCard';
+import { askTunsayTutor } from '../services/geminiService';
+import { getDisplayName } from '../utils/language';
+import { MOCK_PROBLEMS, generateHistoryChatForProblem } from '../data/mockProblems';
+import { Send, Camera, User, GraduationCap, ArrowLeft, Plus, BookOpen } from 'lucide-react';
+import { cleanBilingualOption } from '../utils/language';
+
+// Helper: Render numbered steps with visual badges
+function formatMessageText(text: string): React.ReactNode[] {
+  if (!text) return [];
+  const lines = text.split('\n\n');
+  return lines.map((line, i) => {
+    const trimmed = line.trim();
+    const stepMatch = trimmed.match(/^(\d+)\.\s*/);
+    if (stepMatch) {
+      const num = stepMatch[1];
+      const content = trimmed.slice(stepMatch[0].length);
+      return (
+        <div key={i} className="flex items-start gap-2 mb-2 last:mb-0">
+          <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 bg-[#1B4332] text-white rounded-lg text-xs font-black shrink-0 mt-0.5 shadow-[1px_1px_0px_#1B4332]">
+            {num}
+          </span>
+          <span className="leading-relaxed">{content}</span>
+        </div>
+      );
+    }
+    return <div key={i} className="mb-2 last:mb-0">{trimmed}</div>;
+  });
+}
+
+interface ChatViewProps {
+  profile: UserProfile;
+  initialProblem?: HomeworkProblem | undefined;
+  initialQuery?: string | undefined;
+  onClearInitialQuery?: () => void;
+  chatMessages?: ChatMessage[];
+  onUpdateMessages?: (messages: ChatMessage[]) => void;
+  onOpenScanner: () => void;
+  onBackToHome?: () => void;
+}
+
+export const ChatView: React.FC<ChatViewProps> = ({
+  profile,
+  initialProblem,
+  initialQuery,
+  onClearInitialQuery,
+  chatMessages,
+  onUpdateMessages,
+  onOpenScanner,
+  onBackToHome
+}) => {
+  const isKhmer = profile.language === 'km';
+  const [activeProblem, setActiveProblem] = useState<HomeworkProblem | undefined>(initialProblem);
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (chatMessages && chatMessages.length > 0) {
+      return chatMessages;
+    }
+    return [
+      {
+        id: 'init-msg',
+        sender: 'sayo',
+        textKhmer: `សួស្តី ${getDisplayName(profile.name, true)}! ខ្ញុំគឺទន្សាយ គ្រូបង្រៀន AI។ តើអ្នកមានលំហាត់អ្វីចង់ឱ្យខ្ញុំជួយទេ? អ្នកអាចថតរូបស្កែនលំហាត់ ឬវាយបញ្ចូលសំណួរនៅខាងក្រោម!`,
+        textEng: `Hi ${getDisplayName(profile.name, false)}! I am Tunsay, your AI Tutor. What homework would you like help with? You can scan a photo or type your question below!`,
+        timestamp: 'Just now'
+      }
+    ];
+  });
+
+  const [inputQuery, setInputQuery] = useState('');
+  const [isSayoThinking, setIsSayoThinking] = useState(false);
+  const [sayoStatus, setSayoStatus] = useState<'idle' | 'thinking' | 'celebrating'>('idle');
+  const [thinkingTextIdx, setThinkingTextIdx] = useState(0);
+
+  // Cycle through Socratic thinking messages while AI is processing
+  useEffect(() => {
+    if (sayoStatus === 'thinking') {
+      const interval = setInterval(() => {
+        setThinkingTextIdx((prev: number) => (prev + 1) % 4);
+      }, 1800);
+      return () => clearInterval(interval);
+    } else {
+      setThinkingTextIdx(0);
+    }
+  }, [sayoStatus]);
+
+  const updateMessages = (newMsgs: ChatMessage[]) => {
+    setMessages(newMsgs);
+    if (onUpdateMessages) {
+      onUpdateMessages(newMsgs);
+    }
+  };
+
+  useEffect(() => {
+    if (isSayoThinking) {
+      setSayoStatus('thinking');
+    } else if (sayoStatus === 'thinking') {
+      setSayoStatus('celebrating');
+      const timer = setTimeout(() => {
+        setSayoStatus('idle');
+      }, 2800);
+      return () => clearTimeout(timer);
+    }
+  }, [isSayoThinking]);
+
+  // 6. Socratic "Think Aloud" messages while processing
+  const thinkingTextsKhmer = [
+    'តើយើងដឹងអ្វីខ្លះជាដំបូងនៅក្នុងសំណួរនេះ? 🤔',
+    'តើសំណួរនេះសុំឱ្យយើងរកអ្វី? 🎯',
+    'តើយើងអាចបែងចែកវាជាជំហានតូចៗបានទេ? 📐',
+    'ជិតរួចរាល់ហើយ! ខ្ញុំកំពុងរៀបចំពន្យល់ឱ្យអ្នក 🐰'
+  ];
+  const thinkingTextsEng = [
+    'What do we know first in this question? 🤔',
+    'What is the question asking us to find? 🎯',
+    'Can we break this into smaller steps? 📐',
+    'Almost ready! Preparing a helpful explanation 🐰'
+  ];
+  const celebratoryTextKhmer = 'រួចរាល់ហើយ! 🎉';
+  const celebratoryTextEng = 'Aha! Got it! 🎉';
+  const idleTextKhmer = 'ទន្សាយ រង់ចាំសំណួរ! 🐰';
+  const idleTextEng = 'Ready to help! 🐰';
+
+  const [isHintOpen, setIsHintOpen] = useState(false);
+  const [isExplainOpen, setIsExplainOpen] = useState(false);
+
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!initialProblem) return;
+    setActiveProblem(initialProblem);
+    setCurrentStepIndex(0);
+    const historyMsgs = generateHistoryChatForProblem(initialProblem, profile.name);
+    updateMessages(historyMsgs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProblem]);
+
+  useEffect(() => {
+    if (!initialQuery?.trim()) return;
+    const queryText = initialQuery.trim();
+    onClearInitialQuery?.();
+
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      sender: 'user',
+      textEng: queryText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    const updatedWithUser = [...messages, userMsg];
+    updateMessages(updatedWithUser);
+    setIsSayoThinking(true);
+
+    askTunsayTutor(queryText, activeProblem, profile.language).then((sayoRes) => {
+      if (!isMountedRef.current) return;
+      setIsSayoThinking(false);
+      const sayoMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'sayo',
+        textKhmer: sayoRes.textKhmer,
+        textEng: sayoRes.textEng,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isSafetyRefusal: sayoRes.isSafetyRefusal ?? false,
+      };
+      updateMessages([...updatedWithUser, sayoMsg]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isSayoThinking, currentStepIndex]);
+
+  const currentStep = activeProblem?.steps?.[currentStepIndex];
+
+  const handleNewChat = () => {
+    setActiveProblem(undefined);
+    setCurrentStepIndex(0);
+    const freshGreeting: ChatMessage = {
+      id: Date.now().toString(),
+      sender: 'sayo',
+      textKhmer: `សួស្តី ${getDisplayName(profile.name, true)}! ខ្ញុំគឺទន្សាយ គ្រូបង្រៀន AI។ តើអ្នកមានលំហាត់អ្វីចង់ឱ្យខ្ញុំជួយទេ? អ្នកអាចថតរូបស្កែនលំហាត់ ឬវាយបញ្ចូលសំណួរនៅខាងក្រោម!`,
+      textEng: `Hi ${getDisplayName(profile.name, false)}! I am Tunsay, your AI Tutor. What homework would you like help with? You can scan a photo or type your question below!`,
+      timestamp: 'Just now'
+    };
+    updateMessages([freshGreeting]);
+  };
+
+  const handleSelectTopicCard = (prob: HomeworkProblem) => {
+    setActiveProblem(prob);
+    setCurrentStepIndex(0);
+    const historyMsgs = generateHistoryChatForProblem(prob, profile.name);
+    updateMessages(historyMsgs);
+  };
+
+  const handleStepAnswer = (studentAnswer: string): boolean => {
+    if (!currentStep) return false;
+
+    const cleanedStudent = cleanBilingualOption(studentAnswer, profile.language).toLowerCase().trim();
+    const cleanedCorrect = cleanBilingualOption(currentStep.correctAnswer, profile.language).toLowerCase().trim();
+    const isCorrect = cleanedStudent === cleanedCorrect || cleanedCorrect.includes(cleanedStudent);
+
+    const newMsg: ChatMessage = {
+      id: Date.now().toString(),
+      sender: 'user',
+      textEng: studentAnswer,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    const updated = [...messages, newMsg];
+    updateMessages(updated);
+
+    if (isCorrect) {
+      if (activeProblem && currentStepIndex + 1 < activeProblem.steps.length) {
+        setTimeout(() => {
+          setCurrentStepIndex((prev: number) => prev + 1);
+        }, 800);
+      }
+    }
+
+    return isCorrect;
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputQuery.trim()) return;
+
+    const userText = inputQuery.trim();
+    setInputQuery('');
+
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      sender: 'user',
+      textEng: userText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    const updatedWithUser = [...messages, userMsg];
+    updateMessages(updatedWithUser);
+    setIsSayoThinking(true);
+
+    const sayoRes = await askTunsayTutor(userText, activeProblem, profile.language);
+    if (!isMountedRef.current) return;
+
+    setIsSayoThinking(false);
+
+    const sayoMsg: ChatMessage = {
+      id: (Date.now() + 1).toString(),
+      sender: 'sayo',
+      textKhmer: sayoRes.textKhmer,
+      textEng: sayoRes.textEng,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isSafetyRefusal: sayoRes.isSafetyRefusal ?? false,
+    };
+
+    updateMessages([...updatedWithUser, sayoMsg]);
+  };
+
+  return (
+    <div className="w-full h-full flex-1 flex flex-row items-stretch gap-4 sm:gap-5 overflow-hidden">
+      {/* Left Mascot Status Panel */}
+      <div className="hidden lg:flex lg:w-[30%] lg:min-w-[220px] lg:max-w-[360px] shrink-0 h-full bg-[#F1EFFF] rounded-3xl border-3 border-[#1B4332] shadow-[6px_6px_0px_#1B4332] p-4 flex-col justify-between items-center text-center select-none z-10 relative overflow-hidden">
+        <div className="absolute -top-10 -left-10 w-28 h-28 bg-[#40916C]/25 rounded-full blur-sm pointer-events-none" />
+        <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[#2D6A4F]/25 rounded-full blur-sm pointer-events-none" />
+
+        <div className="w-full flex flex-col items-center gap-4 pt-1 relative z-10 my-auto">
+          <div className="w-full max-w-[220px]">
+            {sayoStatus === 'thinking' ? (
+              <span className="px-3 py-1.5 bg-[#2D6A4F] text-white text-xs font-black rounded-full border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] inline-flex items-center justify-center gap-1.5 animate-pulse uppercase tracking-wider w-full">
+                <span className="w-2 h-2 bg-white rounded-full animate-ping shrink-0" />
+                <span className="truncate">{isKhmer ? 'កំពុងគិត...' : 'Thinking...'}</span>
+              </span>
+            ) : sayoStatus === 'celebrating' ? (
+              <span className="px-3 py-1.5 bg-[#2D6A4F] text-[#1B4332] text-xs font-black rounded-full border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] inline-flex items-center justify-center gap-1.5 uppercase tracking-wider w-full animate-bounce">
+                ✨ <span className="truncate">{isKhmer ? 'រួចរាល់ហើយ!' : 'Done!'}</span>
+              </span>
+            ) : (
+              <span className="px-3 py-1.5 bg-[#A7CDB4] text-[#1B4332] text-xs font-black rounded-full border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] inline-flex items-center justify-center gap-1.5 uppercase tracking-wider w-full">
+                <span className="w-2 h-2 bg-[#2D6A4F] rounded-full border border-[#1B4332] shrink-0" />
+                <span className="truncate">{isKhmer ? 'ទន្សាយ AI Tutor' : 'Tunsay AI Tutor'}</span>
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-col items-center justify-center my-2 transition-all duration-300 transform w-full">
+            <div className={`transition-all duration-300 ${
+              sayoStatus === 'thinking' ? 'scale-105' : sayoStatus === 'celebrating' ? 'scale-110 animate-bounce' : 'scale-100 hover:scale-105'
+            }`}>
+              <TunsayAvatar size="lg" state={sayoStatus} showBadge={false} />
+            </div>
+
+            <div className="mt-4 px-2 w-full max-w-[240px] bg-white rounded-2xl p-3 border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] relative">
+              <div className="w-3 h-3 bg-white border-t-3 border-l-3 border-[#1B4332] rotate-45 absolute -top-2 left-1/2 -translate-x-1/2" />
+              <p className="font-heading font-black text-xs sm:text-sm text-[#1B4332] leading-snug transition-all duration-300">
+                {sayoStatus === 'thinking' && (isKhmer ? thinkingTextsKhmer[thinkingTextIdx] : thinkingTextsEng[thinkingTextIdx])}
+                {sayoStatus === 'celebrating' && (isKhmer ? celebratoryTextKhmer : celebratoryTextEng)}
+                {sayoStatus === 'idle' && (isKhmer ? idleTextKhmer : idleTextEng)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full pt-2.5 border-t-2 border-[#1B4332]/15 relative z-10 shrink-0">
+          <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider truncate">
+            WEG Tutor 🐰
+          </p>
+        </div>
+      </div>
+
+      {/* Main Chat Frame */}
+      <div className="flex-1 min-w-0 h-full flex flex-col bg-[#E8F5E9] rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-[#1B4332] shadow-[4px_4px_0px_#1B4332] sm:shadow-[6px_6px_0px_#1B4332] overflow-hidden relative">
+        {/* Top Navigation Bar */}
+        <div className="shrink-0 z-20 px-3 py-2.5 sm:px-6 bg-[#1B4332] border-b-2 sm:border-b-3 border-[#1B4332] flex items-center justify-between gap-2 sm:gap-3 shadow-[0_3px_0px_#1B4332]">
+          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+            <div className="relative">
+              <div className="w-9 h-9 sm:w-11 sm:h-11 bg-[#40916C] rounded-xl sm:rounded-2xl flex items-center justify-center border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332]">
+                <TunsayAvatar size="sm" state={isSayoThinking ? 'thinking' : 'idle'} showBadge={false} />
+              </div>
+              <span className="absolute -bottom-1 -right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-[#2D6A4F] border-2 border-[#1B4332] rounded-full" title="Online" />
+            </div>
+
+            <div>
+              <h3 className="font-black text-xs sm:text-base text-white flex items-center gap-1 font-heading leading-tight drop-shadow-[1px_1px_0px_#1B4332]">
+                {isKhmer ? 'ទន្សាយ' : 'Tunsay AI'}
+              </h3>
+              <p className="text-[10px] sm:text-xs text-[#40916C] font-black flex items-center gap-1 drop-shadow-[1px_1px_0px_#1B4332]">
+                <GraduationCap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#40916C]" />
+                {isKhmer ? `ថ្នាក់ទី ${profile.grade}` : `Grade ${profile.grade}`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleNewChat}
+              className="w-8 h-8 sm:w-10 sm:h-10 bg-[#40916C] text-[#1B4332] hover:bg-white rounded-xl sm:rounded-2xl flex items-center justify-center transition-all cursor-pointer border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 shrink-0"
+              title={isKhmer ? 'ចាប់ផ្តើមជជែកថ្មី' : 'New Chat'}
+            >
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+            </button>
+
+            {onBackToHome && (
+              <button
+                type="button"
+                onClick={onBackToHome}
+                className="px-2.5 sm:px-3.5 py-1.5 bg-[#40916C] text-[#1B4332] hover:bg-white rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center gap-1 cursor-pointer border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 shrink-0"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
+                <span className="hidden min-[380px]:inline">{isKhmer ? 'ទំព័រដើម' : 'Home'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Scrollable Conversation Area */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-5">
+          {activeProblem && (
+            <div className="space-y-4">
+              <StepTrail
+                currentStep={currentStepIndex + 1}
+                totalSteps={activeProblem.steps.length}
+                language={profile.language}
+                onSelectStep={(stepIdx) => setCurrentStepIndex(stepIdx)}
+              />
+
+              {currentStep && (
+                <StepCard
+                  step={currentStep}
+                  language={profile.language}
+                  onAnswerSubmit={handleStepAnswer}
+                  onOpenHints={() => setIsHintOpen(true)}
+                  onOpenExplainDifferently={() => setIsExplainOpen(true)}
+                />
+              )}
+            </div>
+          )}
+
+          {messages.map((msg) => {
+            const isUser = msg.sender === 'user';
+            let displayText = '';
+            if (isUser) {
+              displayText = msg.textEng || msg.textKhmer || '';
+            } else {
+              displayText = isKhmer ? (msg.textKhmer || msg.textEng || '') : (msg.textEng || msg.textKhmer || '');
+            }
+
+            return (
+              <div
+                key={msg.id}
+                className={`flex items-start gap-2.5 sm:gap-3 w-full ${isUser ? 'flex-row-reverse' : 'flex-row'} animate-fadeIn`}
+              >
+                {!isUser ? (
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 bg-[#40916C] rounded-xl sm:rounded-2xl shrink-0 border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] flex items-center justify-center p-0.5">
+                    <TunsayAvatar size="sm" state={msg.isSafetyRefusal ? 'encouraging' : 'explaining'} showBadge={false} />
+                  </div>
+                ) : (
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-[#A7CDB4] text-[#1B4332] border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] font-black flex items-center justify-center shrink-0">
+                    <User className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                )}
+
+                <div
+                  className={`max-w-[85%] sm:max-w-[80%] min-w-0 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2.5 sm:border-3 border-[#1B4332] text-sm leading-relaxed break-words overflow-hidden ${
+                    isUser
+                      ? 'bg-[#1B4332] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-right'
+                      : msg.isSafetyRefusal
+                      ? 'bg-[#2D6A4F] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
+                      : 'bg-white text-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
+                  }`}
+                >
+                  <div className="font-black text-xs sm:text-base leading-relaxed break-words whitespace-pre-wrap">
+                    {formatMessageText(displayText)}
+                  </div>
+                  <span className="text-[10px] mt-2 block text-right font-black opacity-80">
+                    {msg.timestamp}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Fresh Start: Scan + Topic Cards */}
+          {!activeProblem && messages.length <= 1 && (
+            <div className="space-y-4 pt-1 pl-2 sm:pl-14 animate-fadeIn">
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={onOpenScanner}
+                  className="px-4 py-2.5 bg-[#2D6A4F] text-[#1B4332] hover:bg-[#40916C] rounded-2xl text-xs sm:text-sm font-black border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <Camera className="w-4 h-4 stroke-[2.5]" />
+                  <span>{isKhmer ? 'ស្កែនរូបថតលំហាត់' : 'Scan Homework Photo'}</span>
+                </button>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider flex items-center gap-1.5 font-heading">
+                  <BookOpen className="w-4 h-4 text-[#1B4332]" />
+                  <span>{isKhmer ? 'ឧទាហរណ៍លំហាត់' : 'Example Problems'}</span>
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {MOCK_PROBLEMS.slice(0, 3).map((prob) => (
+                    <button
+                      key={prob.id}
+                      type="button"
+                      onClick={() => handleSelectTopicCard(prob)}
+                      className="px-3 py-2 bg-white rounded-xl border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 transition-all cursor-pointer text-left"
+                    >
+                      <span className="font-black text-xs text-[#1B4332]">
+                        {isKhmer ? prob.titleKhmer : prob.titleEng}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* Bottom Chat Input Bar */}
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-white border-t-3 border-[#1B4332] shrink-0">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendMessage();
+            }}
+            className="w-full flex items-center gap-2.5"
+          >
+            <button
+              type="button"
+              onClick={onOpenScanner}
+              className="w-12 h-12 sm:w-14 sm:h-14 bg-[#2D6A4F] text-[#1B4332] rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] flex items-center justify-center hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] transition-all cursor-pointer shrink-0"
+              title={isKhmer ? 'ស្កែនរូបថតលំហាត់' : 'Scan Homework Photo'}
+            >
+              <Camera className="w-6 h-6 stroke-[2.5]" />
+            </button>
+
+            <div className="flex-1 bg-[#E8F5E9] rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] px-4 flex items-center">
+              <input
+                type="text"
+                value={inputQuery}
+                onChange={(e) => setInputQuery(e.target.value)}
+                placeholder={isKhmer ? 'វាយបញ្ចូលសំណួររបស់អ្នកនៅទីនេះ...' : 'Type your question here...'}
+                className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-sm sm:text-base py-3 font-bold text-[#1B4332] placeholder:text-[#1B4332]/50"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={!inputQuery.trim()}
+              className="w-12 h-12 sm:w-14 sm:h-14 bg-[#1B4332] disabled:bg-gray-200 disabled:border-gray-400 text-white rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] font-black hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] transition-all flex items-center justify-center cursor-pointer shrink-0"
+            >
+              <Send className="w-5 h-5 stroke-[2.5]" />
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Sheets Modals */}
+      {currentStep && (
+        <>
+          <HintSheet
+            step={currentStep}
+            isOpen={isHintOpen}
+            language={profile.language}
+            onClose={() => setIsHintOpen(false)}
+          />
+          <ExplanationCard
+            step={currentStep}
+            isOpen={isExplainOpen}
+            language={profile.language}
+            onClose={() => setIsExplainOpen(false)}
+          />
+        </>
+      )}
+    </div>
+  );
+};

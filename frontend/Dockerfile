@@ -3,20 +3,17 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Enable corepack for pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
 # Copy config files
-COPY package.json ./
+COPY package.json package-lock.json* ./
 
-# Install dependencies (ignoring scripts to avoid esbuild issues on alpine if any)
-RUN pnpm install --ignore-scripts
+# Install dependencies
+RUN npm ci --ignore-scripts
 
 # Copy source code
 COPY . .
 
 # Build the app
-RUN pnpm run build
+RUN npm run build
 
 # Serve stage
 FROM nginx:alpine

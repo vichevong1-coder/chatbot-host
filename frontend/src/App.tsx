@@ -1,61 +1,101 @@
-import { useEffect, useState } from 'react';
-import Sidebar from './components/Sidebar';
-import ChatArea from './components/ChatArea';
-import { useAppStore } from './store';
+import { useState } from 'react';
+import { UserProfile, HomeworkProblem, Grade, Language, ChatMessage } from './types';
+import { Header } from './components/Header';
+import { HomeView } from './components/HomeView';
+import { ChatView } from './components/ChatView';
+import { ProfileView } from './components/ProfileView';
+import { HomeworkScanner } from './components/HomeworkScanner';
 
-function App() {
-  const { currentSessionId, createSession, sessions, theme } = useAppStore();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+export default function App() {
+  const [profile, setProfile] = useState<UserProfile>({
+    name: 'សុជា (Sochea)',
+    grade: 4,
+    subject: 'math',
+    language: 'km',
+  });
 
-  useEffect(() => {
-    if (!currentSessionId || !sessions[currentSessionId]) {
-      createSession();
+  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'profile'>('home');
+  const [activeProblem, setActiveProblem] = useState<HomeworkProblem | undefined>(undefined);
+  const [initialChatQuery, setInitialChatQuery] = useState<string | undefined>(undefined);
+
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: 'init-msg',
+      sender: 'sayo',
+      textKhmer: `សួស្តី សុជា! ខ្ញុំគឺទន្សាយ (Tunsay) គ្រូបង្រៀន AI។ តើអ្នកមានលំហាត់អ្វីចង់ឱ្យខ្ញុំជួយទេ? អ្នកអាចថតរូបស្កែនលំហាត់ ឬវាយបញ្ចូលសំណួរនៅខាងក្រោម!`,
+      textEng: `Hi Sochea! I am Tunsay, your AI Tutor. What homework would you like help with? You can scan a photo or type your question below!`,
+      timestamp: 'Just now'
     }
-  }, [currentSessionId, createSession, sessions]);
+  ]);
 
-  useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [theme]);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
-  useEffect(() => {
-    let prevWidth = window.innerWidth;
-    const handleResize = () => {
-      const currentWidth = window.innerWidth;
-      if (currentWidth >= 768 && prevWidth < 768) {
-        setIsSidebarOpen(true);
-      } else if (currentWidth < 768 && prevWidth >= 768) {
-        setIsSidebarOpen(false);
-      }
-      prevWidth = currentWidth;
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const handleUpdateProfile = (updated: Partial<UserProfile>) => {
+    setProfile((prev: UserProfile) => ({ ...prev, ...updated }));
+  };
+
+  const handleStartChatWithProblem = (problem?: HomeworkProblem, initialQuery?: string) => {
+    setActiveProblem(problem);
+    setInitialChatQuery(initialQuery);
+    setActiveTab('chat');
+  };
+
+  const handleHomeworkScanned = (problem: HomeworkProblem) => {
+    setActiveProblem(problem);
+    setInitialChatQuery(undefined);
+    setIsScannerOpen(false);
+    setActiveTab('chat');
+  };
 
   return (
-    <div className={`flex h-screen bg-white dark:bg-black overflow-hidden relative`}>
-      {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-20 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+    <div className={`bg-white text-[#1B4332] flex flex-col font-sans w-full max-w-full overflow-x-hidden ${activeTab === 'chat' ? 'h-screen h-[100dvh] overflow-hidden' : 'min-h-screen'}`}>
+      <Header
+        profile={profile}
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        onSelectLanguage={(language: Language) => handleUpdateProfile({ language })}
+      />
 
-      {/* Sidebar */}
-      <div className={`fixed md:relative inset-y-0 left-0 z-30 transform ${isSidebarOpen ? 'translate-x-0 md:ml-0' : '-translate-x-full md:translate-x-0 md:-ml-64'} transition-all duration-300 ease-in-out md:flex-shrink-0`}>
-        <Sidebar onClose={() => setIsSidebarOpen(false)} />
-      </div>
+      <main className={`flex-1 min-h-0 w-full mx-auto ${activeTab === 'chat' ? 'w-full px-2.5 sm:px-5 pt-5 sm:pt-7 pb-2.5 sm:pb-4 h-full overflow-hidden flex flex-col' : 'max-w-7xl p-4 sm:p-6 lg:p-8'}`}>
+        {activeTab === 'home' && (
+          <HomeView
+            profile={profile}
+            onStartScan={() => setIsScannerOpen(true)}
+            onStartChat={handleStartChatWithProblem}
+            onSelectGrade={(grade: Grade) => handleUpdateProfile({ grade })}
+          />
+        )}
 
-      <main className="flex-1 flex flex-col h-full min-w-0">
-        {currentSessionId && <ChatArea sessionId={currentSessionId} onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} isSidebarOpen={isSidebarOpen} />}
+        {activeTab === 'chat' && (
+          <ChatView
+            profile={profile}
+            initialProblem={activeProblem}
+            initialQuery={initialChatQuery}
+            onClearInitialQuery={() => setInitialChatQuery(undefined)}
+            chatMessages={chatMessages}
+            onUpdateMessages={setChatMessages}
+            onOpenScanner={() => setIsScannerOpen(true)}
+            onBackToHome={() => setActiveTab('home')}
+          />
+        )}
+
+        {activeTab === 'profile' && (
+          <ProfileView
+            profile={profile}
+            onUpdateProfile={handleUpdateProfile}
+          />
+        )}
       </main>
+
+      {isScannerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1B4332]/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <HomeworkScanner
+            language={profile.language}
+            onHomeworkConfirmed={handleHomeworkScanned}
+            onCancel={() => setIsScannerOpen(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
-
-export default App;
