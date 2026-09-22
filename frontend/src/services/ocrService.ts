@@ -7,11 +7,68 @@ export interface OCRProcessResult {
   error?: string;
 }
 
+// Helper to check for generic subject/worksheet header words
+function isGenericHeader(text: string): boolean {
+  if (!text) return true;
+  const cleaned = text.trim().toUpperCase();
+  return ['MATHEMATICS', 'MATH', 'SCIENCE', 'HOMEWORK', 'WORKSHEET', 'EXERCISE', 'SECTION', 'QUESTION', 'PROBLEM'].includes(cleaned);
+}
+
+// Extract specific descriptive title for a problem card (e.g. "Q9: Calendar Facts")
+function extractSpecificTitle(q: any, section: any, qNo: string, fullStatement: string): string {
+  let topic = '';
+
+  // 1. Check if q.title is specific
+  if (q?.title && !isGenericHeader(q.title)) {
+    topic = q.title.trim();
+  } 
+  // 2. Check if section.title is specific
+  else if (section?.title && !isGenericHeader(section.title)) {
+    topic = section.title.trim();
+  }
+  // 3. Check instructions or prompt for a short topic (e.g. "Calendar Facts")
+  else if (q?.instructions && !isGenericHeader(q.instructions)) {
+    const firstLine = q.instructions.split('\n')[0].trim();
+    if (firstLine.length <= 35 && !isGenericHeader(firstLine)) {
+      topic = firstLine;
+    }
+  } else if (q?.prompt && !isGenericHeader(q.prompt)) {
+    const firstLine = q.prompt.split('\n')[0].trim();
+    if (firstLine.length <= 35 && !isGenericHeader(firstLine)) {
+      topic = firstLine;
+    }
+  }
+
+  // 4. If no short topic found, check first sub-question or calculation formula
+  if (!topic && Array.isArray(q?.sub_questions) && q.sub_questions.length > 0) {
+    const firstSq = q.sub_questions[0];
+    const sqText = (firstSq?.prompt || firstSq?.text || '').trim();
+    if (sqText) {
+      topic = sqText.length > 25 ? sqText.slice(0, 22) + '...' : sqText;
+    }
+  }
+
+  // 5. Fallback: clean snippet of full statement
+  if (!topic && fullStatement) {
+    const cleanStmt = fullStatement
+      .replace(/^(MATHEMATICS|MATH|SCIENCE|HOMEWORK|WORKSHEET)\s*/gi, '')
+      .trim();
+    const firstLine = cleanStmt.split('\n')[0].trim();
+    if (firstLine) {
+      topic = firstLine.length > 25 ? firstLine.slice(0, 22) + '...' : firstLine;
+    }
+  }
+
+  // Format clean label: "Q9: Calendar Facts" or "Q9"
+  const cleanQNo = qNo.replace(/^Problem\s*/i, '').trim();
+  return topic ? `${cleanQNo}: ${topic}` : `Problem ${cleanQNo}`;
+}
+
 // Extract full multi-part question text from all fields (title, prompt, instructions, elements, sub_questions)
 function extractFullQuestionStatement(q: any, section?: any): string {
   const parts: string[] = [];
 
-  const title = (q?.title || section?.title || '').trim();
+  const rawTitle = (q?.title || section?.title || '').trim();
   const prompt = (q?.prompt || '').trim();
   const instructions = (q?.instructions || section?.instructions || '').trim();
 
@@ -40,16 +97,16 @@ function extractFullQuestionStatement(q: any, section?: any): string {
     }
   }
 
-  // Assemble with clear hierarchy
-  if (title) {
-    parts.push(title);
+  // Only add title if it is meaningful content (not just a standalone generic "MATHEMATICS" header)
+  if (rawTitle && (!isGenericHeader(rawTitle) || (!prompt && !instructions && elementTexts.length === 0 && subTexts.length === 0))) {
+    parts.push(rawTitle);
   }
 
-  if (prompt && prompt !== title) {
+  if (prompt && prompt !== rawTitle) {
     parts.push(prompt);
   }
 
-  if (instructions && instructions !== title && instructions !== prompt) {
+  if (instructions && instructions !== rawTitle && instructions !== prompt) {
     parts.push(instructions);
   }
 
@@ -66,7 +123,7 @@ function extractFullQuestionStatement(q: any, section?: any): string {
   }
 
   const combined = parts.join('\n\n').trim();
-  return combined || prompt || title || instructions || 'Worksheet Exercise';
+  return combined || prompt || rawTitle || instructions || 'Worksheet Exercise';
 }
 
 export async function processHomeworkImage(file: File): Promise<OCRProcessResult> {
@@ -118,12 +175,12 @@ export async function processHomeworkImage(file: File): Promise<OCRProcessResult
             for (const q of secQuestions) {
               const fullStatement = extractFullQuestionStatement(q, sec);
               const qNo = q.question_no || sec.label || `Q${problemCounter}`;
-              const cardTitle = q.title || sec.title || `Exercise ${qNo}`;
+              const specificTitle = extractSpecificTitle(q, sec, qNo, fullStatement);
 
               problems.push({
                 id: `ocr-p-${problemCounter}`,
-                titleKhmer: `លំហាត់ ${qNo}: ${cardTitle}`,
-                titleEng: `Problem ${qNo}: ${cardTitle}`,
+                titleKhmer: `លំហាត់ ${specificTitle}`,
+                titleEng: specificTitle,
                 grade,
                 subject,
                 problemStatementKhmer: fullStatement,
@@ -151,8 +208,8 @@ export async function processHomeworkImage(file: File): Promise<OCRProcessResult
                       exampleKhmer: 'សួរសំណួរទៅទន្សាយដើម្បីបំបែកលំហាត់ជាជំហានៗ!',
                       exampleEng: 'Ask Tunsay to break this problem down step-by-step!',
                     },
-                    socraticPromptKhmer: `តោះយើងចាប់ផ្តើមដោះស្រាយ ${cardTitle} ទាំងអស់គ្នា!`,
-                    socraticPromptEng: `Let's solve ${cardTitle} step by step!`,
+                    socraticPromptKhmer: `តោះយើងចាប់ផ្តើមដោះស្រាយ ${specificTitle} ទាំងអស់គ្នា!`,
+                    socraticPromptEng: `Let's solve ${specificTitle} step by step!`,
                     explainDifferently: {
                       simpleKhmer: fullStatement,
                       simpleEng: fullStatement,
@@ -170,12 +227,12 @@ export async function processHomeworkImage(file: File): Promise<OCRProcessResult
             // Section has no inner questions array — treat Section itself as a question card
             const secStatement = extractFullQuestionStatement(null, sec);
             const secNo = sec.label || `Q${problemCounter}`;
-            const secTitle = sec.title || `Exercise ${secNo}`;
+            const specificTitle = extractSpecificTitle(null, sec, secNo, secStatement);
 
             problems.push({
               id: `ocr-p-${problemCounter}`,
-              titleKhmer: `លំហាត់ ${secNo}: ${secTitle}`,
-              titleEng: `Problem ${secNo}: ${secTitle}`,
+              titleKhmer: `លំហាត់ ${specificTitle}`,
+              titleEng: specificTitle,
               grade,
               subject,
               problemStatementKhmer: secStatement,
@@ -203,8 +260,8 @@ export async function processHomeworkImage(file: File): Promise<OCRProcessResult
                     exampleKhmer: 'សួរសំណួរទៅទន្សាយដើម្បីបំបែកលំហាត់ជាជំហានៗ!',
                     exampleEng: 'Ask Tunsay to break this problem down step-by-step!',
                   },
-                  socraticPromptKhmer: `តោះយើងចាប់ផ្តើមដោះស្រាយ ${secTitle}!`,
-                  socraticPromptEng: `Let's solve ${secTitle}!`,
+                  socraticPromptKhmer: `តោះយើងចាប់ផ្តើមដោះស្រាយ ${specificTitle}!`,
+                  socraticPromptEng: `Let's solve ${specificTitle}!`,
                   explainDifferently: {
                     simpleKhmer: secStatement,
                     simpleEng: secStatement,
@@ -226,12 +283,12 @@ export async function processHomeworkImage(file: File): Promise<OCRProcessResult
         for (const q of page.questions) {
           const fullStatement = extractFullQuestionStatement(q);
           const qNo = q.question_no || `Q${problemCounter}`;
-          const title = q.title || `Exercise ${qNo}`;
+          const specificTitle = extractSpecificTitle(q, null, qNo, fullStatement);
 
           problems.push({
             id: `ocr-p-${problemCounter}`,
-            titleKhmer: `លំហាត់ ${qNo}`,
-            titleEng: `Problem ${qNo}`,
+            titleKhmer: `លំហាត់ ${specificTitle}`,
+            titleEng: specificTitle,
             grade,
             subject,
             problemStatementKhmer: fullStatement,

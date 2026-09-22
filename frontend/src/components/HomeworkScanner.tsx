@@ -327,24 +327,33 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                 {/* Multiple detected questions selector */}
                 {detectedProblems.length > 1 && (
                   <div className="space-y-1.5">
-                    <p className="text-xs font-black text-[#1B4332]">
-                      {isKhmer ? 'សំណួរដែលរកឃើញ (ជ្រើសរើសមួយ)៖' : 'Detected Questions (Select one):'}
-                    </p>
-                    <div className="flex gap-2 overflow-x-auto pb-1">
-                      {detectedProblems.map((prob, idx) => (
-                        <button
-                          key={prob.id}
-                          type="button"
-                          onClick={() => setSelectedProblem(prob)}
-                          className={`px-3 py-1.5 rounded-xl border-2 font-black text-xs cursor-pointer transition-all ${
-                            selectedProblem.id === prob.id
-                              ? 'bg-[#1B4332] text-white border-[#1B4332]'
-                              : 'bg-[#E8F5E9] text-[#1B4332] border-[#1B4332]/40 hover:bg-[#40916C]/20'
-                          }`}
-                        >
-                          {prob.titleEng || `Question ${idx + 1}`}
-                        </button>
-                      ))}
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-black text-[#1B4332]">
+                        {isKhmer ? `សំណួរដែលរកឃើញ (${detectedProblems.length} លំហាត់)៖` : `Detected Questions (${detectedProblems.length} problems):`}
+                      </p>
+                      <span className="text-[10px] font-bold text-[#1B4332]/60">
+                        {isKhmer ? 'អូសដើម្បីមើលបន្ថែម →' : 'Scroll for more →'}
+                      </span>
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto pb-2 pt-0.5 no-scrollbar">
+                      {detectedProblems.map((prob, idx) => {
+                        const isSelected = selectedProblem.id === prob.id;
+                        const label = isKhmer ? (prob.titleKhmer || `លំហាត់ទី ${idx + 1}`) : (prob.titleEng || `Question ${idx + 1}`);
+                        return (
+                          <button
+                            key={prob.id}
+                            type="button"
+                            onClick={() => setSelectedProblem(prob)}
+                            className={`px-3 py-1.5 rounded-xl border-2 font-black text-xs cursor-pointer transition-all whitespace-nowrap shrink-0 shadow-sm ${
+                              isSelected
+                                ? 'bg-[#1B4332] text-white border-[#1B4332] shadow-[2px_2px_0px_#2D6A4F] scale-105'
+                                : 'bg-[#E8F5E9] text-[#1B4332] border-[#1B4332]/40 hover:bg-[#40916C]/20 hover:border-[#1B4332]'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

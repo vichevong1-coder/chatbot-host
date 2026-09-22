@@ -42,3 +42,10 @@
 - Staged all integrated files including the unified `docker-compose.yml`, `start_all.ps1`, `WORK_LOG.md`, and `README.md`.
 - Committed the complete integrated architecture and pushed the new branch to the GitHub remote repository (`Sovandeth0063/WEG_MVP_Chatbot`).
 
+### Work Entry 9: Question Pill Titles & Redundant Header Cleaning
+- Replaced the repetitive `Problem QX: MATHEMATICS` default labels with intelligent specific topic extractors in `ocrService.ts`.
+- Filtered out generic subject headers (`MATHEMATICS`, `MATH`, `SCIENCE`) to prioritize the actual exercise subtitle or calculation prompt (e.g., `Q9: Calendar Facts`).
+- Prevented duplicate header prefixes in the problem statement so questions begin cleanly with their actual task and instructions.
+- Enhanced the scanner question selector pill bar with horizontal scrolling cues, distinct active button scaling, and bilingual Khmer/English label support.
+
+
