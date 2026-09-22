@@ -44,7 +44,7 @@ export const StepCard: React.FC<StepCardProps> = ({
       <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b-2 border-[#1B4332]/20">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-[#40916C] rounded-2xl border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] flex items-center justify-center">
-            <TunsayAvatar size="sm" state={feedback === 'incorrect' ? 'thinking' : feedback === 'correct' ? 'celebrating' : 'explaining'} showBadge={false} />
+            <TunsayAvatar size="sm" state={feedback === 'incorrect' ? 'encouraging' : feedback === 'correct' ? 'celebrating' : 'explaining'} showBadge={false} />
           </div>
           <div>
             <span className="px-3 py-0.5 bg-[#2D6A4F] text-white text-xs font-black rounded-full border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332]">
@@ -59,10 +59,10 @@ export const StepCard: React.FC<StepCardProps> = ({
         </div>
       </div>
 
-      {/* Tunsay Socratic Guiding Prompt */}
+      {/* ReanMore Socratic Guiding Prompt */}
       <div className="p-4 bg-[#E8F5E9] rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] space-y-2">
         <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider">
-          {isKhmer ? 'សំណួរណែនាំពីទន្សាយ៖' : "Tunsay's Guiding Prompt:"}
+          {isKhmer ? 'សំណួរណែនាំពី ReanMore៖' : "ReanMore's Guiding Prompt:"}
         </p>
         <p className="text-sm sm:text-base font-black text-[#1B4332] leading-relaxed">
           {isKhmer ? step.socraticPromptKhmer : step.socraticPromptEng}

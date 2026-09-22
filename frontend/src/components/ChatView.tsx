@@ -1,15 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage, HomeworkProblem, UserProfile } from '../types';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ChatMessage, HomeworkProblem, UserProfile, TunsayState, ChatSession } from '../types';
 import { TunsayAvatar } from './TunsayAvatar';
 import { StepTrail } from './StepTrail';
 import { StepCard } from './StepCard';
 import { HintSheet } from './HintSheet';
 import { ExplanationCard } from './ExplanationCard';
 import { askTunsayTutor } from '../services/geminiService';
-import { getDisplayName } from '../utils/language';
+// import { getDisplayName } from '../utils/language';
 import { MOCK_PROBLEMS, generateHistoryChatForProblem } from '../data/mockProblems';
-import { Send, Camera, User, GraduationCap, ArrowLeft, Plus, BookOpen } from 'lucide-react';
+import { Send, Camera, User, GraduationCap, ArrowLeft, Plus, BookOpen, Trash2, MessageSquare } from 'lucide-react';
 import { cleanBilingualOption } from '../utils/language';
+import {
+  createActivity,
+  updateActivity,
+  findActiveActivity,
+} from '../utils/reportUtils';
 
 // Helper: Render numbered steps with visual badges
 function formatMessageText(text: string): React.ReactNode[] {
@@ -39,8 +44,12 @@ interface ChatViewProps {
   initialProblem?: HomeworkProblem | undefined;
   initialQuery?: string | undefined;
   onClearInitialQuery?: () => void;
-  chatMessages?: ChatMessage[];
-  onUpdateMessages?: (messages: ChatMessage[]) => void;
+  sessions: ChatSession[];
+  activeSessionId: string;
+  onSelectSession: (sessionId: string) => void;
+  onNewSession: () => void;
+  onDeleteSession: (sessionId: string) => void;
+  onUpdateMessages: (messages: ChatMessage[]) => void;
   onOpenScanner: () => void;
   onBackToHome?: () => void;
 }
@@ -50,7 +59,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
   initialProblem,
   initialQuery,
   onClearInitialQuery,
-  chatMessages,
+  sessions,
+  activeSessionId,
+  onSelectSession,
+  onNewSession,
+  onDeleteSession,
   onUpdateMessages,
   onOpenScanner,
   onBackToHome
@@ -59,25 +72,30 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [activeProblem, setActiveProblem] = useState<HomeworkProblem | undefined>(initialProblem);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    if (chatMessages && chatMessages.length > 0) {
-      return chatMessages;
-    }
-    return [
-      {
-        id: 'init-msg',
-        sender: 'sayo',
-        textKhmer: `សួស្តី ${getDisplayName(profile.name, true)}! ខ្ញុំគឺទន្សាយ គ្រូបង្រៀន AI។ តើអ្នកមានលំហាត់អ្វីចង់ឱ្យខ្ញុំជួយទេ? អ្នកអាចថតរូបស្កែនលំហាត់ ឬវាយបញ្ចូលសំណួរនៅខាងក្រោម!`,
-        textEng: `Hi ${getDisplayName(profile.name, false)}! I am Tunsay, your AI Tutor. What homework would you like help with? You can scan a photo or type your question below!`,
-        timestamp: 'Just now'
-      }
-    ];
-  });
+  const activeSession = sessions.find(s => s.id === activeSessionId);
+  const messages = activeSession?.messages ?? [];
 
   const [inputQuery, setInputQuery] = useState('');
   const [isSayoThinking, setIsSayoThinking] = useState(false);
-  const [sayoStatus, setSayoStatus] = useState<'idle' | 'thinking' | 'celebrating'>('idle');
+  const [sayoStatus, setSayoStatus] = useState<TunsayState>('idle');
   const [thinkingTextIdx, setThinkingTextIdx] = useState(0);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mascotTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasWavedRef = useRef(false);
+  const lastInteractionRef = useRef<number>(Date.now());
+  const currentActivityRef = useRef<string | null>(null);
+
+  // Reset wave flag when session changes
+  useEffect(() => {
+    hasWavedRef.current = false;
+    setSayoStatus('idle');
+    setCurrentStepIndex(0);
+    setActiveProblem(initialProblem);
+    if (mascotTimeoutRef.current) {
+      clearTimeout(mascotTimeoutRef.current);
+      mascotTimeoutRef.current = null;
+    }
+  }, [activeSessionId, initialProblem]);
 
   // Cycle through Socratic thinking messages while AI is processing
   useEffect(() => {
@@ -92,41 +110,98 @@ export const ChatView: React.FC<ChatViewProps> = ({
   }, [sayoStatus]);
 
   const updateMessages = (newMsgs: ChatMessage[]) => {
-    setMessages(newMsgs);
-    if (onUpdateMessages) {
-      onUpdateMessages(newMsgs);
+    onUpdateMessages(newMsgs);
+  };
+
+  // ── Mascot state helpers ──
+  const transitionMascotState = useCallback((state: TunsayState, autoReturnToIdleMs?: number) => {
+    if (mascotTimeoutRef.current) {
+      clearTimeout(mascotTimeoutRef.current);
+      mascotTimeoutRef.current = null;
+    }
+    setSayoStatus(state);
+    if (autoReturnToIdleMs && autoReturnToIdleMs > 0) {
+      mascotTimeoutRef.current = setTimeout(() => {
+        setSayoStatus('idle');
+      }, autoReturnToIdleMs);
+    }
+  }, []);
+
+  const determineMascotStateFromResponse = (textEng: string): TunsayState => {
+    const lower = textEng.toLowerCase();
+    if (lower.includes('not quite') || lower.includes('not exactly') || lower.includes('try again') || lower.includes('not quite right') || lower.includes('oops') || lower.includes('that\'s not')) {
+      return 'encouraging';
+    }
+    if (lower.includes('great') || lower.includes('excellent') || lower.includes('well done') || lower.includes('perfect') || lower.includes('amazing') || lower.includes('awesome') || lower.includes('brilliant')) {
+      return 'celebrating';
+    }
+    if (lower.includes('think') || lower.includes('let me') || lower.includes('hmm') || lower.includes('let\'s see')) {
+      return 'thinking';
+    }
+    if (lower.includes('?') && (lower.includes('what') || lower.includes('how') || lower.includes('why') || lower.includes('can you') || lower.includes('do you think'))) {
+      return 'explaining';
+    }
+    return 'explaining';
+  };
+
+  const getMascotContextText = (state: TunsayState): string => {
+    switch (state) {
+      case 'idle': return isKhmer ? idleTextKhmer : idleTextEng;
+      case 'waving': return isKhmer ? 'សួស្តី! តើអ្នករួចរៀបចំរៀនហើយឬនៅ?' : 'Hi! Ready to learn?';
+      case 'thinking': return isKhmer ? thinkingTextsKhmer[thinkingTextIdx] : thinkingTextsEng[thinkingTextIdx];
+      case 'listening': return isKhmer ? 'ខ្ញុំកំពុងស្ដាប់អ្នក...' : 'I\'m listening...';
+      case 'explaining': return isKhmer ? 'អញ្ចឹងនេះជាវិធីពន្យល់...' : 'Here\'s how to think about it...';
+      case 'encouraging': return isKhmer ? 'មិនអីទេ! សូមព្យាយាមម្ដងទៀត។' : 'That\'s okay! Let\'s look at it another way.';
+      case 'happy': return isKhmer ? 'អ្នកធ្វើបានល្អ!' : 'You\'re doing great!';
+      case 'celebrating': return isKhmer ? celebratoryTextKhmer : celebratoryTextEng;
+      case 'jumping': return isKhmer ? 'អស្ចារ្យណាស់!' : 'Woohoo! Amazing!';
+      case 'confused': return isKhmer ? 'ហ៊ឹម... តោះមើលឱ្យច្បាស់ជាមួយគ្នា' : 'Hmm... let\'s look closer together';
+      case 'sleeping': return isKhmer ? 'ខ្ញុំកំពុងសម្រាកខណៈអ្នកគិត...' : 'Resting while you think...';
+      default: return '';
     }
   };
 
+  // Greeting wave on first load of a session
+  useEffect(() => {
+    if (!hasWavedRef.current && messages.length <= 1) {
+      hasWavedRef.current = true;
+      transitionMascotState('waving', 2500);
+    }
+  }, [messages.length, transitionMascotState]);
+
+  // Inactivity → sleeping
+  useEffect(() => {
+    if (sayoStatus !== 'idle') return;
+    const timer = setTimeout(() => {
+      setSayoStatus('sleeping');
+    }, 30000);
+    return () => clearTimeout(timer);
+  }, [sayoStatus]);
+
+  // AI processing
   useEffect(() => {
     if (isSayoThinking) {
       setSayoStatus('thinking');
-    } else if (sayoStatus === 'thinking') {
-      setSayoStatus('celebrating');
-      const timer = setTimeout(() => {
-        setSayoStatus('idle');
-      }, 2800);
-      return () => clearTimeout(timer);
     }
   }, [isSayoThinking]);
 
   // 6. Socratic "Think Aloud" messages while processing
   const thinkingTextsKhmer = [
-    'តើយើងដឹងអ្វីខ្លះជាដំបូងនៅក្នុងសំណួរនេះ? 🤔',
-    'តើសំណួរនេះសុំឱ្យយើងរកអ្វី? 🎯',
-    'តើយើងអាចបែងចែកវាជាជំហានតូចៗបានទេ? 📐',
-    'ជិតរួចរាល់ហើយ! ខ្ញុំកំពុងរៀបចំពន្យល់ឱ្យអ្នក 🐰'
+    'តើយើងដឹងអ្វីខ្លះជាដំបូងនៅក្នុងសំណួរនេះ?',
+    'តើសំណួរនេះសុំឱ្យយើងរកអ្វី?',
+    'តើយើងអាចបែងចែកវាជាជំហានតូចៗបានទេ?',
+    'ជិតរួចរាល់ហើយ! ខ្ញុំកំពុងរៀបចំពន្យល់ឱ្យអ្នក'
   ];
   const thinkingTextsEng = [
-    'What do we know first in this question? 🤔',
-    'What is the question asking us to find? 🎯',
-    'Can we break this into smaller steps? 📐',
-    'Almost ready! Preparing a helpful explanation 🐰'
+    'What do we know first in this question?',
+    'What is the question asking us to find?',
+    'Can we break this into smaller steps?',
+    'Almost ready! Preparing a helpful explanation'
   ];
-  const celebratoryTextKhmer = 'រួចរាល់ហើយ! 🎉';
-  const celebratoryTextEng = 'Aha! Got it! 🎉';
-  const idleTextKhmer = 'ទន្សាយ រង់ចាំសំណួរ! 🐰';
-  const idleTextEng = 'Ready to help! 🐰';
+  const celebratoryTextKhmer = 'រួចរាល់ហើយ!';
+  const celebratoryTextEng = 'Aha! Got it!';
+  const idleTextKhmer = 'ReanMore រង់ចាំសំណួរ!';
+  const idleTextEng = 'Ready to help!';
 
   const [isHintOpen, setIsHintOpen] = useState(false);
   const [isExplainOpen, setIsExplainOpen] = useState(false);
@@ -162,10 +237,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
     const updatedWithUser = [...messages, userMsg];
     updateMessages(updatedWithUser);
     setIsSayoThinking(true);
+    lastInteractionRef.current = Date.now();
 
     askTunsayTutor(queryText, activeProblem, profile.language).then((sayoRes) => {
       if (!isMountedRef.current) return;
       setIsSayoThinking(false);
+
       const sayoMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'sayo',
@@ -175,6 +252,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
         isSafetyRefusal: sayoRes.isSafetyRefusal ?? false,
       };
       updateMessages([...updatedWithUser, sayoMsg]);
+
+      if (sayoMsg.isSafetyRefusal) {
+        transitionMascotState('encouraging', 3000);
+      } else {
+        const nextState = determineMascotStateFromResponse(sayoMsg.textEng || '');
+        if (nextState === 'celebrating' || nextState === 'jumping' || nextState === 'encouraging' || nextState === 'happy') {
+          transitionMascotState(nextState, 3000);
+        } else {
+          setSayoStatus(nextState);
+        }
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
@@ -188,14 +276,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const handleNewChat = () => {
     setActiveProblem(undefined);
     setCurrentStepIndex(0);
-    const freshGreeting: ChatMessage = {
-      id: Date.now().toString(),
-      sender: 'sayo',
-      textKhmer: `សួស្តី ${getDisplayName(profile.name, true)}! ខ្ញុំគឺទន្សាយ គ្រូបង្រៀន AI។ តើអ្នកមានលំហាត់អ្វីចង់ឱ្យខ្ញុំជួយទេ? អ្នកអាចថតរូបស្កែនលំហាត់ ឬវាយបញ្ចូលសំណួរនៅខាងក្រោម!`,
-      textEng: `Hi ${getDisplayName(profile.name, false)}! I am Tunsay, your AI Tutor. What homework would you like help with? You can scan a photo or type your question below!`,
-      timestamp: 'Just now'
-    };
-    updateMessages([freshGreeting]);
+    onNewSession();
   };
 
   const handleSelectTopicCard = (prob: HomeworkProblem) => {
@@ -203,6 +284,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setCurrentStepIndex(0);
     const historyMsgs = generateHistoryChatForProblem(prob, profile.name);
     updateMessages(historyMsgs);
+    transitionMascotState('explaining');
+
+    /* Track: start new activity */
+    const act = createActivity(
+      activeSessionId,
+      prob.id,
+      prob.titleKhmer,
+      prob.titleEng,
+      prob.subject,
+      prob.grade,
+      prob.steps.length
+    );
+    currentActivityRef.current = act.id;
   };
 
   const handleStepAnswer = (studentAnswer: string): boolean => {
@@ -221,12 +315,40 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
     const updated = [...messages, newMsg];
     updateMessages(updated);
+    lastInteractionRef.current = Date.now();
 
     if (isCorrect) {
       if (activeProblem && currentStepIndex + 1 < activeProblem.steps.length) {
         setTimeout(() => {
           setCurrentStepIndex((prev: number) => prev + 1);
         }, 800);
+      }
+      transitionMascotState('jumping', 2000);
+
+      /* Track: correct step */
+      if (currentActivityRef.current) {
+        const act = findActiveActivity(activeSessionId);
+        if (act) {
+          const nextSteps = act.stepsCompleted + 1;
+          const isDone = activeProblem ? nextSteps >= activeProblem.steps.length : false;
+          updateActivity(currentActivityRef.current, {
+            stepsCompleted: nextSteps,
+            status: isDone ? 'completed' : 'in_progress',
+          });
+          if (isDone) currentActivityRef.current = null;
+        }
+      }
+    } else {
+      transitionMascotState('encouraging', 2500);
+
+      /* Track: wrong attempt */
+      if (currentActivityRef.current) {
+        const act = findActiveActivity(activeSessionId);
+        if (act) {
+          updateActivity(currentActivityRef.current, {
+            wrongAttempts: act.wrongAttempts + 1,
+          });
+        }
       }
     }
 
@@ -249,6 +371,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     const updatedWithUser = [...messages, userMsg];
     updateMessages(updatedWithUser);
     setIsSayoThinking(true);
+    lastInteractionRef.current = Date.now();
 
     const sayoRes = await askTunsayTutor(userText, activeProblem, profile.language);
     if (!isMountedRef.current) return;
@@ -265,55 +388,153 @@ export const ChatView: React.FC<ChatViewProps> = ({
     };
 
     updateMessages([...updatedWithUser, sayoMsg]);
+
+    if (sayoMsg.isSafetyRefusal) {
+      transitionMascotState('encouraging', 3000);
+    } else {
+      const nextState = determineMascotStateFromResponse(sayoMsg.textEng || '');
+      if (nextState === 'celebrating' || nextState === 'jumping' || nextState === 'encouraging' || nextState === 'happy') {
+        transitionMascotState(nextState, 3000);
+      } else {
+        setSayoStatus(nextState);
+      }
+    }
+  };
+
+  // ── Session list helpers ──
+  const getSessionPreview = (session: ChatSession): string => {
+    const lastMsg = session.messages[session.messages.length - 1];
+    if (!lastMsg) return '';
+    const text = lastMsg.sender === 'user'
+      ? (isKhmer ? lastMsg.textKhmer : lastMsg.textEng)
+      : (isKhmer ? lastMsg.textKhmer : lastMsg.textEng);
+    return (text || '').slice(0, 40) + ((text || '').length > 40 ? '...' : '');
+  };
+
+  const formatSessionTime = (iso: string): string => {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    } catch { return ''; }
   };
 
   return (
     <div className="w-full h-full flex-1 flex flex-row items-stretch gap-4 sm:gap-5 overflow-hidden">
-      {/* Left Mascot Status Panel */}
-      <div className="hidden lg:flex lg:w-[30%] lg:min-w-[220px] lg:max-w-[360px] shrink-0 h-full bg-[#F1EFFF] rounded-3xl border-3 border-[#1B4332] shadow-[6px_6px_0px_#1B4332] p-4 flex-col justify-between items-center text-center select-none z-10 relative overflow-hidden">
+      {/* Left Panel: Mascot + Session History */}
+      <div className="hidden lg:flex lg:w-[30%] lg:min-w-[240px] lg:max-w-[360px] shrink-0 h-full bg-[#F1EFFF] rounded-3xl border-3 border-[#1B4332] shadow-[6px_6px_0px_#1B4332] flex-col select-none z-10 relative overflow-hidden">
+        {/* Decorative blobs */}
         <div className="absolute -top-10 -left-10 w-28 h-28 bg-[#40916C]/25 rounded-full blur-sm pointer-events-none" />
         <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[#2D6A4F]/25 rounded-full blur-sm pointer-events-none" />
 
-        <div className="w-full flex flex-col items-center gap-4 pt-1 relative z-10 my-auto">
+        {/* Mascot area */}
+        <div className="flex flex-col items-center gap-3 pt-4 pb-3 px-4 relative z-10 shrink-0 border-b-2 border-[#1B4332]/10">
           <div className="w-full max-w-[220px]">
-            {sayoStatus === 'thinking' ? (
-              <span className="px-3 py-1.5 bg-[#2D6A4F] text-white text-xs font-black rounded-full border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] inline-flex items-center justify-center gap-1.5 animate-pulse uppercase tracking-wider w-full">
-                <span className="w-2 h-2 bg-white rounded-full animate-ping shrink-0" />
-                <span className="truncate">{isKhmer ? 'កំពុងគិត...' : 'Thinking...'}</span>
-              </span>
-            ) : sayoStatus === 'celebrating' ? (
-              <span className="px-3 py-1.5 bg-[#2D6A4F] text-[#1B4332] text-xs font-black rounded-full border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] inline-flex items-center justify-center gap-1.5 uppercase tracking-wider w-full animate-bounce">
-                ✨ <span className="truncate">{isKhmer ? 'រួចរាល់ហើយ!' : 'Done!'}</span>
-              </span>
-            ) : (
-              <span className="px-3 py-1.5 bg-[#A7CDB4] text-[#1B4332] text-xs font-black rounded-full border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] inline-flex items-center justify-center gap-1.5 uppercase tracking-wider w-full">
-                <span className="w-2 h-2 bg-[#2D6A4F] rounded-full border border-[#1B4332] shrink-0" />
-                <span className="truncate">{isKhmer ? 'ទន្សាយ AI Tutor' : 'Tunsay AI Tutor'}</span>
-              </span>
-            )}
+            {(() => {
+              const badges: Record<TunsayState, { text: string; style: string; icon: 'ping' | 'sparkle' | 'dot' | 'none' }> = {
+                thinking:    { text: isKhmer ? 'កំពុងគិត...' : 'Thinking...', style: 'bg-[#2D6A4F] text-white animate-pulse', icon: 'ping' },
+                celebrating: { text: isKhmer ? 'រួចរាល់ហើយ!' : 'Done!', style: 'bg-[#2D6A4F] text-[#1B4332] animate-bounce', icon: 'sparkle' },
+                jumping:     { text: isKhmer ? 'អស្ចារ្យមែន!' : 'Amazing!', style: 'bg-[#2D6A4F] text-[#1B4332] animate-bounce', icon: 'sparkle' },
+                encouraging: { text: isKhmer ? 'កុំបារម្ភ!' : 'No worries!', style: 'bg-[#A7CDB4] text-[#1B4332]', icon: 'dot' },
+                listening:   { text: isKhmer ? 'កំពុងស្ដាប់...' : 'Listening...', style: 'bg-[#A7CDB4] text-[#1B4332] animate-pulse', icon: 'dot' },
+                explaining:  { text: isKhmer ? 'កំពុងពន្យល់...' : 'Explaining...', style: 'bg-[#A7CDB4] text-[#1B4332]', icon: 'dot' },
+                waving:      { text: isKhmer ? 'សួស្តី!' : 'Hello!', style: 'bg-[#A7CDB4] text-[#1B4332] animate-bounce', icon: 'dot' },
+                happy:       { text: isKhmer ? 'ពីរនេះ!' : 'Yay!', style: 'bg-[#2D6A4F] text-[#1B4332] animate-bounce', icon: 'sparkle' },
+                confused:    { text: isKhmer ? 'ហ៊ឹម...' : 'Hmm...', style: 'bg-[#A7CDB4] text-[#1B4332]', icon: 'dot' },
+                sleeping:    { text: isKhmer ? 'កំពុងសម្រាក...' : 'Resting...', style: 'bg-gray-200 text-gray-500', icon: 'none' },
+                idle:        { text: isKhmer ? 'ReanMore AI Tutor' : 'ReanMore AI Tutor', style: 'bg-[#A7CDB4] text-[#1B4332]', icon: 'dot' },
+              };
+              const b = badges[sayoStatus];
+              return (
+                <span className={`px-3 py-1.5 text-xs font-black rounded-full border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] inline-flex items-center justify-center gap-1.5 uppercase tracking-wider w-full ${b.style}`}>
+                  {b.icon === 'ping' && <span className="w-2 h-2 bg-white rounded-full animate-ping shrink-0" />}
+                  {b.icon === 'sparkle' && <Sparkles className="w-3 h-3 text-[#1B4332]" />}
+                  {b.icon === 'dot' && <span className="w-2 h-2 bg-[#2D6A4F] rounded-full border border-[#1B4332] shrink-0" />}
+                  <span className="truncate">{b.text}</span>
+                </span>
+              );
+            })()}
           </div>
 
-          <div className="flex flex-col items-center justify-center my-2 transition-all duration-300 transform w-full">
+          <div className="flex flex-col items-center justify-center transition-all duration-300 transform w-full">
             <div className={`transition-all duration-300 ${
-              sayoStatus === 'thinking' ? 'scale-105' : sayoStatus === 'celebrating' ? 'scale-110 animate-bounce' : 'scale-100 hover:scale-105'
+              sayoStatus === 'thinking' ? 'scale-105' : sayoStatus === 'celebrating' || sayoStatus === 'jumping' || sayoStatus === 'happy' ? 'scale-110 animate-bounce' : 'scale-100 hover:scale-105'
             }`}>
-              <TunsayAvatar size="lg" state={sayoStatus} showBadge={false} />
+              <TunsayAvatar size="xl" state={sayoStatus} showBadge={false} />
             </div>
 
-            <div className="mt-4 px-2 w-full max-w-[240px] bg-white rounded-2xl p-3 border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] relative">
+            <div className="mt-3 px-2 w-full max-w-[240px] bg-white rounded-2xl p-2.5 border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] relative">
               <div className="w-3 h-3 bg-white border-t-3 border-l-3 border-[#1B4332] rotate-45 absolute -top-2 left-1/2 -translate-x-1/2" />
-              <p className="font-heading font-black text-xs sm:text-sm text-[#1B4332] leading-snug transition-all duration-300">
-                {sayoStatus === 'thinking' && (isKhmer ? thinkingTextsKhmer[thinkingTextIdx] : thinkingTextsEng[thinkingTextIdx])}
-                {sayoStatus === 'celebrating' && (isKhmer ? celebratoryTextKhmer : celebratoryTextEng)}
-                {sayoStatus === 'idle' && (isKhmer ? idleTextKhmer : idleTextEng)}
+              <p className="font-heading font-black text-xs text-[#1B4332] leading-snug transition-all duration-300">
+                {getMascotContextText(sayoStatus)}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="w-full pt-2.5 border-t-2 border-[#1B4332]/15 relative z-10 shrink-0">
-          <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider truncate">
-            WEG Tutor 🐰
+        {/* Session History List */}
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 relative z-10">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-black text-[#1B4332]/60 uppercase tracking-wider">
+              {isKhmer ? 'ការជជែកថ្មីៗ' : 'Recent Chats'}
+            </p>
+            <button
+              onClick={handleNewChat}
+              className="text-[10px] font-black text-[#2D6A4F] hover:text-[#1B4332] flex items-center gap-1 cursor-pointer transition-colors"
+              title={isKhmer ? 'ចាប់ផ្តើមជជែកថ្មី' : 'New Chat'}
+            >
+              <Plus className="w-3 h-3" />
+              {isKhmer ? 'ថ្មី' : 'New'}
+            </button>
+          </div>
+
+          {sessions.map((session) => {
+            const isActive = session.id === activeSessionId;
+            return (
+              <button
+                key={session.id}
+                onClick={() => onSelectSession(session.id)}
+                className={`w-full text-left rounded-xl border-2 p-2.5 transition-all cursor-pointer group ${
+                  isActive
+                    ? 'bg-white border-[#1B4332] shadow-[2px_2px_0px_#1B4332]'
+                    : 'bg-[#40916C]/10 border-transparent hover:bg-white hover:border-[#1B4332]/30'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <MessageSquare className={`w-4 h-4 shrink-0 mt-0.5 ${isActive ? 'text-[#1B4332]' : 'text-[#1B4332]/40'}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-xs font-black truncate ${isActive ? 'text-[#1B4332]' : 'text-[#1B4332]/70'}`}>
+                      {isKhmer ? session.titleKhmer : session.title}
+                    </p>
+                    <p className="text-[10px] text-[#1B4332]/50 truncate mt-0.5 leading-tight">
+                      {getSessionPreview(session)}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-[9px] text-[#1B4332]/40 font-semibold">
+                      {formatSessionTime(session.updatedAt)}
+                    </span>
+                    {sessions.length > 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteSession(session.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[#1B4332]/30 hover:text-red-500 cursor-pointer"
+                        title={isKhmer ? 'លុប' : 'Delete'}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="w-full pt-2.5 pb-3 px-4 border-t-2 border-[#1B4332]/15 relative z-10 shrink-0">
+          <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider truncate text-center">
+            ReanMore WEG
           </p>
         </div>
       </div>
@@ -332,7 +553,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
             <div>
               <h3 className="font-black text-xs sm:text-base text-white flex items-center gap-1 font-heading leading-tight drop-shadow-[1px_1px_0px_#1B4332]">
-                {isKhmer ? 'ទន្សាយ' : 'Tunsay AI'}
+                {isKhmer ? 'ReanMore' : 'ReanMore AI'}
               </h3>
               <p className="text-[10px] sm:text-xs text-[#40916C] font-black flex items-center gap-1 drop-shadow-[1px_1px_0px_#1B4332]">
                 <GraduationCap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#40916C]" />
@@ -380,8 +601,30 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   step={currentStep}
                   language={profile.language}
                   onAnswerSubmit={handleStepAnswer}
-                  onOpenHints={() => setIsHintOpen(true)}
-                  onOpenExplainDifferently={() => setIsExplainOpen(true)}
+                  onOpenHints={() => {
+                    setIsHintOpen(true);
+                    /* Track hint usage */
+                    if (currentActivityRef.current) {
+                      const act = findActiveActivity(activeSessionId);
+                      if (act) {
+                        updateActivity(currentActivityRef.current, {
+                          hintsUsed: act.hintsUsed + 1,
+                        });
+                      }
+                    }
+                  }}
+                  onOpenExplainDifferently={() => {
+                    setIsExplainOpen(true);
+                    /* Track explain usage */
+                    if (currentActivityRef.current) {
+                      const act = findActiveActivity(activeSessionId);
+                      if (act) {
+                        updateActivity(currentActivityRef.current, {
+                          explainUsed: act.explainUsed + 1,
+                        });
+                      }
+                    }
+                  }}
                 />
               )}
             </div>
@@ -406,8 +649,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     <TunsayAvatar size="sm" state={msg.isSafetyRefusal ? 'encouraging' : 'explaining'} showBadge={false} />
                   </div>
                 ) : (
-                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-[#A7CDB4] text-[#1B4332] border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] font-black flex items-center justify-center shrink-0">
-                    <User className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-[#A7CDB4] text-[#1B4332] border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] font-black flex items-center justify-center shrink-0 overflow-hidden">
+                    {profile.avatarUrl ? (
+                      <img src={profile.avatarUrl} alt="You" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-5 h-5 sm:w-6 sm:h-6" />
+                    )}
                   </div>
                 )}
 
@@ -493,7 +740,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <input
                 type="text"
                 value={inputQuery}
-                onChange={(e) => setInputQuery(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setInputQuery(value);
+                  lastInteractionRef.current = Date.now();
+                  if (value.trim().length > 0 && sayoStatus !== 'thinking') {
+                    setSayoStatus('listening');
+                  }
+                  if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                  typingTimeoutRef.current = setTimeout(() => {
+                    setSayoStatus(prev => prev === 'listening' ? 'idle' : prev);
+                  }, 1500);
+                }}
                 placeholder={isKhmer ? 'វាយបញ្ចូលសំណួររបស់អ្នកនៅទីនេះ...' : 'Type your question here...'}
                 className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-sm sm:text-base py-3 font-bold text-[#1B4332] placeholder:text-[#1B4332]/50"
               />

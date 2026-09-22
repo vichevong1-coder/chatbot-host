@@ -18,14 +18,14 @@ interface BackendResponse {
 // 1. Socratic System Prompt
 // ──────────────────────────────────────────────
 const SocraticSystemPrompt = {
-  km: `អ្នកគឺទន្សាយ (Tunsay) គ្រូបង្រៀន AI សម្រាប់កុមារថ្នាក់បឋមសិក្សា (ថ្នាក់ទី ១–៦)។ ច្បាប់គំរូសំខាន់ៗ៖
+  km: `អ្នកគឺ ReanMore គ្រូបង្រៀន AI សម្រាប់កុមារថ្នាក់បឋមសិក្សា (ថ្នាក់ទី ១–៦)។ ច្បាប់គំរូសំខាន់ៗ៖
 1. កុំប្រាប់ចម្លើយចុងក្រោយភ្លាមៗ — ជួយកុមារគិតដោយខ្លួនឯង
 2. សួរសំណួរតូចៗជាជំហានៗ
 3. ប្រើឧទាហរណ៍ដែលកុមារស្គាល់ (ផ្លែប៉ោម នំភីហ្សា ទឹក ឫស្សែង)
 4. លើកទឹកចិត្តពេលកុមារឆ្លើយត្រូវ
 5. ប្រសិនបើកុមារឆ្លើយខុស កុំប្រើពាក្យ «ខុស» — ពន្យល់ថាតើហេតុអ្វី ហើយណែនាំឱ្យព្យាយាមម្តងទៀត
 6. ប្រើភាសាសាមញ្ញ ងាយយល់ មិនប្រើពាក្យពិបាក`,
-  en: `You are Tunsay, an AI tutor for elementary students (Grades 1–6). Core rules:
+  en: `You are ReanMore, an AI tutor for elementary students (Grades 1–6). Core rules:
 1. NEVER give the final answer immediately — help the child think for themselves
 2. Ask small guiding sub-questions step by step
 3. Use relatable analogies (apples, pizza, water, plants)
@@ -110,8 +110,8 @@ function getSocraticFallback(_language: Language, prompt: string): { textKhmer: 
 
   if (isMath) {
     return {
-      textKhmer: `តោះយើងមើលសំណួរនេះជាមួយគ្នា! ជំហានទី ១៖ តើអ្នកឃើញលេខអ្វីខ្លះក្នុងសំណួរនេះ? ចុចលើរូបភាពឬវាយប្រាប់ខ្ញុំពីលេខទាំងនោះណា! 🍎🐰`,
-      textEng: `Let's look at this together! Step 1: What numbers do you see in the question? Tap or tell me what they are! 🍎🐰`,
+      textKhmer: `តោះយើងមើលសំណួរនេះជាមួយគ្នា! ជំហានទី ១៖ តើអ្នកឃើញលេខអ្វីខ្លះក្នុងសំណួរនេះ? ចុចលើរូបភាពឬវាយប្រាប់ខ្ញុំពីលេខទាំងនោះណា!`,
+      textEng: `Let's look at this together! Step 1: What numbers do you see in the question? Tap or tell me what they are!`,
     };
   }
 
@@ -121,22 +121,22 @@ function getSocraticFallback(_language: Language, prompt: string): { textKhmer: 
 
   if (isScience) {
     return {
-      textKhmer: `ចំណង់ចំណូលចិត្តណាស់! តោះយើងស្វែងយល់ពីវិទ្យាសាស្ត្រនេះជាមួយគ្នា។ ជំហានទី ១៖ តើអ្នកដឹងអ្វីខ្លះអំពីប្រធានបទនេះរួចហើយ? 🌱`,
-      textEng: `Great curiosity! Let's explore this science topic together. Step 1: What do you already know about this? 🌱`,
+      textKhmer: `ចំណង់ចំណូលចិត្តណាស់! តោះយើងស្វែងយល់ពីវិទ្យាសាស្ត្រនេះជាមួយគ្នា។ ជំហានទី ១៖ តើអ្នកដឹងអ្វីខ្លះអំពីប្រធានបទនេះរួចហើយ?`,
+      textEng: `Great curiosity! Let's explore this science topic together. Step 1: What do you already know about this?`,
     };
   }
 
   // Generic Socratic fallback
   return {
-    textKhmer: `សួស្តី! ខ្ញុំគឺទន្សាយ (Tunsay)។ តើយើងរៀនមុខវិជ្ជាអ្វីថ្ងៃនេះ? អ្នកអាចសួរខ្ញុំអំពីគណិតវិទ្យា វិទ្យាសាស្ត្រ ឬភាសាអង់គ្លេស! 🐰🌱`,
-    textEng: `Hi! I'm Tunsay. What subject shall we learn today? You can ask me about Math, Science, or English! 🐰🌱`,
+    textKhmer: `សួស្តី! ខ្ញុំគឺ ReanMore។ តើយើងរៀនមុខវិជ្ជាអ្វីថ្ងៃនេះ? អ្នកអាចសួរខ្ញុំអំពីគណិតវិទ្យា វិទ្យាសាស្ត្រ ឬភាសាអង់គ្លេស!`,
+    textEng: `Hi! I'm ReanMore. What subject shall we learn today? You can ask me about Math, Science, or English!`,
   };
 }
 
 // ──────────────────────────────────────────────
 // Main API Function
 // ──────────────────────────────────────────────
-export async function askTunsayTutor(
+export async function askReanMoreTutor(
   userPrompt: string,
   problemContext?: HomeworkProblem,
   language: Language = 'km'
@@ -145,8 +145,8 @@ export async function askTunsayTutor(
   // ── Safety Check FIRST ──
   if (isUnsafePrompt(userPrompt)) {
     return {
-      textKhmer: `🛡️ ខ្ញុំនៅទីនេះដើម្បីជួយសិក្សា និងធ្វើលំហាត់ដោយសុវត្ថិភាព។ តោះត្រឡប់ទៅមើលលំហាត់វិញណា! តើអ្នកមានសំណួរគណិតវិទ្យា ឬវិទ្យាសាស្ត្រចង់សួរទេ? 🐰`,
-      textEng: `🛡️ I'm here to help with safe, educational topics only. Let's get back to your homework! Do you have a Math or Science question? 🐰`,
+      textKhmer: `ខ្ញុំនៅទីនេះដើម្បីជួយសិក្សា និងធ្វើលំហាត់ដោយសុវត្ថិភាព។ តោះត្រឡប់ទៅមើលលំហាត់វិញណា! តើអ្នកមានសំណួរគណិតវិទ្យា ឬវិទ្យាសាស្ត្រចង់សួរទេ?`,
+      textEng: `I'm here to help with safe, educational topics only. Let's get back to your homework! Do you have a Math or Science question?`,
       isSafetyRefusal: true,
     };
   }
@@ -204,4 +204,5 @@ export async function askTunsayTutor(
   };
 }
 
-export const askSayoTutor = askTunsayTutor;
+export const askTunsayTutor = askReanMoreTutor;
+export const askSayoTutor = askReanMoreTutor;

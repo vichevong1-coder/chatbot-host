@@ -242,39 +242,39 @@ export const MOCK_PROBLEMS: HomeworkProblem[] = [
     titleEng: 'English: Present Simple Verbs',
     grade: 4,
     subject: 'english',
-    problemStatementKhmer: 'បំពេញចន្លោះក្នុងប្រយោគ៖ "Tunsay ___ (like) apples." តើត្រូវថែម "s" នៅចុងកិរិយាស័ព្ទ like ឬទេ?',
-    problemStatementEng: 'Fill in the blank: "Tunsay ___ (like) apples." Should we add "s" to the verb like?',
+    problemStatementKhmer: 'បំពេញចន្លោះក្នុងប្រយោគ៖ "ReanMore ___ (like) apples." តើត្រូវថែម "s" នៅចុងកិរិយាស័ព្ទ like ឬទេ?',
+    problemStatementEng: 'Fill in the blank: "ReanMore ___ (like) apples." Should we add "s" to the verb like?',
     imageUri: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600&auto=format&fit=crop&q=80',
     steps: [
       {
         id: 'eng-step-1',
         stepNumber: 1,
         totalSteps: 2,
-        questionKhmer: 'នៅក្នុងប្រយោគនេះ "Tunsay" គឺជាប្រធានឯកវចនៈ (Singular Subject, He/She/It)។ តើកិរិយាស័ព្ទត្រូវថែមអ្វី?',
-        questionEng: 'In this sentence, "Tunsay" is a singular subject (He/She/It). What do we add to the verb?',
+        questionKhmer: 'នៅក្នុងប្រយោគនេះ "ReanMore" គឺជាប្រធានឯកវចនៈ (Singular Subject, He/She/It)។ តើកិរិយាស័ព្ទត្រូវថែមអ្វី?',
+        questionEng: 'In this sentence, "ReanMore" is a singular subject (He/She/It). What do we add to the verb?',
         inputFormat: 'mcq',
         options: ['ថែម -s (likes)', 'ថែម -ing (liking)', 'មិនថែមអ្វីទាំងអស់ (like)'],
         correctAnswer: 'ថែម -s (likes)',
-    socraticPromptKhmer: `តើអ្នកយល់ថាសំណួរ \`នៅក្នុងប្រយោគនេះ "Tunsay" គឺជា...' ចាប់ផ្តើមដោយអ្វីជាដំបូង?'`,
-    socraticPromptEng: `What do you think we need to find first for \`In this sentence, "Tunsay" is a singular...'?'`,
+    socraticPromptKhmer: `តើអ្នកយល់ថាសំណួរ \`នៅក្នុងប្រយោគនេះ "ReanMore" គឺជា...' ចាប់ផ្តើមដោយអ្វីជាដំបូង?'`,
+    socraticPromptEng: `What do you think we need to find first for \`In this sentence, "ReanMore" is a singular...'?'`,
 
         hint1: {
-          khmer: 'សម្រាប់ He, She, It ឬឈ្មោះមនុស្សម្នាក់ (Tunsay) កិរិយាស័ព្ទត្រូវថែម -s!',
-          eng: 'For He, She, It, or one person name (Tunsay), we add -s to the verb!'
+          khmer: 'សម្រាប់ He, She, It ឬឈ្មោះមនុស្សម្នាក់ (ReanMore) កិរិយាស័ព្ទត្រូវថែម -s!',
+          eng: 'For He, She, It, or one person name (ReanMore), we add -s to the verb!'
         },
         hint2: {
-          khmer: 'Tunsay like + s = Tunsay likes!',
-          eng: 'Tunsay like + s = Tunsay likes!'
+          khmer: 'ReanMore like + s = ReanMore likes!',
+          eng: 'ReanMore like + s = ReanMore likes!'
         },
         hint3: {
           titleKhmer: 'វិធានវេយ្យាករណ៍',
           titleEng: 'Grammar Rule',
-          exampleKhmer: 'He plays, She reads, Tunsay likes!',
-          exampleEng: 'He plays, She reads, Tunsay likes!'
+          exampleKhmer: 'He plays, She reads, ReanMore likes!',
+          exampleEng: 'He plays, She reads, ReanMore likes!'
         },
         explainDifferently: {
-          simpleKhmer: 'ពេលនិយាយពីមនុស្សម្នាក់ ដូចជា ទន្សាយ (Tunsay) យើងថែមអក្សរ "s" នៅខាងចុងពាក្យដូចជា likes!',
-          simpleEng: 'When talking about one friend like Tunsay, we put an "s" at the end of the action word: likes!',
+          simpleKhmer: 'ពេលនិយាយពីមនុស្សម្នាក់ ដូចជា ReanMore (ReanMore) យើងថែមអក្សរ "s" នៅខាងចុងពាក្យដូចជា likes!',
+          simpleEng: 'When talking about one friend like ReanMore, we put an "s" at the end of the action word: likes!',
           analogyTitle: 'អក្សរ S សម្រាប់មិត្តម្នាក់ (The Letter S)',
           analogyKhmer: 'គិតថាអក្សរ S គឺជាកាដូជូនមិត្តម្នាក់!',
           analogyEng: 'Think of the letter "s" as a small gift for one person!',
@@ -288,8 +288,8 @@ export const MOCK_PROBLEMS: HomeworkProblem[] = [
         questionKhmer: 'តើប្រយោគពេញលេញដែលត្រឹមត្រូវគឺជាអ្វី?',
         questionEng: 'What is the correct full sentence?',
         inputFormat: 'mcq',
-        options: ['Tunsay likes apples.', 'Tunsay liking apples.', 'Tunsay like apples.'],
-        correctAnswer: 'Tunsay likes apples.',
+        options: ['ReanMore likes apples.', 'ReanMore liking apples.', 'ReanMore like apples.'],
+        correctAnswer: 'ReanMore likes apples.',
     socraticPromptKhmer: `តើអ្នកយល់ថាសំណួរ \`តើប្រយោគពេញលេញដែលត្រឹមត្រូវគឺជ...' ចាប់ផ្តើមដោយអ្វីជាដំបូង?'`,
     socraticPromptEng: `What do you think we need to find first for \`What is the correct full sentence?...'?'`,
 
@@ -298,21 +298,21 @@ export const MOCK_PROBLEMS: HomeworkProblem[] = [
           eng: 'Choose the sentence with "likes".'
         },
         hint2: {
-          khmer: 'Tunsay + likes + apples!',
-          eng: 'Tunsay + likes + apples!'
+          khmer: 'ReanMore + likes + apples!',
+          eng: 'ReanMore + likes + apples!'
         },
         hint3: {
           titleKhmer: 'ចម្លើយចុងក្រោយ',
           titleEng: 'Final Answer',
-          exampleKhmer: 'Tunsay likes apples.',
-          exampleEng: 'Tunsay likes apples.'
+          exampleKhmer: 'ReanMore likes apples.',
+          exampleEng: 'ReanMore likes apples.'
         },
         explainDifferently: {
-          simpleKhmer: 'ពូកែណាស់! ប្រយោគពេញលេញគឺ "Tunsay likes apples."',
-          simpleEng: 'Awesome job! The complete sentence is "Tunsay likes apples."',
+          simpleKhmer: 'ពូកែណាស់! ប្រយោគពេញលេញគឺ "ReanMore likes apples."',
+          simpleEng: 'Awesome job! The complete sentence is "ReanMore likes apples."',
           analogyTitle: 'ប្រយោគពេញលេញ (Full Sentence)',
-          analogyKhmer: 'ទន្សាយចូលចិត្តញ៉ាំផ្លែប៉ោម!',
-          analogyEng: 'Tunsay loves eating apples!',
+          analogyKhmer: 'ReanMoreចូលចិត្តញ៉ាំផ្លែប៉ោម!',
+          analogyEng: 'ReanMore loves eating apples!',
           analogyType: 'apples'
         }
       }
@@ -736,15 +736,15 @@ export function generateHistoryChatForProblem(prob: HomeworkProblem, studentName
     {
       id: `hist-1-${prob.id}`,
       sender: 'sayo',
-      textKhmer: `សួស្តី ${displayName}! តោះដោះស្រាយលំហាត់ "${prob.titleKhmer}" ទាំងអស់គ្នា! ទន្សាយនឹងជួយណែនាំអ្នកជាជំហានៗ។ 🐰✨`,
-      textEng: `Hi ${displayName}! Let's solve "${prob.titleEng}" together! Tunsay will guide you step-by-step. 🐰✨`,
+      textKhmer: `សួស្តី ${displayName}! តោះដោះស្រាយលំហាត់ "${prob.titleKhmer}" ទាំងអស់គ្នា! ReanMoreនឹងជួយណែនាំអ្នកជាជំហានៗ។`,
+      textEng: `Hi ${displayName}! Let's solve "${prob.titleEng}" together! ReanMore will guide you step-by-step.`,
       timestamp: '10:15 AM'
     },
     {
       id: `hist-2-${prob.id}`,
       sender: 'user',
-      textKhmer: `ជំរាបសួរលោកគ្រូទន្សាយ! ខ្ញុំបានអានចំណោទនេះហើយ ៖ "${prob.problemStatementKhmer}" ប៉ុន្តែខ្ញុំមិនទាន់ប្រាកដពីរបៀបចាប់ផ្តើមទេ! អាចជួយពន្យល់ខ្ញុំបន្តិចបានទេ?`,
-      textEng: `Hello Tunsay! I read this question: "${prob.problemStatementEng}" but I'm not sure how to start! Can you help guide me?`,
+      textKhmer: `ជំរាបសួរលោកគ្រូReanMore! ខ្ញុំបានអានចំណោទនេះហើយ ៖ "${prob.problemStatementKhmer}" ប៉ុន្តែខ្ញុំមិនទាន់ប្រាកដពីរបៀបចាប់ផ្តើមទេ! អាចជួយពន្យល់ខ្ញុំបន្តិចបានទេ?`,
+      textEng: `Hello ReanMore! I read this question: "${prob.problemStatementEng}" but I'm not sure how to start! Can you help guide me?`,
       timestamp: '10:16 AM'
     },
     {

@@ -236,7 +236,7 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
             <div className="space-y-1">
               <h3 className="text-lg font-black text-[#1B4332] font-heading flex items-center justify-center gap-2">
                 <Sparkles className="w-5 h-5 text-[#2D6A4F] animate-spin" />
-                {isKhmer ? 'ទន្សាយកំពុងអានលំហាត់របស់អ្នក...' : 'Tunsay is reading your homework...'}
+                {isKhmer ? 'ReanMoreកំពុងអានលំហាត់របស់អ្នក...' : 'Tunsay is reading your homework...'}
               </h3>
             </div>
             <div className="w-48 h-3 bg-[#E8F5E9] border-2 border-[#1B4332] rounded-full mx-auto overflow-hidden">

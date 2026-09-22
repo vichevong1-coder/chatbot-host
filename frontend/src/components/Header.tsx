@@ -1,14 +1,14 @@
 import React from 'react';
-import { UserProfile, Language } from '../types';
+import { UserProfile } from '../types';
 import { TunsayAvatar } from './TunsayAvatar';
-import { LanguageSwitcher } from './LanguageSwitcher';
 import { Home, BookOpen, User } from 'lucide-react';
+
+import logoWhiteImg from '../assets/logo_white.png';
 
 interface HeaderProps {
   profile: UserProfile;
   activeTab: 'home' | 'chat' | 'profile';
   onSelectTab: (tab: 'home' | 'chat' | 'profile') => void;
-  onSelectLanguage: (lang: Language) => void;
 }
 
 const NAV_ITEMS = [
@@ -21,7 +21,6 @@ export const Header: React.FC<HeaderProps> = ({
   profile,
   activeTab,
   onSelectTab,
-  onSelectLanguage,
 }) => {
   const isKhmer = profile.language === 'km';
 
@@ -30,18 +29,8 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3">
         <div className="flex items-center justify-between gap-3">
           {/* Logo */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-[#2D6A4F] rounded-xl border-2 border-white/20 flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,0.3)]">
-              <TunsayAvatar size="sm" state="idle" showBadge={false} />
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="text-white font-black text-base sm:text-lg leading-tight tracking-tight">
-                Tunsay
-              </h1>
-              <p className="text-[#A7CDB4] text-[10px] sm:text-xs font-bold leading-none">
-                {isKhmer ? 'គ្រូបង្រៀន AI' : 'AI Homework Tutor'}
-              </p>
-            </div>
+          <div className="flex items-center gap-2.5 shrink-0 cursor-pointer" onClick={() => onSelectTab('home')}>
+            <img src={logoWhiteImg} alt="ReanMore AI Tutor" className="h-8 sm:h-9 w-auto object-contain hover:scale-105 transition-transform drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]" />
           </div>
 
           {/* Navigation */}
@@ -73,13 +62,8 @@ export const Header: React.FC<HeaderProps> = ({
             })}
           </nav>
 
-          {/* Language Switcher */}
-          <div className="shrink-0">
-            <LanguageSwitcher
-              language={profile.language}
-              onSelectLanguage={onSelectLanguage}
-            />
-          </div>
+          {/* Language removed — change via Profile Settings */}
+          <div className="shrink-0 w-8 sm:w-10" />
         </div>
       </div>
     </header>

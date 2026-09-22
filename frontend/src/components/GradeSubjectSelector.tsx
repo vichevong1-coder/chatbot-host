@@ -1,6 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import { Grade, Language } from '../types';
-import { BookOpen, GraduationCap, Sparkles, Calculator, Atom, Languages } from 'lucide-react';
+import { BookOpen, GraduationCap, Sparkles, Calculator, Atom } from 'lucide-react';
 
 interface GradeSubjectSelectorProps {
   currentGrade: Grade;
@@ -30,13 +30,6 @@ export const GradeSubjectSelector: React.FC<GradeSubjectSelectorProps> = ({
       nameEng: 'Science',
       icon: Atom,
       bgColor: 'bg-[#2D6A4F]',
-    },
-    {
-      id: 'english',
-      nameKhmer: 'ភាសាអង់គ្លេស',
-      nameEng: 'English',
-      icon: Languages,
-      bgColor: 'bg-[#40916C]',
     }
   ];
 
@@ -91,7 +84,7 @@ export const GradeSubjectSelector: React.FC<GradeSubjectSelectorProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {subjects.map((sub) => {
             const Icon = sub.icon;
             return (
@@ -115,3 +108,5 @@ export const GradeSubjectSelector: React.FC<GradeSubjectSelectorProps> = ({
     </div>
   );
 };
+
+

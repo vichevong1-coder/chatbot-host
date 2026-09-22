@@ -82,8 +82,8 @@ const MATH_Q1: TutorQuestion = {
     {
       pattern: '15|fifteen',
       isCorrect: true,
-      feedbackEng: "Excellent! 9 + 2 + 3 + 1 = 15. You did it step by step! 🎉",
-      feedbackKhmer: "អស្ចារ្យ! ៩ + ២ + ៣ + ១ = ១៥។ អ្នកធ្វើវាជាជំហានៗ! 🎉",
+      feedbackEng: "Excellent! 9 + 2 + 3 + 1 = 15. You did it step by step!",
+      feedbackKhmer: "អស្ចារ្យ! ៩ + ២ + ៣ + ១ = ១៥។ អ្នកធ្វើវាជាជំហានៗ!",
       nextAction: 'ask_why',
     },
     {
@@ -136,8 +136,8 @@ const MATH_Q2: TutorQuestion = {
     {
       pattern: '61|sixty[- ]?one',
       isCorrect: true,
-      feedbackEng: "Perfect! 54 + 7 = 61. You used the known fact 4 + 7 = 11 brilliantly! 🎉",
-      feedbackKhmer: "ល្អឥតខ្ចោះ! ៥៤ + ៧ = ៦១។ អ្នកប្រើចំណេះដឹង ៤ + ៧ = ១១ បានយ៉ាងឆ្លាតវៃ! 🎉",
+      feedbackEng: "Perfect! 54 + 7 = 61. You used the known fact 4 + 7 = 11 brilliantly!",
+      feedbackKhmer: "ល្អឥតខ្ចោះ! ៥៤ + ៧ = ៦១។ អ្នកប្រើចំណេះដឹង ៤ + ៧ = ១១ បានយ៉ាងឆ្លាតវៃ!",
       nextAction: 'ask_why',
     },
   ],
@@ -183,8 +183,8 @@ const MATH_Q3: TutorQuestion = {
     {
       pattern: '800\\s*\\+\\s*0\\s*\\+\\s*5|8\\s*hundreds.*0\\s*tens.*5\\s*ones|eight\\s*hundred',
       isCorrect: true,
-      feedbackEng: "Excellent! 805 = 800 + 0 + 5. The 0 holds the tens place! 🎉",
-      feedbackKhmer: "អស្ចារ្យ! ៨០៥ = ៨០០ + ០ + ៥។ ០ កាន់ទីតាំងនិចសិប! 🎉",
+      feedbackEng: "Excellent! 805 = 800 + 0 + 5. The 0 holds the tens place!",
+      feedbackKhmer: "អស្ចារ្យ! ៨០៥ = ៨០០ + ០ + ៥។ ០ កាន់ទីតាំងនិចសិប!",
       nextAction: 'ask_why',
     },
   ],
@@ -230,8 +230,8 @@ const MATH_Q4A: TutorQuestion = {
     {
       pattern: '786.*867.*876|7.?8.?6.*8.?6.?7.*8.?7.?6',
       isCorrect: true,
-      feedbackEng: "Perfect! 786 < 867 < 876. You compared the hundreds first, then tens! 🎉",
-      feedbackKhmer: "ល្អឥតខ្ចោះ! ៧៨៦ < ៨៦៧ < ៨៧៦។ អ្នកប្រៀបធៀបរយជាមុន បន្ទាប់មកនិចសិប! 🎉",
+      feedbackEng: "Perfect! 786 < 867 < 876. You compared the hundreds first, then tens!",
+      feedbackKhmer: "ល្អឥតខ្ចោះ! ៧៨៦ < ៨៦៧ < ៨៧៦។ អ្នកប្រៀបធៀបរយជាមុន បន្ទាប់មកនិចសិប!",
       nextAction: 'ask_why',
     },
   ],
@@ -243,8 +243,8 @@ const MATH_Q4B: TutorQuestion = {
   section: 'Comparing & Ordering Numbers',
   qNumber: 'Q4b',
   grade: 2,
-  questionEng: 'Fill in the box: 426 ☐ 462 (use < or >)',
-  questionKhmer: 'បំពេញប្រអប់៖ ៤២៦ ☐ ៤៦២ (ប្រើ < ឬ >)',
+  questionEng: 'Fill in the box: 426 [ ? ] 462 (use < or >)',
+  questionKhmer: 'បំពេញប្រអប់៖ ៤២៦ [ ? ] ៤៦២ (ប្រើ < ឬ >)',
   learningGoalEng: 'Systematic comparison using place value.',
   learningGoalKhmer: 'ការប្រៀបធៀបប្រព័ន្ធដោយប្រើតម្លៃទីតាំង។',
   correctAnswer: '<',
@@ -277,8 +277,8 @@ const MATH_Q4B: TutorQuestion = {
     {
       pattern: '<|less|smaller',
       isCorrect: true,
-      feedbackEng: "Correct! 426 < 462 because 2 tens is less than 6 tens! 🎉",
-      feedbackKhmer: "ត្រឹមត្រូវ! ៤២៦ < ៤៦២ ព្រោះ ២និចសិប តូចជាង ៦និចសិប! 🎉",
+      feedbackEng: "Correct! 426 < 462 because 2 tens is less than 6 tens!",
+      feedbackKhmer: "ត្រឹមត្រូវ! ៤២៦ < ៤៦២ ព្រោះ ២និចសិប តូចជាង ៦និចសិប!",
       nextAction: 'ask_why',
     },
     {
