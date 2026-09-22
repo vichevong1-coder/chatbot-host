@@ -1,47 +1,30 @@
-# Python bytecode and cache
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-
-# Virtual Environment
+# Dependencies
+node_modules/
 venv/
 .venv/
 env/
-ENV/
-env.bak/
-venv.bak/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+sample_outputs/
 
-# Environment variables & secrets
+# Environment Variables & Secrets
 .env
 *.env.local
 
-# Testing & coverage
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
+# Build Outputs
+dist/
+build/
+*.egg-info/
 
-# IDEs and Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Logs & Databases
+*.log
+postgres_data/
+qdrant_data/
+
+# OS / Editor files
 .DS_Store
 Thumbs.db
-
-# Logs & Temporary files
-*.log
-scratch/
-tmp/
-temp/
-
-# Large raw PDF files
-*.pdf
+.vscode/
+.idea/

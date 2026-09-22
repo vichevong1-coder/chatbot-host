@@ -1,0 +1,120 @@
+version: '3.8'
+
+services:
+  # ──────────────────────────────────────────────
+  # Stateful Infrastructure
+  # ──────────────────────────────────────────────
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: weg-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - weg-network
+
+  db:
+    image: postgres:15-alpine
+    container_name: weg-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-science_chatbot}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - weg-network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: weg-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - weg-network
+
+  # ──────────────────────────────────────────────
+  # Backend Microservices
+  # ──────────────────────────────────────────────
+  orchestrator:
+    build:
+      context: ./backend/orchestrator
+      dockerfile: Dockerfile
+    container_name: weg-orchestrator
+    ports:
+      - "${ORCHESTRATOR_PORT:-9000}:${ORCHESTRATOR_PORT:-9000}"
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - redis
+      - qdrant
+      - db
+    networks:
+      - weg-network
+
+  math-service:
+    build:
+      context: ./backend/services/math_service
+      dockerfile: Dockerfile
+    container_name: weg-math-service
+    ports:
+      - "${MATH_SERVICE_PORT:-9001}:${MATH_SERVICE_PORT:-9001}"
+    env_file:
+      - ./backend/.env
+    networks:
+      - weg-network
+
+  science-service:
+    build:
+      context: ./backend/services/science_service
+      dockerfile: Dockerfile
+    container_name: weg-science-service
+    ports:
+      - "${SCIENCE_SERVICE_PORT:-9002}:${SCIENCE_SERVICE_PORT:-9002}"
+    env_file:
+      - ./backend/.env
+    networks:
+      - weg-network
+
+  # ──────────────────────────────────────────────
+  # Homework OCR + VLM Pipeline Microservice
+  # ──────────────────────────────────────────────
+  ocr-service:
+    build:
+      context: ./homework_ocr_vlm
+      dockerfile: Dockerfile
+    container_name: weg-ocr-service
+    ports:
+      - "${OCR_PORT:-8000}:8000"
+    env_file:
+      - ./homework_ocr_vlm/.env
+    networks:
+      - weg-network
+
+  # ──────────────────────────────────────────────
+  # Frontend Web UI
+  # ──────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: weg-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - orchestrator
+      - ocr-service
+    networks:
+      - weg-network
+
+networks:
+  weg-network:
+    driver: bridge
+
+volumes:
+  qdrant_data:
+  postgres_data:
