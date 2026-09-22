@@ -113,21 +113,6 @@ services:
           - ocr-service
           - weg-ocr-service
 
-  # ──────────────────────────────────────────────
-  # Frontend Web UI
-  # ──────────────────────────────────────────────
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: science-frontend
-    ports:
-      - "80:80"
-    depends_on:
-      - orchestrator
-      - homework-scanner
-    networks:
-      - science-network
 
 networks:
   science-network:

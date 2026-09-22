@@ -28,15 +28,10 @@
 
 ```text
 Science_chatbot/
-├── docker-compose.yml              # Unified Multi-Service Docker Orchestration
+├── docker-compose.yml              # Multi-Service Docker Orchestration
 ├── start_all.ps1                   # One-click Windows PowerShell startup script
 ├── .env.example                    # Example environment configuration
 ├── pytest.ini                      # Central pytest configuration
-│
-├── frontend/                       # 🌐 Student-Facing Web App (React 19, Vite, Tailwind CSS)
-│   ├── src/components/             # ChatView, StepCard, HomeworkScanner, Stepper
-│   ├── src/services/               # geminiService.ts, ocrService.ts
-│   └── Dockerfile
 │
 └── backend/                        # 🧠 Complete Backend System & Microservices
     ├── orchestrator/               # Main Gateway API & LangGraph State Machine (Port 9000)
@@ -60,12 +55,11 @@ Science_chatbot/
 
 ## 🚀 Quick Start Guide
 
-### Option 1: Full Docker Stack (Recommended)
+### Option 1: Full Docker Stack
 ```bash
 docker compose up --build
 ```
 This launches:
-- **Frontend UI**: `http://localhost:80`
 - **Orchestrator Gateway**: `http://localhost:9000`
 - **Homework Scanner**: `http://localhost:9003`
 - **Math Service**: `http://localhost:9001`
@@ -73,7 +67,7 @@ This launches:
 - **Databases**: Redis (`6379`), PostgreSQL (`5432`), Qdrant (`6333`)
 
 ### Option 2: Local Development
-1. **Launch all backend microservices and frontend dev server**:
+1. **Launch all 4 backend microservices**:
    ```powershell
    .\start_all.ps1
    ```
