@@ -1,0 +1,797 @@
+{
+  "status": "success",
+  "document": {
+    "language": [
+      "English"
+    ],
+    "pages": 1
+  },
+  "pages": [
+    {
+      "page_number": 1,
+      "width": 512,
+      "height": 508,
+      "header": {
+        "signature_box": {
+          "present": false,
+          "filled": false
+        }
+      },
+      "directions": [],
+      "sections": [
+        {
+          "section_id": "SECTION 1",
+          "title": "MATHEMATICS",
+          "figure": {
+            "present": false
+          },
+          "elements": [],
+          "questions": [
+            {
+              "question_no": "Q1",
+              "question_id": "S1Q1",
+              "type": "short_answer",
+              "prompt": "Addition & Number Bonds",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [],
+              "confidence": 0.98,
+              "sub_questions": [
+                {
+                  "question_no": "a",
+                  "question_id": "S1Q1a",
+                  "type": "short_answer",
+                  "prompt": "Calculate: 9 + 2 + 3 + 1 =",
+                  "elements": [],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        375.0,
+                        172.0,
+                        435.0,
+                        185.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                },
+                {
+                  "question_no": "b",
+                  "question_id": "S1Q1b",
+                  "type": "short_answer",
+                  "prompt": "Find the missing number: 35 +",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "= 100",
+                      "bbox": [
+                        82.0,
+                        215.0,
+                        140.0,
+                        230.0
+                      ],
+                      "confidence": 1.0
+                    }
+                  ],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        455.0,
+                        195.0,
+                        515.0,
+                        208.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                }
+              ]
+            },
+            {
+              "question_no": "Q2",
+              "question_id": "S1Q2",
+              "type": "short_answer",
+              "prompt": "Number Patterns & Bridging",
+              "instructions": "Using the known number fact 4 + 7 = 11, solve the following calculation:",
+              "elements": [
+                {
+                  "type": "text",
+                  "text": "54 + 7 = ",
+                  "bbox": [
+                    269,
+                    114,
+                    312,
+                    121
+                  ],
+                  "confidence": 1.0
+                }
+              ],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    315,
+                    114,
+                    346,
+                    121
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q3",
+              "question_id": "S1Q3",
+              "type": "short_answer",
+              "prompt": "Place Value & Expanded Form",
+              "instructions": "Write the number 805 in expanded place value form:",
+              "elements": [
+                {
+                  "type": "text",
+                  "text": "Hundreds + ",
+                  "bbox": [
+                    123,
+                    185,
+                    174,
+                    192
+                  ],
+                  "confidence": 1.0
+                },
+                {
+                  "type": "text",
+                  "text": "Tens + ",
+                  "bbox": [
+                    271,
+                    185,
+                    297,
+                    192
+                  ],
+                  "confidence": 1.0
+                },
+                {
+                  "type": "text",
+                  "text": "Ones",
+                  "bbox": [
+                    92,
+                    196,
+                    108,
+                    202
+                  ],
+                  "confidence": 1.0
+                }
+              ],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    59,
+                    185,
+                    120,
+                    192
+                  ]
+                },
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    207,
+                    185,
+                    269,
+                    192
+                  ]
+                },
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    110,
+                    196,
+                    172,
+                    202
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q4",
+              "question_id": "S1Q4",
+              "type": "short_answer",
+              "prompt": "Comparing & Ordering Numbers",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [],
+              "confidence": 0.98,
+              "sub_questions": [
+                {
+                  "question_no": "a",
+                  "question_id": "S1Q4a",
+                  "type": "short_answer",
+                  "prompt": "Order from smallest to greatest: 867, 876, 786",
+                  "elements": [],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        525.0,
+                        350.0,
+                        880.0,
+                        363.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                },
+                {
+                  "question_no": "b",
+                  "question_id": "S1Q4b",
+                  "type": "short_answer",
+                  "prompt": "Use <, >, or =",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "426 ",
+                      "bbox": [
+                        720.0,
+                        380.0,
+                        760.0,
+                        393.0
+                      ],
+                      "confidence": 1.0
+                    },
+                    {
+                      "type": "text",
+                      "text": "462",
+                      "bbox": [
+                        825.0,
+                        380.0,
+                        865.0,
+                        393.0
+                      ],
+                      "confidence": 1.0
+                    }
+                  ],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        655.0,
+                        380.0,
+                        715.0,
+                        393.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                }
+              ]
+            },
+            {
+              "question_no": "Q5",
+              "question_id": "S1Q5",
+              "type": "short_answer",
+              "prompt": "Adjusting Tens",
+              "instructions": "Solve by adding/subtracting tens first and adjusting:",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [],
+              "confidence": 0.98,
+              "sub_questions": [
+                {
+                  "question_no": "a",
+                  "question_id": "S1Q5a",
+                  "type": "short_answer",
+                  "prompt": "35 + 9 =",
+                  "elements": [],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        185.0,
+                        475.0,
+                        245.0,
+                        488.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                },
+                {
+                  "question_no": "b",
+                  "question_id": "S1Q5b",
+                  "type": "short_answer",
+                  "prompt": "58 + 11 =",
+                  "elements": [],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        185.0,
+                        495.0,
+                        245.0,
+                        508.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                }
+              ]
+            },
+            {
+              "question_no": "Q6",
+              "question_id": "S1Q6",
+              "type": "short_answer",
+              "prompt": "Counting Money & Division",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [],
+              "confidence": 0.98,
+              "sub_questions": [
+                {
+                  "question_no": "a",
+                  "question_id": "S1Q6a",
+                  "type": "short_answer",
+                  "prompt": "What is the total value of eight 10p coins?",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "p",
+                      "bbox": [
+                        590.0,
+                        490.0,
+                        605.0,
+                        503.0
+                      ],
+                      "confidence": 1.0
+                    }
+                  ],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        525.0,
+                        490.0,
+                        585.0,
+                        503.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                },
+                {
+                  "question_no": "b",
+                  "question_id": "S1Q6b",
+                  "type": "short_answer",
+                  "prompt": "How many 5p coins make 45p? (45 - 5)",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "coins",
+                      "bbox": [
+                        690.0,
+                        535.0,
+                        735.0,
+                        548.0
+                      ],
+                      "confidence": 1.0
+                    },
+                    {
+                      "type": "text",
+                      "text": "Answer: ",
+                      "bbox": [
+                        525.0,
+                        535.0,
+                        620.0,
+                        548.0
+                      ],
+                      "confidence": 1.0
+                    }
+                  ],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        625.0,
+                        535.0,
+                        685.0,
+                        548.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                }
+              ]
+            },
+            {
+              "question_no": "Q7",
+              "question_id": "S1Q7",
+              "type": "short_answer",
+              "prompt": "Multiplication & Doubling",
+              "instructions": "Use the known fact 6 x 2 = 12 to find 6 x 4 by doubling your answer:",
+              "elements": [
+                {
+                  "type": "text",
+                  "text": "Double of 12 = ",
+                  "bbox": [
+                    42,
+                    328,
+                    97,
+                    334
+                  ],
+                  "confidence": 1.0
+                },
+                {
+                  "type": "text",
+                  "text": " so 6 x 4 = ",
+                  "bbox": [
+                    133,
+                    328,
+                    189,
+                    334
+                  ],
+                  "confidence": 1.0
+                }
+              ],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    100,
+                    328,
+                    131,
+                    334
+                  ]
+                },
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    192,
+                    328,
+                    223,
+                    334
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q8",
+              "question_id": "S1Q8",
+              "type": "short_answer",
+              "prompt": "Halving Numbers",
+              "instructions": "Find half of each of the following numbers",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [],
+              "confidence": 0.98,
+              "sub_questions": [
+                {
+                  "question_no": "a",
+                  "question_id": "S1Q8a",
+                  "type": "short_answer",
+                  "prompt": "Half of 24 =",
+                  "elements": [],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        215.0,
+                        665.0,
+                        275.0,
+                        678.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                },
+                {
+                  "question_no": "b",
+                  "question_id": "S1Q8b",
+                  "type": "short_answer",
+                  "prompt": "Half of 38 =",
+                  "elements": [],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        215.0,
+                        685.0,
+                        275.0,
+                        698.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                },
+                {
+                  "question_no": "c",
+                  "question_id": "S1Q8c",
+                  "type": "short_answer",
+                  "prompt": "Half of 15 =",
+                  "elements": [],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        215.0,
+                        705.0,
+                        275.0,
+                        718.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                }
+              ]
+            },
+            {
+              "question_no": "Q9",
+              "question_id": "S1Q9",
+              "type": "short_answer",
+              "prompt": "Calendar Facts",
+              "instructions": "Fill in the correct number of days",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [],
+              "confidence": 0.98,
+              "sub_questions": [
+                {
+                  "question_no": "a",
+                  "question_id": "S1Q9a",
+                  "type": "short_answer",
+                  "prompt": "Days in a common year =",
+                  "elements": [],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        325.0,
+                        805.0,
+                        385.0,
+                        818.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                },
+                {
+                  "question_no": "b",
+                  "question_id": "S1Q9b",
+                  "type": "short_answer",
+                  "prompt": "Days in a leap year =",
+                  "elements": [],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        325.0,
+                        825.0,
+                        385.0,
+                        838.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                },
+                {
+                  "question_no": "c",
+                  "question_id": "S1Q9c",
+                  "type": "short_answer",
+                  "prompt": "Days in a fortnight =",
+                  "elements": [],
+                  "answer_areas": [
+                    {
+                      "kind": "blank_line",
+                      "bbox": [
+                        325.0,
+                        845.0,
+                        385.0,
+                        858.0
+                      ]
+                    }
+                  ],
+                  "confidence": 0.98,
+                  "sub_questions": []
+                }
+              ]
+            },
+            {
+              "question_no": "Q10",
+              "question_id": "S1Q10",
+              "type": "short_answer",
+              "prompt": "3D Shape Properties",
+              "instructions": "Complete the table below for 3D shapes:",
+              "elements": [
+                {
+                  "type": "text",
+                  "text": "3D Shape",
+                  "bbox": [
+                    269,
+                    419,
+                    317,
+                    429
+                  ],
+                  "confidence": 1.0
+                },
+                {
+                  "type": "text",
+                  "text": "Faces",
+                  "bbox": [
+                    317,
+                    419,
+                    369,
+                    429
+                  ],
+                  "confidence": 1.0
+                },
+                {
+                  "type": "text",
+                  "text": "Edges",
+                  "bbox": [
+                    369,
+                    419,
+                    420,
+                    429
+                  ],
+                  "confidence": 1.0
+                },
+                {
+                  "type": "text",
+                  "text": "Vertices",
+                  "bbox": [
+                    420,
+                    419,
+                    471,
+                    429
+                  ],
+                  "confidence": 1.0
+                },
+                {
+                  "type": "text",
+                  "text": "Cube",
+                  "bbox": [
+                    269,
+                    432,
+                    317,
+                    444
+                  ],
+                  "confidence": 1.0
+                },
+                {
+                  "type": "text",
+                  "text": "Cuboid",
+                  "bbox": [
+                    269,
+                    444,
+                    317,
+                    457
+                  ],
+                  "confidence": 1.0
+                }
+              ],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_box",
+                  "bbox": [
+                    317,
+                    432,
+                    369,
+                    444
+                  ]
+                },
+                {
+                  "kind": "blank_box",
+                  "bbox": [
+                    369,
+                    432,
+                    420,
+                    444
+                  ]
+                },
+                {
+                  "kind": "blank_box",
+                  "bbox": [
+                    420,
+                    432,
+                    471,
+                    444
+                  ]
+                },
+                {
+                  "kind": "blank_box",
+                  "bbox": [
+                    317,
+                    444,
+                    369,
+                    457
+                  ]
+                },
+                {
+                  "kind": "blank_box",
+                  "bbox": [
+                    369,
+                    444,
+                    420,
+                    457
+                  ]
+                },
+                {
+                  "kind": "blank_box",
+                  "bbox": [
+                    420,
+                    444,
+                    471,
+                    457
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            }
+          ],
+          "confidence": 0.98
+        }
+      ],
+      "footer": {},
+      "regions": [],
+      "confidence": 0.98,
+      "warnings": []
+    }
+  ],
+  "confidence": 0.98,
+  "warnings": [],
+  "validation": {
+    "passed": true,
+    "issues": [],
+    "warnings": []
+  },
+  "processing_time_seconds": 15.51,
+  "stage_timers": {
+    "preprocess": 0.496,
+    "layout_ocr": 0.0,
+    "vlm": 14.978,
+    "validation": 0.0
+  },
+  "bbox_unit": "px",
+  "pipeline_version": "1.0.0"
+}

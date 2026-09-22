@@ -5,40 +5,43 @@ Description: Data Ingestion Pipeline. Reads science reference data from science_
 """
 
 import os
+import sys
 import json
 import uuid
 import google.generativeai as genai
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
-# 1. Initialize Gemini API
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-if not GEMINI_API_KEY:
-    print("[ERROR] GEMINI_API_KEY environment variable is not set.")
-    print("Please set it in your environment before running this script.")
-    import sys
-    sys.exit(1)
+_gemini_configured = False
 
-genai.configure(api_key=GEMINI_API_KEY)
 
-# 2. Initialize Qdrant Client
-# Connects to localhost (host machine) by default, or QDRANT_HOST if running inside docker
-QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
-QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
+def init_gemini() -> bool:
+    """Configures Google Generative AI if GEMINI_API_KEY is available."""
+    global _gemini_configured
+    if _gemini_configured:
+        return True
+    gemini_api_key = os.getenv("GEMINI_API_KEY", "")
+    if not gemini_api_key:
+        return False
+    genai.configure(api_key=gemini_api_key)
+    _gemini_configured = True
+    return True
 
-print(f"Connecting to Qdrant at http://{QDRANT_HOST}:{QDRANT_PORT}...")
-try:
-    qdrant_client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
-except Exception as e:
-    print(f"[ERROR] Failed to connect to Qdrant: {e}")
-    import sys
-    sys.exit(1)
 
-# 3. Embedding Helper
+def get_qdrant_client() -> QdrantClient:
+    """Connects to localhost (host machine) by default, or QDRANT_HOST if running inside docker."""
+    qdrant_host = os.getenv("QDRANT_HOST", "localhost")
+    qdrant_port = int(os.getenv("QDRANT_PORT", 6333))
+    print(f"Connecting to Qdrant at http://{qdrant_host}:{qdrant_port}...")
+    return QdrantClient(host=qdrant_host, port=qdrant_port)
+
+
 def get_embedding(text: str) -> list:
     """
     Generates a 768-dimension vector embedding for the input text using Gemini.
     """
+    if not init_gemini():
+        raise RuntimeError("GEMINI_API_KEY is not set in environment.")
     try:
         response = genai.embed_content(
             model="models/text-embedding-004",
@@ -56,8 +59,20 @@ def get_embedding(text: str) -> list:
         )
         return response["embedding"]
 
+
 def main():
-    # 4. Load Science Reference Data
+    if not init_gemini():
+        print("[ERROR] GEMINI_API_KEY environment variable is not set.")
+        print("Please set it in your environment before running this script.")
+        sys.exit(1)
+
+    try:
+        qdrant_client = get_qdrant_client()
+    except Exception as e:
+        print(f"[ERROR] Failed to connect to Qdrant: {e}")
+        sys.exit(1)
+
+    # Load Science Reference Data
     data_file = os.path.join(os.path.dirname(__file__), "data_sources", "science_reference.json")
     if not os.path.exists(data_file):
         print(f"[ERROR] Data file not found at: {data_file}")
@@ -83,7 +98,7 @@ def main():
 
         print(f"\nProcessing [{collection_name}] -> '{keyword}'...")
 
-        # 5. Create Collection if not already done
+        # Create Collection if not already done
         if collection_name not in created_collections:
             # Check if collection exists in Qdrant
             collections_list = qdrant_client.get_collections().collections
@@ -100,11 +115,11 @@ def main():
                 )
             created_collections.add(collection_name)
 
-        # 6. Generate Vector Embedding
+        # Generate Vector Embedding
         print("Generating embedding vector...")
         vector = get_embedding(text)
 
-        # 7. Upload Point to Qdrant
+        # Upload Point to Qdrant
         point_id = str(uuid.uuid4())
         payload = {
             "keyword": keyword,
@@ -123,11 +138,12 @@ def main():
                 )
             ]
         )
-        print(f"Ingested successfully!")
+        print("Ingested successfully!")
 
     print("\n==============================================")
     print("      DATA INGESTION PIPELINE COMPLETE        ")
     print("==============================================")
+
 
 if __name__ == "__main__":
     main()

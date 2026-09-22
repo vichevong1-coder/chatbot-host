@@ -47,6 +47,8 @@ services:
       - "${ORCHESTRATOR_PORT:-9000}:${ORCHESTRATOR_PORT:-9000}"
     env_file:
       - .env
+    environment:
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
     depends_on:
       - redis
       - qdrant
@@ -64,6 +66,8 @@ services:
       - "${MATH_SERVICE_PORT:-9001}:${MATH_SERVICE_PORT:-9001}"
     env_file:
       - .env
+    environment:
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
     networks:
       - science-network
 
@@ -77,6 +81,23 @@ services:
       - "${SCIENCE_SERVICE_PORT:-9002}:${SCIENCE_SERVICE_PORT:-9002}"
     env_file:
       - .env
+    environment:
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
+    networks:
+      - science-network
+
+  # Homework Scanner & OCR Pipeline
+  homework-scanner:
+    build:
+      context: ./services/homework_scanner
+      dockerfile: Dockerfile
+    container_name: homework-scanner
+    ports:
+      - "${HOMEWORK_SCANNER_PORT:-9003}:${HOMEWORK_SCANNER_PORT:-9003}"
+    env_file:
+      - .env
+    environment:
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
     networks:
       - science-network
 

@@ -20,7 +20,7 @@
 | **Part 3: Domain Solvers & Answer Validator** | Elementary Math & Science decomposition into 2–4 verified steps, ground truth targets, fuzzy/conceptual equivalence checking | ✅ **DONE** | 19/19 Tests Passing (`test_solvers.py`) |
 | **Part 4: Child Safety Guardrails & Deflection** | PII redaction, inappropriate content filtering, non-homework educational scope deflection | ✅ **DONE** | 17/17 Tests Passing (`test_guardrails.py`) |
 | **Part 5: Session Persistence & Step Navigation** | Redis session state management, rolling AI summary of previous turns, step-jumping navigation (`/api/step/navigate`) | ✅ **DONE** | 13/13 Tests Passing (`test_session_nav.py`) |
-| **Part 6: OCR & Vision Extraction (With Mock Fallback)** | Gemini 2.5 Vision worksheet extraction, `POST /api/upload/ocr`, zero-model simulated fallback mode | ⏳ Pending | Pending |
+| **Part 6: OCR & Vision Extraction (With Mock Fallback)** | Gemini 2.5 Vision worksheet extraction, `POST /api/upload/ocr`, zero-model simulated fallback mode | ✅ **DONE** | 4/4 Tests Passing (`test_ocr_upload.py`) |
 
 ---
 
@@ -244,18 +244,19 @@ Science_chatbot/
 
 ---
 
-### ⏳ Part 6: OCR Worksheet Vision Pipeline (With Zero-Model Fallback)
-- **Status**: ⏳ **Pending**
+### ✅ Part 6: OCR Worksheet Vision Pipeline (With Zero-Model Fallback) (COMPLETED)
+- **Status**: ✅ **Done**
 - **Target Files**:
   - `orchestrator/app/services/ocr/__init__.py`
   - `orchestrator/app/services/ocr/extractor.py`
   - `orchestrator/app/api/upload.py`
   - `testing/test_ocr_upload.py`
+  - `services/homework_scanner/` (Standalone OCR + VLM Microservice)
 - **Checklist**:
-  - [ ] Implement `POST /api/upload/ocr` accepting worksheet photo uploads (`.png`, `.jpg`, `.webp`).
-  - [ ] Gemini 2.5 Vision transcription engine extracting clean question text.
-  - [ ] Zero-model mock fallback mode: enables instant development and testing even when no OCR model is connected.
-  - [ ] Unit and endpoint tests for image uploads.
+  - [x] Implement `POST /api/upload/ocr` accepting worksheet photo uploads (`.png`, `.jpg`, `.webp`, `.pdf`).
+  - [x] Integration with `HomeworkScannerClient` in orchestrator infrastructure.
+  - [x] Zero-model mock fallback mode: enables instant development and testing even when no OCR model is connected.
+  - [x] Unit and endpoint tests for image uploads (4/4 passed).
 
 ---
 
@@ -268,4 +269,4 @@ Science_chatbot/
 | **Part 3** | `testing/test_solvers.py` | ✅ **19/19 PASSED** (Grade 1–3 math/science step breakdown, multi-modal & conceptual equivalence) |
 | **Part 4** | `testing/test_guardrails.py` | ✅ **17/17 PASSED** (100% deflection of gaming/off-topic chat, PII redacted, safe boundaries) |
 | **Part 5** | `testing/test_session_nav.py` | ✅ **13/13 PASSED** (Redis session recovery, multi-mode `/api/step/navigate`, restored stepper card, rolling AI compaction) |
-| **Part 6** | `testing/test_ocr_upload.py` | ⏳ Image upload to clean text transcription & simulated mode |
+| **Part 6** | `testing/test_ocr_upload.py` | ✅ **4/4 PASSED** (Worksheet upload validation, zero-model mock extraction, structured homework parsing) |

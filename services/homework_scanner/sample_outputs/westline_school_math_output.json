@@ -1,0 +1,336 @@
+{
+  "status": "success",
+  "document": {
+    "title": "The Westline School",
+    "language": [
+      "English"
+    ],
+    "pages": 1,
+    "subject": "Maths"
+  },
+  "pages": [
+    {
+      "page_number": 1,
+      "width": 565,
+      "height": 607,
+      "header": {
+        "school": "The Westline School",
+        "subject": "Maths",
+        "signature_box": {
+          "present": true,
+          "filled": false
+        }
+      },
+      "directions": [
+        {
+          "label": "A",
+          "text": "Add the numbers and write the answers."
+        },
+        {
+          "label": "B",
+          "text": "Find the missing numbers to make 100."
+        }
+      ],
+      "sections": [
+        {
+          "section_id": "A",
+          "title": "A. Add the numbers and write the answers.",
+          "figure": {
+            "present": false
+          },
+          "elements": [],
+          "questions": [
+            {
+              "question_no": "1",
+              "question_id": "A1",
+              "type": "short_answer",
+              "prompt": "1. 4 + 5 + 6 =",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    381,
+                    131,
+                    477,
+                    149
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            },
+            {
+              "question_no": "2",
+              "question_id": "A2",
+              "type": "short_answer",
+              "prompt": "2. 7 + 3 + 2 + 5 =",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    381,
+                    191,
+                    477,
+                    209
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            },
+            {
+              "question_no": "3",
+              "question_id": "A3",
+              "type": "short_answer",
+              "prompt": "3. 8 + 1 + 4 =",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    381,
+                    234,
+                    477,
+                    252
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            },
+            {
+              "question_no": "4",
+              "question_id": "A4",
+              "type": "short_answer",
+              "prompt": "4. 9 + 2 + 3 + 1 =",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    381,
+                    276,
+                    477,
+                    294
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            },
+            {
+              "question_no": "5",
+              "question_id": "A5",
+              "type": "short_answer",
+              "prompt": "5. 6 + 6 + 4 =",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    381,
+                    319,
+                    477,
+                    337
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            }
+          ],
+          "confidence": 0.98
+        },
+        {
+          "section_id": "B",
+          "title": "B. Find the missing numbers to make 100.",
+          "figure": {
+            "present": false
+          },
+          "elements": [],
+          "questions": [
+            {
+              "question_no": "1",
+              "question_id": "B1",
+              "type": "short_answer",
+              "prompt": "1. 30 + [ ] = 100",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_box",
+                  "bbox": [
+                    178,
+                    398,
+                    223,
+                    452
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            },
+            {
+              "question_no": "2",
+              "question_id": "B2",
+              "type": "short_answer",
+              "prompt": "2. 20 + [ ] = 100",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_box",
+                  "bbox": [
+                    398,
+                    398,
+                    444,
+                    452
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            },
+            {
+              "question_no": "3",
+              "question_id": "B3",
+              "type": "short_answer",
+              "prompt": "3. 35 + [ ] = 100",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_box",
+                  "bbox": [
+                    178,
+                    464,
+                    223,
+                    519
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            },
+            {
+              "question_no": "4",
+              "question_id": "B4",
+              "type": "short_answer",
+              "prompt": "4. 48 + [ ] = 100",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_box",
+                  "bbox": [
+                    398,
+                    464,
+                    444,
+                    519
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            },
+            {
+              "question_no": "5",
+              "question_id": "B5",
+              "type": "short_answer",
+              "prompt": "5. 67 + [ ] = 100",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_box",
+                  "bbox": [
+                    178,
+                    531,
+                    223,
+                    586
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            },
+            {
+              "question_no": "6",
+              "question_id": "B6",
+              "type": "short_answer",
+              "prompt": "6. 54 + [ ] = 100",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_box",
+                  "bbox": [
+                    398,
+                    531,
+                    444,
+                    586
+                  ]
+                }
+              ],
+              "confidence": 0.98,
+              "sub_questions": []
+            }
+          ],
+          "confidence": 0.98
+        }
+      ],
+      "footer": {
+        "left": "Prepared and compiled by iEY & iP Team",
+        "right": "Subject: Maths"
+      },
+      "regions": [],
+      "confidence": 0.98,
+      "warnings": []
+    }
+  ],
+  "confidence": 0.98,
+  "warnings": [],
+  "validation": {
+    "passed": true,
+    "issues": [],
+    "warnings": []
+  },
+  "processing_time_seconds": 11.53,
+  "stage_timers": {
+    "preprocess": 0.398,
+    "layout_ocr": 0.0,
+    "vlm": 11.092,
+    "validation": 0.0
+  },
+  "bbox_unit": "px",
+  "pipeline_version": "1.0.0"
+}

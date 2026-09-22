@@ -270,6 +270,29 @@ class ScienceServiceClient(HttpxServiceClient):
         return await self._execute_with_retry("SCIENCE_VALIDATE", _call)
 
 
+class HomeworkScannerClient(HttpxServiceClient):
+    """Client for Homework OCR/VLM Microservice."""
+    def __init__(self, base_url: str, timeout: float = 60.0):
+        super().__init__(base_url=base_url, name="HOMEWORK_SCANNER", timeout=timeout)
+
+    async def process_homework(
+        self,
+        file_bytes: bytes,
+        filename: str,
+        debug_crops: bool = False,
+    ) -> Dict[str, Any]:
+        url = f"{self.base_url}/process-homework"
+        files = {"file": (filename, file_bytes)}
+        params = {"debug_crops": debug_crops}
+
+        async def _call():
+            resp = await self.client.post(url, files=files, params=params)
+            resp.raise_for_status()
+            return resp.json()
+
+        return await self._execute_with_retry("HOMEWORK_PROCESS", _call)
+
+
 class ServiceRegistry:
     """Central registry of active microservice clients."""
     def __init__(self):
@@ -304,6 +327,10 @@ class ServiceClientFactory:
     def create_science_client(base_url: str) -> ScienceServiceClient:
         return ScienceServiceClient(base_url=base_url)
 
+    @staticmethod
+    def create_homework_scanner_client(base_url: str) -> HomeworkScannerClient:
+        return HomeworkScannerClient(base_url=base_url)
+
 
 # Global Service Registry singleton
 _service_registry: Optional[ServiceRegistry] = None
@@ -317,10 +344,12 @@ def get_service_registry() -> ServiceRegistry:
 
 def initialize_service_clients(cfg: Any = settings) -> ServiceRegistry:
     registry = get_service_registry()
-    if cfg.MATH_SERVICE_URL:
+    if getattr(cfg, "MATH_SERVICE_URL", None):
         registry.register("MATH", ServiceClientFactory.create_math_client(cfg.MATH_SERVICE_URL))
-    if cfg.SCIENCE_SERVICE_URL:
+    if getattr(cfg, "SCIENCE_SERVICE_URL", None):
         registry.register("SCIENCE", ServiceClientFactory.create_science_client(cfg.SCIENCE_SERVICE_URL))
+    if getattr(cfg, "HOMEWORK_SCANNER_URL", None):
+        registry.register("HOMEWORK_SCANNER", ServiceClientFactory.create_homework_scanner_client(cfg.HOMEWORK_SCANNER_URL))
     return registry
 
 

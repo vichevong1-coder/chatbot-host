@@ -1,0 +1,537 @@
+{
+  "status": "success",
+  "document": {
+    "language": [
+      "English"
+    ],
+    "pages": 1,
+    "subject": "Maths & Science Homework Revision"
+  },
+  "pages": [
+    {
+      "page_number": 1,
+      "width": 748,
+      "height": 843,
+      "header": {
+        "homework_no": "Targeted Practice • 20 Questions",
+        "subject": "Maths & Science Homework Revision",
+        "signature_box": {
+          "present": false,
+          "filled": false
+        }
+      },
+      "directions": [],
+      "sections": [
+        {
+          "section_id": "SECTION 1",
+          "title": "SECTION 1: MATHEMATICS",
+          "figure": {
+            "present": false
+          },
+          "elements": [],
+          "questions": [
+            {
+              "question_no": "Q1",
+              "question_id": "1a",
+              "type": "short_answer",
+              "prompt": "a) Calculate: 9 + 2 + 3 + 1 =",
+              "instructions": "Addition & Number Bonds",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    191,
+                    229,
+                    310,
+                    275
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q1",
+              "question_id": "1b",
+              "type": "short_answer",
+              "prompt": "b) Find the missing number: 35 + _______________ = 100",
+              "instructions": "Addition & Number Bonds",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    206,
+                    247,
+                    340,
+                    308
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q2",
+              "question_id": "2",
+              "type": "short_answer",
+              "prompt": "Using the known number fact 4 + 7 = 11, solve the following calculation:\n54 + 7 =",
+              "instructions": "Number Patterns & Bridging",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    226,
+                    265,
+                    534,
+                    525
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q3",
+              "question_id": "3",
+              "type": "short_answer",
+              "prompt": "Write the number 805 in expanded place value form:\n_______________ Hundreds + _______________ Tens +\n_______________ Ones",
+              "instructions": "Place Value & Expanded Form",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    103,
+                    36,
+                    319,
+                    376
+                  ]
+                },
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    265,
+                    223,
+                    319,
+                    376
+                  ]
+                },
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    103,
+                    36,
+                    334,
+                    392
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q4",
+              "question_id": "4a",
+              "type": "short_answer",
+              "prompt": "a) Order from smallest to greatest: 867, 876,\n786\n_______________, _______________, _______________",
+              "instructions": "Comparing & Ordering Numbers",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    324,
+                    379,
+                    462,
+                    447
+                  ]
+                },
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    324,
+                    379,
+                    548,
+                    537
+                  ]
+                },
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    324,
+                    379,
+                    626,
+                    633
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q4",
+              "question_id": "4b",
+              "type": "short_answer",
+              "prompt": "b) Use <, >, or = : 426 _______________ 462",
+              "instructions": "Comparing & Ordering Numbers",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    340,
+                    393,
+                    628,
+                    635
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q5",
+              "question_id": "5a",
+              "type": "short_answer",
+              "prompt": "Solve by adding/subtracting tens first and\nadjusting:\na) 35 + 9 =",
+              "instructions": "Adjusting Tens",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    197,
+                    137,
+                    440,
+                    506
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q5",
+              "question_id": "5b",
+              "type": "short_answer",
+              "prompt": "b) 58 + 11 =",
+              "instructions": "Adjusting Tens",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    197,
+                    147,
+                    455,
+                    521
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q6",
+              "question_id": "6a",
+              "type": "short_answer",
+              "prompt": "a) What is the total value of eight 10p coins?\n_______________ p",
+              "instructions": "Counting Money & Division",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    421,
+                    441,
+                    476,
+                    485
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q6",
+              "question_id": "6b",
+              "type": "short_answer",
+              "prompt": "b) How many 5p coins make 45p? (45 ÷ 5)\nAnswer: _______________ coins",
+              "instructions": "Counting Money & Division",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    453,
+                    515,
+                    521,
+                    524
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q7",
+              "question_id": "7",
+              "type": "short_answer",
+              "prompt": "Use the known fact 6 × 2 = 12 to find 6 × 4 by\ndoubling your answer:\nDouble of 12 = _______________, so 6 × 4 =\n_______________",
+              "instructions": "Multiplication & Doubling",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    212,
+                    161,
+                    551,
+                    630
+                  ]
+                },
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    101,
+                    36,
+                    573,
+                    654
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q8",
+              "question_id": "8a",
+              "type": "short_answer",
+              "prompt": "Find half of each of the following numbers:\na) Half of 24 =",
+              "instructions": "Halving Numbers",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    537,
+                    566,
+                    567,
+                    613
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q8",
+              "question_id": "8b",
+              "type": "short_answer",
+              "prompt": "b) Half of 38 =",
+              "instructions": "Halving Numbers",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    553,
+                    566,
+                    567,
+                    630
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q8",
+              "question_id": "8c",
+              "type": "short_answer",
+              "prompt": "c) Half of 15 =",
+              "instructions": "Halving Numbers",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    567,
+                    566,
+                    567,
+                    647
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q9",
+              "question_id": "9a",
+              "type": "short_answer",
+              "prompt": "Fill in the correct number of days:\na) Days in a common year =",
+              "instructions": "Calendar Facts",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    303,
+                    267,
+                    650,
+                    742
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q9",
+              "question_id": "9b",
+              "type": "short_answer",
+              "prompt": "b) Days in a leap year =",
+              "instructions": "Calendar Facts",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    273,
+                    234,
+                    667,
+                    760
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q9",
+              "question_id": "9c",
+              "type": "short_answer",
+              "prompt": "c) Days in a fortnight =",
+              "instructions": "Calendar Facts",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "blank_line",
+                  "bbox": [
+                    267,
+                    227,
+                    682,
+                    777
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            },
+            {
+              "question_no": "Q10",
+              "question_id": "10",
+              "type": "table",
+              "instructions": "3D Shape Properties\nComplete the table below for 3D shapes:",
+              "elements": [],
+              "figure": {
+                "present": false
+              },
+              "answer_areas": [
+                {
+                  "kind": "table_cell",
+                  "bbox": [
+                    490,
+                    441,
+                    675,
+                    780
+                  ]
+                }
+              ],
+              "confidence": 0.95,
+              "sub_questions": []
+            }
+          ],
+          "confidence": 0.95
+        }
+      ],
+      "footer": {},
+      "regions": [],
+      "confidence": 0.95,
+      "warnings": []
+    }
+  ],
+  "confidence": 0.95,
+  "warnings": [],
+  "validation": {
+    "passed": true,
+    "issues": [],
+    "warnings": [
+      "Page 1: invalid answer_area bbox — [8c] x1=567 >= x2=567 (must be x1 < x2)"
+    ]
+  },
+  "processing_time_seconds": 11.8,
+  "stage_timers": {
+    "preprocess": 0.456,
+    "layout_ocr": 0.0,
+    "vlm": 11.279,
+    "validation": 0.0
+  },
+  "bbox_unit": "px",
+  "pipeline_version": "1.0.0"
+}

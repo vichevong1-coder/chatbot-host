@@ -154,7 +154,8 @@ def solve_chemistry_ai(expression: str, grade_level: str = "grade_1_3") -> dict:
         }
 
     try:
-        model = genai.GenerativeModel("gemini-flash-latest")
+        model_name = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+        model = genai.GenerativeModel(model_name)
         prompt = prompt_controller.get_prompt("chemistry", expression, grade_level)
         response = model.generate_content(prompt)
         text = response.text.strip()
