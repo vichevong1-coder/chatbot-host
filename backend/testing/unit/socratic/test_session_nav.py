@@ -398,6 +398,7 @@ def test_api_step_navigate_boundary_errors():
 
 def test_api_get_session_active_restoration():
     sid = "test_get_sess_restored"
+    session_manager.delete_session(sid)
     sess = session_manager.get_or_create_session(sid)
     steps = [
         SocraticStep(step_number=1, title="Step 1", mission="Mission 1", clue="Clue 1",

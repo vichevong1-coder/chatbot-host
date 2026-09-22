@@ -228,11 +228,12 @@ class OCRExtractor:
             "raw_payload": raw,
         }
 
-    def _generate_mock_extraction(self, filename: str) -> Dict[str, Any]:
+    def _generate_mock_extraction(self, filename: str = "practice_worksheet.png") -> Dict[str, Any]:
         """Deterministic zero-model simulated fallback for fast development and testing."""
-        lower_name = filename.lower()
-        if "multi" in lower_name or "practice" in lower_name or "sheet" in lower_name:
-            # Simulate a multi-exercise worksheet (e.g. Q5 Adjusting Tens, Q6 Counting Money)
+        lower_name = (filename or "practice_worksheet.png").lower()
+        is_single_specific = any(k in lower_name for k in ["single", "cookie", "fraction", "sunlight", "melt_ice"])
+        if not is_single_specific:
+            # Simulate a multi-exercise worksheet (Q5 Adjusting Tens, Q6 Counting Money, Q7 Multiplication)
             exercises = [
                 {
                     "exercise_id": "ex_1",
@@ -246,8 +247,24 @@ class OCRExtractor:
                     "prompt": "Solve by adding/subtracting tens first and adjusting: a) 35 + 9 = ___  b) 58 + 11 = ___",
                     "preview": "Adjusting Tens: a) 35 + 9 = ___, b) 58 + 11 = ___",
                     "sub_questions": [
-                        {"question_no": "a", "type": "fill_blank", "prompt": "35 + 9 = ___", "answer_areas": []},
-                        {"question_no": "b", "type": "fill_blank", "prompt": "58 + 11 = ___", "answer_areas": []},
+                        {
+                            "question_no": "a",
+                            "type": "fill_blank",
+                            "prompt": "35 + 9 = ___",
+                            "answer": "44",
+                            "expected_answer": "44",
+                            "hint": "35 + 10 = 45, then 45 - 1 = 44",
+                            "answer_areas": []
+                        },
+                        {
+                            "question_no": "b",
+                            "type": "fill_blank",
+                            "prompt": "58 + 11 = ___",
+                            "answer": "69",
+                            "expected_answer": "69",
+                            "hint": "58 + 10 = 68, then 68 + 1 = 69",
+                            "answer_areas": []
+                        },
                     ],
                     "confidence": 0.98,
                 },
@@ -258,13 +275,29 @@ class OCRExtractor:
                     "tab_label_khmer": "លំហាត់ទី ២",
                     "number": "Q6",
                     "title": "Counting Money & Division",
-                    "instructions": None,
+                    "instructions": "Calculate coin amounts and divisions",
                     "scanned_text": "1. What is the total value of eight 10p coins?\n2. How many 5p coins make 45p? (45 ÷ 5)",
                     "prompt": "a) What is the total value of eight 10p coins? b) How many 5p coins make 45p? (45 ÷ 5)",
                     "preview": "Counting Money & Division: Eight 10p coins, 5p coins in 45p",
                     "sub_questions": [
-                        {"question_no": "a", "type": "fill_blank", "prompt": "What is the total value of eight 10p coins?", "answer_areas": []},
-                        {"question_no": "b", "type": "fill_blank", "prompt": "How many 5p coins make 45p? (45 ÷ 5)", "answer_areas": []},
+                        {
+                            "question_no": "a",
+                            "type": "fill_blank",
+                            "prompt": "What is the total value of eight 10p coins?",
+                            "answer": "80",
+                            "expected_answer": "80",
+                            "hint": "8 × 10 = 80",
+                            "answer_areas": []
+                        },
+                        {
+                            "question_no": "b",
+                            "type": "fill_blank",
+                            "prompt": "How many 5p coins make 45p? (45 ÷ 5)",
+                            "answer": "9",
+                            "expected_answer": "9",
+                            "hint": "45 ÷ 5 = 9",
+                            "answer_areas": []
+                        },
                     ],
                     "confidence": 0.95,
                 },
@@ -279,7 +312,26 @@ class OCRExtractor:
                     "scanned_text": "Double 24 = ___, Double 35 = ___",
                     "prompt": "Double 24 = ___, Double 35 = ___",
                     "preview": "Multiplication & Doubling: Double 24, Double 35",
-                    "sub_questions": [],
+                    "sub_questions": [
+                        {
+                            "question_no": "a",
+                            "type": "fill_blank",
+                            "prompt": "Double 24 = ___",
+                            "answer": "48",
+                            "expected_answer": "48",
+                            "hint": "24 + 24 = 48",
+                            "answer_areas": []
+                        },
+                        {
+                            "question_no": "b",
+                            "type": "fill_blank",
+                            "prompt": "Double 35 = ___",
+                            "answer": "70",
+                            "expected_answer": "70",
+                            "hint": "35 + 35 = 70",
+                            "answer_areas": []
+                        },
+                    ],
                     "confidence": 0.93,
                 },
             ]

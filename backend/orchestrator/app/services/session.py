@@ -255,6 +255,11 @@ class SessionManager:
         Retrieves an existing session without creating a new one if it does not exist.
         Checks Redis first, then in-memory local cache.
         """
+        if session_id in self._local_sessions:
+            session = self._local_sessions[session_id]
+            session._on_change = lambda: self._save_session(session)
+            return session
+
         if self.redis_client:
             try:
                 raw_data = self.redis_client.get(f"session:{session_id}:context")
@@ -267,11 +272,6 @@ class SessionManager:
                     return session
             except Exception as e:
                 logger.warning(f"Failed to load session context from Redis ({e}). Checking local cache.")
-
-        if session_id in self._local_sessions:
-            session = self._local_sessions[session_id]
-            session._on_change = lambda: self._save_session(session)
-            return session
 
         return None
 

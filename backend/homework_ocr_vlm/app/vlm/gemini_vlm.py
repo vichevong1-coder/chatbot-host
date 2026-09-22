@@ -27,16 +27,18 @@ logger = logging.getLogger(__name__)
 class GeminiVLM(VLMProvider):
     """Google Gemini Vision provider using the new google-genai SDK."""
 
-    def __init__(self, api_key: str, model_name: str = "gemini-flash-lite-latest"):
+    def __init__(self, api_key: str, model_name: str = "gemini-3.5-flash"):
         from google import genai
         from google.genai import types as genai_types
         self._client = genai.Client(api_key=api_key)
         
-        # Google has sunset 2.5-flash for new users; map seamlessly to fastest available flash-lite
+        # Google deprecates older models for new API keys; map seamlessly to fastest available flash model
         alias_map = {
-            "gemini-2.5-flash": "gemini-flash-lite-latest",
-            "gemini-2.5-flash-lite": "gemini-flash-lite-latest",
-            "gemini-2.0-flash": "gemini-flash-lite-latest",
+            "gemini-2.5-flash": "gemini-3.5-flash",
+            "gemini-2.5-flash-lite": "gemini-3.5-flash",
+            "gemini-2.0-flash": "gemini-3.5-flash",
+            "gemini-flash-latest": "gemini-3.5-flash",
+            "gemini-flash-lite-latest": "gemini-3.5-flash",
         }
         self._model_name = alias_map.get(model_name, model_name)
         self._genai_types = genai_types
@@ -53,25 +55,39 @@ class GeminiVLM(VLMProvider):
         image_bytes = base64.b64decode(b64data)
         return self._genai_types.Part.from_bytes(data=image_bytes, mime_type=mime)
 
-    def _call_model(self, contents: list, max_retries: int = 1) -> str:
-        """Call Gemini with quick retry before failover to fallback."""
-        for attempt in range(1, max_retries + 1):
-            try:
-                response = self._client.models.generate_content(
-                    model=self._model_name,
-                    contents=contents,
-                    config=self._genai_types.GenerateContentConfig(
-                        temperature=0.1,
-                        max_output_tokens=8192,
-                    ),
-                )
-                return response.text
-            except Exception as exc:
-                logger.warning("Gemini attempt %d/%d failed: %s", attempt, max_retries, exc)
-                if attempt < max_retries:
-                    time.sleep(1.0)
-                else:
-                    raise
+    def _call_model(self, contents: list, max_retries: int = 2) -> str:
+        """Call Gemini with automatic model failover if a model encounters temporary demand spikes (503)."""
+        candidate_models = [self._model_name]
+        for m in ["gemini-3.5-flash", "gemini-3.6-flash"]:
+            if m not in candidate_models:
+                candidate_models.append(m)
+
+        last_exc = None
+        for model in candidate_models:
+            for attempt in range(1, max_retries + 1):
+                try:
+                    logger.info("Attempting Gemini model '%s' (attempt %d/%d)...", model, attempt, max_retries)
+                    response = self._client.models.generate_content(
+                        model=model,
+                        contents=contents,
+                        config=self._genai_types.GenerateContentConfig(
+                            temperature=0.1,
+                            max_output_tokens=8192,
+                            thinking_config=self._genai_types.ThinkingConfig(thinking_budget=0),
+                        ),
+                    )
+                    return response.text
+                except Exception as exc:
+                    logger.warning("Gemini model '%s' attempt %d/%d failed: %s", model, attempt, max_retries, exc)
+                    last_exc = exc
+                    if attempt < max_retries:
+                        time.sleep(1.0)
+                    else:
+                        break  # move to next candidate model
+
+        if last_exc:
+            raise last_exc
+        raise RuntimeError("No candidate Gemini models succeeded")
 
     def analyze_page(
         self,

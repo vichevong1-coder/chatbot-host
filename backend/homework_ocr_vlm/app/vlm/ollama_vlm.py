@@ -143,9 +143,10 @@ class OllamaVLM(VLMProvider):
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
         self._headers = {
-            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
+        if api_key and api_key.strip():
+            self._headers["Authorization"] = f"Bearer {api_key.strip()}"
         # Compute hash of the in-memory prompt for drift detection (Item 1)
         self._prompt_hash = hashlib.sha256(PAGE_ANALYSIS_PROMPT.encode()).hexdigest()[:12]
         logger.info(

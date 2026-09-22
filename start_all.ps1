@@ -30,10 +30,17 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\backend
 Write-Host "Starting Orchestrator Gateway on http://localhost:9000/docs ..." -ForegroundColor Yellow
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\backend\orchestrator'; Write-Host '--- Orchestrator Gateway (Port 9000) ---' -ForegroundColor Green; & '$python' -m uvicorn app.main:app --port 9000 --reload"
 
+# 5. Frontend Web UI (Port 5173)
+if (Test-Path "$root\frontend\package.json") {
+    Write-Host "Starting Frontend Dev Server on http://localhost:5173 ..." -ForegroundColor Yellow
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\frontend'; Write-Host '--- Frontend Dev Server (Port 5173) ---' -ForegroundColor Green; npm run dev"
+}
+
 Write-Host ""
-Write-Host "✅ All 4 backend services have been launched in separate terminal windows!" -ForegroundColor Green
+Write-Host "✅ All services have been launched in separate terminal windows!" -ForegroundColor Green
 Write-Host "You can open any of the following in your browser:"
-Write-Host "  1. Orchestrator Gateway: http://localhost:9000/docs" -ForegroundColor Cyan
-Write-Host "  2. Homework Scanner:     http://localhost:9003/docs" -ForegroundColor Cyan
-Write-Host "  3. Math Service:         http://localhost:9001/docs" -ForegroundColor Cyan
-Write-Host "  4. Science Service:      http://localhost:9002/docs" -ForegroundColor Cyan
+Write-Host "  1. Frontend Web App:     http://localhost:5173" -ForegroundColor Cyan
+Write-Host "  2. Orchestrator Gateway: http://localhost:9000/docs" -ForegroundColor Cyan
+Write-Host "  3. Homework Scanner:     http://localhost:9003/docs" -ForegroundColor Cyan
+Write-Host "  4. Math Service:         http://localhost:9001/docs" -ForegroundColor Cyan
+Write-Host "  5. Science Service:      http://localhost:9002/docs" -ForegroundColor Cyan

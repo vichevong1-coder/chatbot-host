@@ -48,6 +48,15 @@ async def upload_and_ocr(
     return result
 
 
+@upload_router.get(
+    "/mock",
+    summary="Get hardcoded multi-exercise worksheet mock directly",
+    description="Returns the deterministic multi-exercise worksheet (Q5, Q6, Q7) for frontend testing and offline development.",
+)
+async def get_mock_worksheet():
+    return ocr_extractor._generate_mock_extraction("practice_worksheet.png")
+
+
 class SelectExerciseRequest(BaseModel):
     session_id: Optional[str] = None
     exercise_id: str = Field(..., description="Selected exercise ID (e.g. ex_1, Q5)")

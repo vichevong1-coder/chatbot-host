@@ -1,24 +1,29 @@
 """
 File: orchestrator/app/services/llm/providers/gemini_provider.py
-Description: Google Gemini Adapter implementing BaseLLMProvider.
+Description: Modern Google Gemini Adapter implementing BaseLLMProvider via google.genai SDK.
 """
 
 import os
 import time
 import logging
 import asyncio
-from typing import Optional, Dict, Any
-import google.generativeai as genai
+from typing import Optional, Dict, Any, List
+
+from google import genai
+from google.genai import types
 
 from app.services.llm.base import BaseLLMProvider, LLMResponse, ModelTier
 from app.core.config import settings
 
 logger = logging.getLogger("orchestrator.llm.gemini")
 
+# Order: gemini-3.6-flash first for high reliability and quota headroom, followed by gemini-3.5-flash
+CANDIDATE_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash"]
+
 
 class GeminiProvider(BaseLLMProvider):
     """
-    Adapter for Google Gemini API via google.generativeai SDK.
+    Adapter for Google Gemini API via official google.genai SDK.
     """
     def __init__(
         self,
@@ -27,37 +32,41 @@ class GeminiProvider(BaseLLMProvider):
         reasoning_model: Optional[str] = None,
         translation_model: Optional[str] = None,
         temperature: Optional[float] = None,
-        max_retries: int = 2
+        max_retries: int = 1
     ):
         configured_temp = temperature if temperature is not None else getattr(settings, "GEMINI_TEMPERATURE", 0.7)
         super().__init__(name="gemini", default_temperature=configured_temp)
         self.api_key = api_key or getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
-        
-        default_model = getattr(settings, "GEMINI_MODEL", "") or os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+
+        default_model = getattr(settings, "GEMINI_MODEL", "") or os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
         self.fast_model_name = fast_model or default_model
         self.reasoning_model_name = reasoning_model or default_model
         self.translation_model_name = translation_model or default_model
         self.max_retries = max_retries
-        self._configured = False
+        self._client: Optional[genai.Client] = None
 
         if self.api_key:
             try:
-                genai.configure(api_key=self.api_key)
-                self._configured = True
+                self._client = genai.Client(api_key=self.api_key)
             except Exception as e:
-                logger.warning(f"Failed to configure Gemini SDK: {e}")
+                logger.warning(f"Failed to initialize google.genai Client: {e}")
 
     def is_available(self) -> bool:
-        return bool(self._configured and self.api_key)
+        return bool(self._client is not None and self.api_key)
 
-    def _resolve_model_name(self, tier: ModelTier) -> str:
-        if tier == ModelTier.FAST:
-            return self.fast_model_name
-        elif tier == ModelTier.REASONING:
-            return self.reasoning_model_name
+    def _resolve_candidate_models(self, tier: ModelTier) -> List[str]:
+        primary = self.fast_model_name
+        if tier == ModelTier.REASONING:
+            primary = self.reasoning_model_name
         elif tier == ModelTier.TRANSLATION:
-            return self.translation_model_name
-        return self.fast_model_name
+            primary = self.translation_model_name
+
+        # Ensure priority model comes first, followed by alternates
+        models = [primary]
+        for c in CANDIDATE_MODELS:
+            if c not in models:
+                models.append(c)
+        return models
 
     def generate_text(
         self,
@@ -67,55 +76,61 @@ class GeminiProvider(BaseLLMProvider):
         max_tokens: Optional[int] = None,
         model_tier: ModelTier = ModelTier.DEFAULT
     ) -> LLMResponse:
-        if not self.is_available():
+        if not self.is_available() or not self._client:
             raise RuntimeError("GeminiProvider is not configured with a valid API key.")
 
         eff_temp = self.default_temperature if temperature is None else temperature
-        model_name = self._resolve_model_name(model_tier)
+        candidate_models = self._resolve_candidate_models(model_tier)
         start_time = time.time()
 
-        kwargs: Dict[str, Any] = {}
-        if system_instruction:
-            kwargs["system_instruction"] = system_instruction
-
-        model = genai.GenerativeModel(model_name, **kwargs)
-        generation_config = genai.types.GenerationConfig(
+        config = types.GenerateContentConfig(
             temperature=eff_temp,
-            max_output_tokens=max_tokens if max_tokens else None
+            system_instruction=system_instruction,
+            max_output_tokens=max_tokens,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
         )
 
-        response = None
         last_exc = None
-        for attempt in range(1, self.max_retries + 2):
-            try:
-                response = model.generate_content(prompt, generation_config=generation_config)
-                break
-            except Exception as exc:
-                last_exc = exc
-                logger.warning(f"Gemini generation attempt {attempt}/{self.max_retries + 1} failed ({exc})")
-                if attempt <= self.max_retries:
-                    time.sleep(1.0 * attempt)
-                else:
-                    raise last_exc
+        for model_name in candidate_models:
+            for attempt in range(1, self.max_retries + 2):
+                try:
+                    response = self._client.models.generate_content(
+                        model=model_name,
+                        contents=prompt,
+                        config=config,
+                    )
+                    latency_ms = (time.time() - start_time) * 1000
+                    text = response.text.strip() if response and response.text else ""
 
-        latency_ms = (time.time() - start_time) * 1000
-        text = response.text.strip() if response and response.text else ""
+                    usage = getattr(response, "usage_metadata", None)
+                    prompt_tokens = getattr(usage, "prompt_token_count", len(prompt.split())) if usage else len(prompt.split())
+                    completion_tokens = getattr(usage, "candidates_token_count", len(text.split())) if usage else len(text.split())
 
-        # Extract token usage metadata if available
-        usage = getattr(response, "usage_metadata", None)
-        prompt_tokens = getattr(usage, "prompt_token_count", len(prompt.split())) if usage else len(prompt.split())
-        completion_tokens = getattr(usage, "candidates_token_count", len(text.split())) if usage else len(text.split())
+                    return LLMResponse(
+                        text=text,
+                        provider="gemini",
+                        model_name=model_name,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        total_tokens=prompt_tokens + completion_tokens,
+                        latency_ms=round(latency_ms, 2),
+                        raw_metadata={"tier": model_tier.value, "temperature": eff_temp}
+                    )
+                except Exception as exc:
+                    last_exc = exc
+                    exc_str = str(exc).lower()
+                    logger.warning(f"Gemini model {model_name} attempt {attempt} failed ({exc})")
 
-        return LLMResponse(
-            text=text,
-            provider="gemini",
-            model_name=model_name,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            total_tokens=prompt_tokens + completion_tokens,
-            latency_ms=round(latency_ms, 2),
-            raw_metadata={"tier": model_tier.value, "temperature": eff_temp}
-        )
+                    # If quota exhausted (429) or model not found (404), immediately switch to next model
+                    if "429" in exc_str or "resource_exhausted" in exc_str or "quota" in exc_str or "404" in exc_str:
+                        break
+
+                    if attempt <= self.max_retries:
+                        time.sleep(0.5 * attempt)
+                    else:
+                        break
+
+        raise last_exc or RuntimeError("All candidate Gemini models failed.")
 
     async def generate_text_async(
         self,
@@ -125,51 +140,15 @@ class GeminiProvider(BaseLLMProvider):
         max_tokens: Optional[int] = None,
         model_tier: ModelTier = ModelTier.DEFAULT
     ) -> LLMResponse:
-        if not self.is_available():
-            raise RuntimeError("GeminiProvider is not configured with a valid API key.")
-
-        eff_temp = self.default_temperature if temperature is None else temperature
-        model_name = self._resolve_model_name(model_tier)
-        start_time = time.time()
-
-        kwargs: Dict[str, Any] = {}
-        if system_instruction:
-            kwargs["system_instruction"] = system_instruction
-
-        model = genai.GenerativeModel(model_name, **kwargs)
-        generation_config = genai.types.GenerationConfig(
-            temperature=eff_temp,
-            max_output_tokens=max_tokens if max_tokens else None
-        )
-
-        response = None
-        last_exc = None
-        for attempt in range(1, self.max_retries + 2):
-            try:
-                response = await model.generate_content_async(prompt, generation_config=generation_config)
-                break
-            except Exception as exc:
-                last_exc = exc
-                logger.warning(f"Gemini async generation attempt {attempt}/{self.max_retries + 1} failed ({exc})")
-                if attempt <= self.max_retries:
-                    await asyncio.sleep(1.0 * attempt)
-                else:
-                    raise last_exc
-
-        latency_ms = (time.time() - start_time) * 1000
-        text = response.text.strip() if response and response.text else ""
-
-        usage = getattr(response, "usage_metadata", None)
-        prompt_tokens = getattr(usage, "prompt_token_count", len(prompt.split())) if usage else len(prompt.split())
-        completion_tokens = getattr(usage, "candidates_token_count", len(text.split())) if usage else len(text.split())
-
-        return LLMResponse(
-            text=text,
-            provider="gemini",
-            model_name=model_name,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            total_tokens=prompt_tokens + completion_tokens,
-            latency_ms=round(latency_ms, 2),
-            raw_metadata={"tier": model_tier.value}
+        # Run blocking SDK call in default executor thread to avoid blocking asyncio event loop
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self.generate_text(
+                prompt=prompt,
+                system_instruction=system_instruction,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                model_tier=model_tier,
+            )
         )

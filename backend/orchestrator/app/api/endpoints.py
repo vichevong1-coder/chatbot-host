@@ -380,11 +380,13 @@ async def navigate_step(request: NavigateRequest):
         feedback = res.get("feedback_message")
 
         # 5. Persist updated step in SessionManager
-        if updated_widget:
-            session.set_step_widget(updated_widget)
         session.current_step_index = res_idx
         if formatted_md:
             session.formatted_markdown = formatted_md
+        if updated_widget:
+            session.set_step_widget(updated_widget)
+        else:
+            session._trigger_change()
 
         active_step_obj = None
         if updated_widget and "steps" in updated_widget and 0 <= res_idx < len(updated_widget["steps"]):
