@@ -98,7 +98,7 @@ services:
   # ──────────────────────────────────────────────
   homework-scanner:
     build:
-      context: ./homework_ocr_vlm
+      context: ./backend/homework_ocr_vlm
       dockerfile: Dockerfile
     container_name: homework-scanner
     ports:

@@ -38,15 +38,14 @@ Science_chatbot/
 │   ├── src/services/               # geminiService.ts, ocrService.ts
 │   └── Dockerfile
 │
-├── homework_ocr_vlm/               # 📷 Universal VLM Homework Extraction Microservice (Port 9003)
-│   ├── app/                        # Layout, OCR, Preprocessing, VLM
-│   ├── sample_inputs/              # Test images (test1.png)
-│   ├── sample_outputs/             # Benchmark JSON extractions
-│   ├── scripts/                    # test_image_scanner.py, run_worksheet_test.py
-│   └── tests/                      # Pytest pipeline tests & fixtures
-│
-└── backend/                        # 🧠 Socratic Tutoring Backend System
+└── backend/                        # 🧠 Complete Backend System & Microservices
     ├── orchestrator/               # Main Gateway API & LangGraph State Machine (Port 9000)
+    ├── homework_ocr_vlm/           # Universal VLM Homework Extraction Service (Port 9003)
+    │   ├── app/                    # Layout, OCR, Preprocessing, VLM
+    │   ├── sample_inputs/          # Test images (test1.png)
+    │   ├── sample_outputs/         # Benchmark JSON extractions
+    │   ├── scripts/                # test_image_scanner.py, run_worksheet_test.py
+    │   └── tests/                  # Pytest pipeline tests & fixtures
     ├── services/
     │   ├── math_service/           # Math solver (SymPy + LLM validator, Port 9001)
     │   └── science_service/        # Science solver (Physics, Chemistry, Biology, Port 9002)

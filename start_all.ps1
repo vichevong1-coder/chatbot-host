@@ -16,7 +16,7 @@ Write-Host "==========================================================" -Foregro
 
 # 1. Homework Scanner (Port 9003)
 Write-Host "Starting Homework Scanner on http://localhost:9003/docs ..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\homework_ocr_vlm'; Write-Host '--- Homework Scanner (Port 9003) ---' -ForegroundColor Green; & '$python' run.py"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\backend\homework_ocr_vlm'; Write-Host '--- Homework Scanner (Port 9003) ---' -ForegroundColor Green; & '$python' run.py"
 
 # 2. Math Service (Port 9001)
 Write-Host "Starting Math Service on http://localhost:9001/docs ..." -ForegroundColor Yellow
