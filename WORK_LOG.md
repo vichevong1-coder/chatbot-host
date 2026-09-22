@@ -48,4 +48,11 @@
 - Prevented duplicate header prefixes in the problem statement so questions begin cleanly with their actual task and instructions.
 - Enhanced the scanner question selector pill bar with horizontal scrolling cues, distinct active button scaling, and bilingual Khmer/English label support.
 
+### Work Entry 10: Multi-Part Formula Stitching & Whitespace Preservation
+- Resolved flattened multi-part questions by applying `whitespace-pre-line` across the Homework Scanner and Socratic Chat views, allowing distinct line breaks for sub-parts (`a)`, `b)`).
+- Implemented inline element stitching in `ocrService.ts` to reconnect fragmented math formulas around blank lines (e.g., merging `"35 +"` and `"= 100"` into `"35 + ___ = 100"`).
+- Automatically appended fill-in placeholders (`___`) whenever a calculation ends with an operator (`+`, `-`, `x`, `/`, `=`).
+- Compacted selector pill dimensions so multiple exercise buttons fit comfortably on screen without excessive horizontal truncation.
+
+
 

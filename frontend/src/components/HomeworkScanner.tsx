@@ -338,13 +338,14 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                     <div className="flex gap-2 overflow-x-auto pb-2 pt-0.5 no-scrollbar">
                       {detectedProblems.map((prob, idx) => {
                         const isSelected = selectedProblem.id === prob.id;
-                        const label = isKhmer ? (prob.titleKhmer || `លំហាត់ទី ${idx + 1}`) : (prob.titleEng || `Question ${idx + 1}`);
+                        // Use concise title label
+                        const label = prob.titleEng || `Q${idx + 1}`;
                         return (
                           <button
                             key={prob.id}
                             type="button"
                             onClick={() => setSelectedProblem(prob)}
-                            className={`px-3 py-1.5 rounded-xl border-2 font-black text-xs cursor-pointer transition-all whitespace-nowrap shrink-0 shadow-sm ${
+                            className={`px-3 py-1.5 rounded-xl border-2 font-black text-xs cursor-pointer transition-all whitespace-nowrap shrink-0 ${
                               isSelected
                                 ? 'bg-[#1B4332] text-white border-[#1B4332] shadow-[2px_2px_0px_#2D6A4F] scale-105'
                                 : 'bg-[#E8F5E9] text-[#1B4332] border-[#1B4332]/40 hover:bg-[#40916C]/20 hover:border-[#1B4332]'
@@ -359,10 +360,15 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                 )}
 
                 <div className="p-4 bg-[#E8F5E9] rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] space-y-2">
-                  <p className="text-xs font-black text-[#1B4332] uppercase">
-                    {isKhmer ? 'សំណួរដែលស្កែនបាន៖' : 'Detected Question:'}
-                  </p>
-                  <p className="font-black text-base text-[#1B4332]">
+                  <div className="flex items-center justify-between border-b border-[#1B4332]/20 pb-1.5">
+                    <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider">
+                      {isKhmer ? 'សំណួរដែលស្កែនបាន៖' : 'Detected Question:'}
+                    </p>
+                    <span className="px-2 py-0.5 bg-[#1B4332] text-white text-[11px] font-black rounded-lg">
+                      {selectedProblem.titleEng || `Problem ${selectedProblem.id}`}
+                    </span>
+                  </div>
+                  <p className="font-black text-sm sm:text-base text-[#1B4332] whitespace-pre-line leading-relaxed">
                     {isKhmer ? selectedProblem.problemStatementKhmer : selectedProblem.problemStatementEng}
                   </p>
                 </div>

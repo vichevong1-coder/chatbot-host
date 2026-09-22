@@ -562,7 +562,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   )}
                 </div>
                 <div className="flex items-start justify-between gap-3">
-                  <p className="font-black text-base sm:text-lg text-[#1B4332] leading-snug">
+                  <p className="font-black text-base sm:text-lg text-[#1B4332] leading-snug whitespace-pre-line">
                     {isKhmer ? activeProblem.problemStatementKhmer : activeProblem.problemStatementEng}
                   </p>
                   {activeProblem.imageUri && (

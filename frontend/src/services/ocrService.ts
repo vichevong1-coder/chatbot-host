@@ -14,7 +14,7 @@ function isGenericHeader(text: string): boolean {
   return ['MATHEMATICS', 'MATH', 'SCIENCE', 'HOMEWORK', 'WORKSHEET', 'EXERCISE', 'SECTION', 'QUESTION', 'PROBLEM'].includes(cleaned);
 }
 
-// Extract specific descriptive title for a problem card (e.g. "Q9: Calendar Facts")
+// Extract specific descriptive title for a problem card (e.g. "Q1: Addition & Number Bonds")
 function extractSpecificTitle(q: any, section: any, qNo: string, fullStatement: string): string {
   let topic = '';
 
@@ -59,8 +59,8 @@ function extractSpecificTitle(q: any, section: any, qNo: string, fullStatement: 
     }
   }
 
-  // Format clean label: "Q9: Calendar Facts" or "Q9"
-  const cleanQNo = qNo.replace(/^Problem\s*/i, '').trim();
+  // Format clean label: "Q1: Addition & Number Bonds"
+  const cleanQNo = (qNo || 'Q').replace(/^(Problem|លំហាត់)\s*/i, '').trim();
   return topic ? `${cleanQNo}: ${topic}` : `Problem ${cleanQNo}`;
 }
 
@@ -72,16 +72,35 @@ function extractFullQuestionStatement(q: any, section?: any): string {
   const prompt = (q?.prompt || '').trim();
   const instructions = (q?.instructions || section?.instructions || '').trim();
 
-  // Extract from elements
+  // Extract from elements and stitch formula blanks together (e.g. "35 +" + "= 100" -> "35 + ___ = 100")
   const elementTexts: string[] = [];
   const rawElements = q?.elements || section?.elements;
-  if (Array.isArray(rawElements)) {
+  if (Array.isArray(rawElements) && rawElements.length > 0) {
+    let currentLine = '';
     for (const el of rawElements) {
-      if (typeof el === 'string' && el.trim()) {
-        elementTexts.push(el.trim());
-      } else if (el?.text && typeof el.text === 'string' && el.text.trim()) {
-        elementTexts.push(el.text.trim());
+      const txt = typeof el === 'string' ? el.trim() : (el?.text || '').trim();
+      if (!txt) continue;
+
+      if (!currentLine) {
+        currentLine = txt;
+      } else if (currentLine.endsWith('+') || currentLine.endsWith('-') || currentLine.endsWith('x') || currentLine.endsWith('/') || currentLine.endsWith('=')) {
+        if (txt.startsWith('=')) {
+          currentLine = `${currentLine} ___ ${txt}`;
+        } else {
+          currentLine = `${currentLine} ${txt}`;
+        }
+      } else if (txt.startsWith('=') || txt.startsWith('+') || txt.startsWith('-')) {
+        currentLine = `${currentLine} ___ ${txt}`;
+      } else {
+        elementTexts.push(currentLine);
+        currentLine = txt;
       }
+    }
+    if (currentLine) {
+      if (currentLine.endsWith('+') || currentLine.endsWith('-') || currentLine.endsWith('x') || currentLine.endsWith('=')) {
+        currentLine = `${currentLine} ___`;
+      }
+      elementTexts.push(currentLine);
     }
   }
 
@@ -89,7 +108,25 @@ function extractFullQuestionStatement(q: any, section?: any): string {
   const subTexts: string[] = [];
   if (Array.isArray(q?.sub_questions)) {
     for (const sq of q.sub_questions) {
-      const sqText = (sq?.prompt || sq?.text || sq?.instructions || '').trim();
+      let sqText = (sq?.prompt || sq?.text || sq?.instructions || '').trim();
+      
+      // If sq has inner elements
+      if (Array.isArray(sq?.elements) && sq.elements.length > 0) {
+        const joinedEls = sq.elements
+          .map((e: any) => (typeof e === 'string' ? e.trim() : (e?.text || '').trim()))
+          .filter(Boolean);
+        if (joinedEls.length > 0) {
+          const elStr = joinedEls.join(' ');
+          if (!sqText.includes(elStr)) {
+            sqText = sqText ? `${sqText}: ${elStr}` : elStr;
+          }
+        }
+      }
+
+      if (sqText.endsWith('+') || sqText.endsWith('-') || sqText.endsWith('x') || sqText.endsWith('=')) {
+        sqText = `${sqText} ___`;
+      }
+
       const sqNo = sq?.question_no ? `${sq.question_no}) ` : '';
       if (sqText) {
         subTexts.push(`${sqNo}${sqText}`);
@@ -103,7 +140,11 @@ function extractFullQuestionStatement(q: any, section?: any): string {
   }
 
   if (prompt && prompt !== rawTitle) {
-    parts.push(prompt);
+    let cleanPrompt = prompt;
+    if (cleanPrompt.endsWith('+') || cleanPrompt.endsWith('-') || cleanPrompt.endsWith('x') || cleanPrompt.endsWith('=')) {
+      cleanPrompt = `${cleanPrompt} ___`;
+    }
+    parts.push(cleanPrompt);
   }
 
   if (instructions && instructions !== rawTitle && instructions !== prompt) {
