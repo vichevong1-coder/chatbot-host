@@ -1,5 +1,5 @@
 /**
- * Core type definitions for Tunsay AI Homework Tutor — MVP Scope
+ * Core type definitions for ReanMore AI Homework Tutor — MVP Scope
  * Must-haves: OCR, NLU, Socratic Guidance, Safety Guardrails
  */
 
@@ -9,12 +9,20 @@ export type Subject = 'math' | 'science' | 'english';
 
 export type Language = 'km' | 'en';
 
-export type TunsayState =
+export type ReanMoreState =
   | 'idle'
+  | 'waving'
   | 'thinking'
+  | 'listening'
   | 'explaining'
   | 'encouraging'
-  | 'celebrating';
+  | 'happy'
+  | 'celebrating'
+  | 'jumping'
+  | 'confused'
+  | 'sleeping';
+
+export type TunsayState = ReanMoreState;
 
 export interface StepItem {
   id: string;
@@ -41,16 +49,6 @@ export interface StepItem {
   };
   socraticPromptKhmer: string;
   socraticPromptEng: string;
-  // 4-Part Socratic Card fields from roadmap specification
-  title?: string | undefined;
-  mission?: string | undefined;
-  clue?: string | undefined;
-  helpfulExample?: string | undefined;
-  yourTurn?: string | undefined;
-  studentAnswer?: string | null | undefined;
-  status?: 'completed' | 'in_progress' | 'pending' | 'locked' | undefined;
-  hints?: string[] | undefined;
-  currentHintLevel?: number | undefined;
   explainDifferently: {
     simpleKhmer: string;
     simpleEng: string;
@@ -83,12 +81,16 @@ export interface ChatMessage {
   problem?: HomeworkProblem;
   activeStepIndex?: number;
   isSafetyRefusal?: boolean;
-  /** When present, renders a Socratic Step Card bubble instead of plain text */
-  stepCard?: {
-    step: StepItem;
-    stepIndex: number;
-    totalSteps: number;
-  };
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  titleKhmer: string;
+  messages: ChatMessage[];
+  problem?: HomeworkProblem | undefined;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface UserProfile {
@@ -96,4 +98,42 @@ export interface UserProfile {
   grade: Grade;
   subject: Subject;
   language: Language;
+  avatarUrl?: string | undefined;
+}
+
+/* ── Parent Weekly Report types ── */
+
+export type ActivityStatus = 'in_progress' | 'completed' | 'abandoned';
+
+export interface LearningActivity {
+  id: string;
+  sessionId: string;
+  problemId: string;
+  problemTitleKhmer: string;
+  problemTitleEng: string;
+  subject: Subject;
+  grade: Grade;
+  startedAt: string;       /* ISO timestamp */
+  completedAt?: string | undefined;    /* ISO timestamp */
+  stepsCompleted: number;
+  totalSteps: number;
+  wrongAttempts: number;
+  hintsUsed: number;
+  explainUsed: number;
+  status: ActivityStatus;
+}
+
+export interface WeeklyReportData {
+  weekStart: string;       /* Monday ISO date */
+  weekEnd: string;         /* Sunday ISO date */
+  totalProblems: number;
+  completedProblems: number;
+  completionRate: number;  /* 0-100 */
+  totalWrongAttempts: number;
+  totalHintsUsed: number;
+  totalTimeMinutes: number;
+  subjectBreakdown: Record<Subject, { solved: number; attempted: number; wrongRate: number }>;
+  struggleAreas: Array<{ titleKhmer: string; titleEng: string; subject: Subject; wrongRate: number; hintsNeeded: number }>;
+  strongestAreas: Array<{ titleKhmer: string; titleEng: string; subject: Subject; correctRate: number }>;
+  dailyBreakdown: Array<{ day: string; label: string; solved: number; attempted: number }>;
 }

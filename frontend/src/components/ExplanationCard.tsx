@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { StepItem, Language } from '../types';
-import { RefreshCw, X, Sparkles, HeartHandshake, Loader2 } from 'lucide-react';
+import { RefreshCw, X, Sparkles, HeartHandshake } from 'lucide-react';
 import { TunsayAvatar } from './TunsayAvatar';
-import { requestClarificationApi } from '../services/geminiService';
 
 interface ExplanationCardProps {
   step: StepItem;
   isOpen: boolean;
-  language?: Language | undefined;
-  sessionId?: string | undefined;
-  gradeLevel?: string | undefined;
+  language?: Language;
   onClose: () => void;
 }
 
@@ -17,24 +14,10 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
   step,
   isOpen,
   language = 'km',
-  sessionId,
-  gradeLevel = 'grade_1_3',
   onClose
 }) => {
   const isKhmer = language === 'km';
   const [activeTab, setActiveTab] = useState<'simple' | 'analogy'>('simple');
-  const [dynamicExplanation, setDynamicExplanation] = useState<string | null>(null);
-  const [isLoadingDynamic, setIsLoadingDynamic] = useState(false);
-
-  const handleFetchBackendClarification = async () => {
-    if (!sessionId) return;
-    setIsLoadingDynamic(true);
-    const res = await requestClarificationApi(sessionId, language, gradeLevel);
-    setIsLoadingDynamic(false);
-    if (res?.text) {
-      setDynamicExplanation(res.text);
-    }
-  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -71,7 +54,7 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
                 {isKhmer ? 'ពន្យល់តាមរបៀបផ្សេង' : 'Explain Differently'}
               </h3>
               <p className="text-xs font-bold text-[#1B4332]">
-                {isKhmer ? 'ទន្សាយពន្យល់តាមរបៀបងាយយល់!' : 'Tunsay explains in simpler ways!'}
+                {isKhmer ? 'ReanMoreពន្យល់តាមរបៀបងាយយល់!' : 'Tunsay explains in simpler ways!'}
               </p>
             </div>
           </div>
@@ -133,7 +116,7 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
                 {isKhmer ? explainDifferently.analogyTitle : explainDifferently.analogyTitle}
               </div>
               <p className="text-base text-[#1B4332] font-black leading-relaxed bg-white p-3.5 rounded-xl border-2 border-[#1B4332]">
-                {step.helpfulExample || (isKhmer ? explainDifferently.analogyKhmer : explainDifferently.analogyEng)}
+                {isKhmer ? explainDifferently.analogyKhmer : explainDifferently.analogyEng}
               </p>
 
               {/* Visual representation card */}
@@ -163,39 +146,10 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
               </div>
             </div>
           )}
-
-          {/* Dynamic AI Clarification from Backend */}
-          {dynamicExplanation && (
-            <div className="bg-[#D8F3DC] p-4 rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] space-y-2 animate-fadeIn">
-              <div className="flex items-center gap-2 text-[#1B4332] font-black text-sm">
-                <Sparkles className="w-4 h-4 text-[#2D6A4F]" />
-                {isKhmer ? 'ការពន្យល់បែបកុមារពិសេសពី AI៖' : 'Child-Friendly AI Analogy from Backend:'}
-              </div>
-              <p className="text-sm sm:text-base text-[#1B4332] font-black leading-relaxed whitespace-pre-wrap">
-                {dynamicExplanation}
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-white border-t-3 border-[#1B4332] flex items-center justify-between">
-          {sessionId ? (
-            <button
-              type="button"
-              onClick={handleFetchBackendClarification}
-              disabled={isLoadingDynamic}
-              className="px-4 py-2 bg-[#A7CDB4] hover:bg-[#40916C] disabled:opacity-50 text-[#1B4332] font-black text-xs sm:text-sm rounded-2xl border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] flex items-center gap-1.5 cursor-pointer transition-all"
-            >
-              {isLoadingDynamic ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
-              <span>{isKhmer ? 'សុំ AI ពន្យល់ថ្មី' : 'Ask AI Analogy'}</span>
-            </button>
-          ) : <div />}
-
+        <div className="p-4 bg-white border-t-3 border-[#1B4332] flex items-center justify-end">
           <button
             type="button"
             onClick={onClose}

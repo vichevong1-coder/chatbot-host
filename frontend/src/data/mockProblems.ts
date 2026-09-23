@@ -242,39 +242,39 @@ export const MOCK_PROBLEMS: HomeworkProblem[] = [
     titleEng: 'English: Present Simple Verbs',
     grade: 4,
     subject: 'english',
-    problemStatementKhmer: 'បំពេញចន្លោះក្នុងប្រយោគ៖ "Tunsay ___ (like) apples." តើត្រូវថែម "s" នៅចុងកិរិយាស័ព្ទ like ឬទេ?',
-    problemStatementEng: 'Fill in the blank: "Tunsay ___ (like) apples." Should we add "s" to the verb like?',
+    problemStatementKhmer: 'បំពេញចន្លោះក្នុងប្រយោគ៖ "ReanMore ___ (like) apples." តើត្រូវថែម "s" នៅចុងកិរិយាស័ព្ទ like ឬទេ?',
+    problemStatementEng: 'Fill in the blank: "ReanMore ___ (like) apples." Should we add "s" to the verb like?',
     imageUri: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600&auto=format&fit=crop&q=80',
     steps: [
       {
         id: 'eng-step-1',
         stepNumber: 1,
         totalSteps: 2,
-        questionKhmer: 'នៅក្នុងប្រយោគនេះ "Tunsay" គឺជាប្រធានឯកវចនៈ (Singular Subject, He/She/It)។ តើកិរិយាស័ព្ទត្រូវថែមអ្វី?',
-        questionEng: 'In this sentence, "Tunsay" is a singular subject (He/She/It). What do we add to the verb?',
+        questionKhmer: 'នៅក្នុងប្រយោគនេះ "ReanMore" គឺជាប្រធានឯកវចនៈ (Singular Subject, He/She/It)។ តើកិរិយាស័ព្ទត្រូវថែមអ្វី?',
+        questionEng: 'In this sentence, "ReanMore" is a singular subject (He/She/It). What do we add to the verb?',
         inputFormat: 'mcq',
         options: ['ថែម -s (likes)', 'ថែម -ing (liking)', 'មិនថែមអ្វីទាំងអស់ (like)'],
         correctAnswer: 'ថែម -s (likes)',
-    socraticPromptKhmer: `តើអ្នកយល់ថាសំណួរ \`នៅក្នុងប្រយោគនេះ "Tunsay" គឺជា...' ចាប់ផ្តើមដោយអ្វីជាដំបូង?'`,
-    socraticPromptEng: `What do you think we need to find first for \`In this sentence, "Tunsay" is a singular...'?'`,
+    socraticPromptKhmer: `តើអ្នកយល់ថាសំណួរ \`នៅក្នុងប្រយោគនេះ "ReanMore" គឺជា...' ចាប់ផ្តើមដោយអ្វីជាដំបូង?'`,
+    socraticPromptEng: `What do you think we need to find first for \`In this sentence, "ReanMore" is a singular...'?'`,
 
         hint1: {
-          khmer: 'សម្រាប់ He, She, It ឬឈ្មោះមនុស្សម្នាក់ (Tunsay) កិរិយាស័ព្ទត្រូវថែម -s!',
-          eng: 'For He, She, It, or one person name (Tunsay), we add -s to the verb!'
+          khmer: 'សម្រាប់ He, She, It ឬឈ្មោះមនុស្សម្នាក់ (ReanMore) កិរិយាស័ព្ទត្រូវថែម -s!',
+          eng: 'For He, She, It, or one person name (ReanMore), we add -s to the verb!'
         },
         hint2: {
-          khmer: 'Tunsay like + s = Tunsay likes!',
-          eng: 'Tunsay like + s = Tunsay likes!'
+          khmer: 'ReanMore like + s = ReanMore likes!',
+          eng: 'ReanMore like + s = ReanMore likes!'
         },
         hint3: {
           titleKhmer: 'វិធានវេយ្យាករណ៍',
           titleEng: 'Grammar Rule',
-          exampleKhmer: 'He plays, She reads, Tunsay likes!',
-          exampleEng: 'He plays, She reads, Tunsay likes!'
+          exampleKhmer: 'He plays, She reads, ReanMore likes!',
+          exampleEng: 'He plays, She reads, ReanMore likes!'
         },
         explainDifferently: {
-          simpleKhmer: 'ពេលនិយាយពីមនុស្សម្នាក់ ដូចជា ទន្សាយ (Tunsay) យើងថែមអក្សរ "s" នៅខាងចុងពាក្យដូចជា likes!',
-          simpleEng: 'When talking about one friend like Tunsay, we put an "s" at the end of the action word: likes!',
+          simpleKhmer: 'ពេលនិយាយពីមនុស្សម្នាក់ ដូចជា ReanMore (ReanMore) យើងថែមអក្សរ "s" នៅខាងចុងពាក្យដូចជា likes!',
+          simpleEng: 'When talking about one friend like ReanMore, we put an "s" at the end of the action word: likes!',
           analogyTitle: 'អក្សរ S សម្រាប់មិត្តម្នាក់ (The Letter S)',
           analogyKhmer: 'គិតថាអក្សរ S គឺជាកាដូជូនមិត្តម្នាក់!',
           analogyEng: 'Think of the letter "s" as a small gift for one person!',
@@ -288,8 +288,8 @@ export const MOCK_PROBLEMS: HomeworkProblem[] = [
         questionKhmer: 'តើប្រយោគពេញលេញដែលត្រឹមត្រូវគឺជាអ្វី?',
         questionEng: 'What is the correct full sentence?',
         inputFormat: 'mcq',
-        options: ['Tunsay likes apples.', 'Tunsay liking apples.', 'Tunsay like apples.'],
-        correctAnswer: 'Tunsay likes apples.',
+        options: ['ReanMore likes apples.', 'ReanMore liking apples.', 'ReanMore like apples.'],
+        correctAnswer: 'ReanMore likes apples.',
     socraticPromptKhmer: `តើអ្នកយល់ថាសំណួរ \`តើប្រយោគពេញលេញដែលត្រឹមត្រូវគឺជ...' ចាប់ផ្តើមដោយអ្វីជាដំបូង?'`,
     socraticPromptEng: `What do you think we need to find first for \`What is the correct full sentence?...'?'`,
 
@@ -298,21 +298,21 @@ export const MOCK_PROBLEMS: HomeworkProblem[] = [
           eng: 'Choose the sentence with "likes".'
         },
         hint2: {
-          khmer: 'Tunsay + likes + apples!',
-          eng: 'Tunsay + likes + apples!'
+          khmer: 'ReanMore + likes + apples!',
+          eng: 'ReanMore + likes + apples!'
         },
         hint3: {
           titleKhmer: 'ចម្លើយចុងក្រោយ',
           titleEng: 'Final Answer',
-          exampleKhmer: 'Tunsay likes apples.',
-          exampleEng: 'Tunsay likes apples.'
+          exampleKhmer: 'ReanMore likes apples.',
+          exampleEng: 'ReanMore likes apples.'
         },
         explainDifferently: {
-          simpleKhmer: 'ពូកែណាស់! ប្រយោគពេញលេញគឺ "Tunsay likes apples."',
-          simpleEng: 'Awesome job! The complete sentence is "Tunsay likes apples."',
+          simpleKhmer: 'ពូកែណាស់! ប្រយោគពេញលេញគឺ "ReanMore likes apples."',
+          simpleEng: 'Awesome job! The complete sentence is "ReanMore likes apples."',
           analogyTitle: 'ប្រយោគពេញលេញ (Full Sentence)',
-          analogyKhmer: 'ទន្សាយចូលចិត្តញ៉ាំផ្លែប៉ោម!',
-          analogyEng: 'Tunsay loves eating apples!',
+          analogyKhmer: 'ReanMoreចូលចិត្តញ៉ាំផ្លែប៉ោម!',
+          analogyEng: 'ReanMore loves eating apples!',
           analogyType: 'apples'
         }
       }
@@ -722,139 +722,7 @@ export const MOCK_PROBLEMS: HomeworkProblem[] = [
         }
       }
     ]
-  },
-  {
-    id: 'backend-ex1-adjusting-tens',
-    titleKhmer: 'លំហាត់ Q5៖ ការបូក និងកែតម្រូវខ្ទង់ដប់ (Adjusting Tens)',
-    titleEng: 'Q5: Adjusting Tens',
-    grade: 3,
-    subject: 'math',
-    problemStatementKhmer: 'ដោះស្រាយដោយបូក/ដកខ្ទង់ដប់ជាមុន រួចកែតម្រូវ៖ \n1. 35 + 9 = ___\n2. 58 + 11 = ___',
-    problemStatementEng: 'Solve by adding/subtracting tens first and adjusting: \n1. 35 + 9 = ___\n2. 58 + 11 = ___',
-    imageUri: 'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=600&auto=format&fit=crop&q=80',
-    steps: [
-      {
-        id: 'q5-step-1',
-        stepNumber: 1,
-        totalSteps: 2,
-        questionKhmer: 'ដោះស្រាយលំហាត់ទី 1: 35 + 9 = ? (គន្លឹះ៖ 35 + 10 = 45, បន្ទាប់មក 45 - 1)',
-        questionEng: 'Solve Part 1: 35 + 9 = ? (Hint: 35 + 10 = 45, then 45 - 1)',
-        inputFormat: 'number',
-        correctAnswer: '44',
-        hint1: { khmer: 'បូក ១០ ជាមុន៖ ៣៥ + ១០ = ៤៥', eng: 'Add 10 first: 35 + 10 = 45' },
-        hint2: { khmer: 'ដោយសារ ៩ តិចជាង ១០ ចំនួន ១ ដូច្នេះយក ៤៥ - ១ = ៤៤', eng: 'Since 9 is 1 less than 10, subtract 1: 45 - 1 = 44' },
-        hint3: { titleKhmer: 'វិធីកែតម្រូវខ្ទង់ដប់', titleEng: 'Adjusting Tens Method', exampleKhmer: '៣៥ + ៩ = (៣៥ + ១០) - ១ = ៤៤', exampleEng: '35 + 9 = (35 + 10) - 1 = 44' },
-        socraticPromptKhmer: 'តោះចាប់ផ្តើមដោះស្រាយ 35 + 9 ទាំងអស់គ្នា! តើ 35 + 10 ស្មើប៉ុន្មាន?',
-        socraticPromptEng: "Let's solve 35 + 9 together! What is 35 + 10 first?",
-        explainDifferently: { simpleKhmer: '៣៥ + ៩ = ៤៤', simpleEng: '35 + 9 = 44', analogyTitle: 'Adjusting Tens', analogyKhmer: 'បូក ១០ រួចដក ១', analogyEng: 'Add 10 then take away 1', analogyType: 'apples' }
-      },
-      {
-        id: 'q5-step-2',
-        stepNumber: 2,
-        totalSteps: 2,
-        questionKhmer: 'ដោះស្រាយលំហាត់ទី 2: 58 + 11 = ? (គន្លឹះ៖ 58 + 10 = 68, បន្ទាប់មក 68 + 1)',
-        questionEng: 'Solve Part 2: 58 + 11 = ? (Hint: 58 + 10 = 68, then 68 + 1)',
-        inputFormat: 'number',
-        correctAnswer: '69',
-        hint1: { khmer: 'បូក ១០ ជាមុន៖ ៥៨ + ១០ = ៦៨', eng: 'Add 10 first: 58 + 10 = 68' },
-        hint2: { khmer: 'ដោយសារ ១១ ច្រើនជាង ១០ ចំនួន ១ ដូច្នេះយក ៦៨ + ១ = ៦៩', eng: 'Since 11 is 1 more than 10, add 1: 68 + 1 = 69' },
-        hint3: { titleKhmer: 'វិធីកែតម្រូវខ្ទង់ដប់', titleEng: 'Adjusting Tens Method', exampleKhmer: '៥៨ + ១១ = (៥៨ + ១០) + ១ = ៦៩', exampleEng: '58 + 11 = (58 + 10) + 1 = 69' },
-        socraticPromptKhmer: 'ឥឡូវដោះស្រាយ 58 + 11! តើ 58 + 10 ស្មើប៉ុន្មាន?',
-        socraticPromptEng: "Now solve 58 + 11! What is 58 + 10 first?",
-        explainDifferently: { simpleKhmer: '៥៨ + ១១ = ៦៩', simpleEng: '58 + 11 = 69', analogyTitle: 'Adjusting Tens', analogyKhmer: 'បូក ១០ រួចថែម ១', analogyEng: 'Add 10 then add 1', analogyType: 'apples' }
-      }
-    ]
-  },
-  {
-    id: 'backend-ex2-counting-money',
-    titleKhmer: 'លំហាត់ Q6៖ ការរាប់លុយ និងប្រមាណវិធីចែក (Counting Money & Division)',
-    titleEng: 'Q6: Counting Money & Division',
-    grade: 3,
-    subject: 'math',
-    problemStatementKhmer: '1. តើកាក់ 10p ចំនួន ៨ មានតម្លៃសរុបប៉ុន្មាន?\n2. តើត្រូវមានកាក់ 5p ចំនួនប៉ុន្មានទើបបាន 45p? (45 ÷ 5)',
-    problemStatementEng: '1. What is the total value of eight 10p coins?\n2. How many 5p coins make 45p? (45 ÷ 5)',
-    imageUri: 'https://images.unsplash.com/photo-1580519542036-c47de6196ba5?w=600&auto=format&fit=crop&q=80',
-    steps: [
-      {
-        id: 'q6-step-1',
-        stepNumber: 1,
-        totalSteps: 2,
-        questionKhmer: 'តើកាក់ 10p ចំនួន ៨ មានតម្លៃសរុបប៉ុន្មាន? (គណនា ៨ × ១០)',
-        questionEng: 'What is the total value of eight 10p coins? (Calculate 8 × 10)',
-        inputFormat: 'number',
-        correctAnswer: '80',
-        hint1: { khmer: 'រាប់បន្ថែមម្តង ១០ ចំនួន ៨ ដង៖ ១០, ២០, ៣០, ៤០, ៥០, ៦០, ៧០, ៨០', eng: 'Count by 10s eight times: 10, 20, ..., 80' },
-        hint2: { khmer: '៨ × ១០ = ៨០', eng: '8 × 10 = 80' },
-        hint3: { titleKhmer: 'ការរាប់កាក់', titleEng: 'Coin Counting', exampleKhmer: 'កាក់ 10p ចំនួន ៨ = 80p', exampleEng: 'Eight 10p coins = 80p' },
-        socraticPromptKhmer: 'តើអ្នកដឹងទេថាកាក់ 10p ចំនួន ៨ ស្មើប៉ុន្មាន?',
-        socraticPromptEng: 'What is 8 times 10?',
-        explainDifferently: { simpleKhmer: '៨ × ១០ = ៨០', simpleEng: '8 × 10 = 80', analogyTitle: 'Coins', analogyKhmer: '៨០p', analogyEng: '80p', analogyType: 'apples' }
-      },
-      {
-        id: 'q6-step-2',
-        stepNumber: 2,
-        totalSteps: 2,
-        questionKhmer: 'តើត្រូវមានកាក់ 5p ចំនួនប៉ុន្មានទើបបាន 45p? (គណនា ៤៥ ÷ ៥ = ?)',
-        questionEng: 'How many 5p coins make 45p? (Calculate 45 ÷ 5 = ?)',
-        inputFormat: 'number',
-        correctAnswer: '9',
-        hint1: { khmer: 'រាប់មេ ៥ រហូតដល់ ៤៥៖ ៥, ១០, ១៥, ២០, ២៥, ៣០, ៣៥, ៤០, ៤៥ (មាន ៩ ដង)', eng: 'Count by 5s to 45: 5, 10, ..., 45 (that is 9 times)' },
-        hint2: { khmer: '៥ × ៩ = ៤៥ ដូច្នេះ ៤៥ ÷ ៥ = ៩', eng: '5 × 9 = 45 so 45 ÷ 5 = 9' },
-        hint3: { titleKhmer: 'ប្រមាណវិធីចែក', titleEng: 'Division', exampleKhmer: '៤៥ ÷ ៥ = ៩ កាក់', exampleEng: '45 ÷ 5 = 9 coins' },
-        socraticPromptKhmer: 'តើ 45 ចែកនឹង 5 ស្មើប៉ុន្មាន?',
-        socraticPromptEng: 'What is 45 divided by 5?',
-        explainDifferently: { simpleKhmer: '៤៥ ÷ ៥ = ៩', simpleEng: '45 ÷ 5 = 9', analogyTitle: 'Division', analogyKhmer: '៩ កាក់', analogyEng: '9 coins', analogyType: 'apples' }
-      }
-    ]
-  },
-  {
-    id: 'backend-ex3-multiplication-doubling',
-    titleKhmer: 'លំហាត់ Q7៖ ការគុណ និងការទ្វេដង (Multiplication & Doubling)',
-    titleEng: 'Q7: Multiplication & Doubling',
-    grade: 3,
-    subject: 'math',
-    problemStatementKhmer: 'ទ្វេដងចំនួនខាងក្រោម៖ \n1. Double 24 = ___\n2. Double 35 = ___',
-    problemStatementEng: 'Double each number to find the answer: \n1. Double 24 = ___\n2. Double 35 = ___',
-    imageUri: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=600&auto=format&fit=crop&q=80',
-    steps: [
-      {
-        id: 'q7-step-1',
-        stepNumber: 1,
-        totalSteps: 2,
-        questionKhmer: 'គណនា Double 24 (២៤ × ២ = ?)',
-        questionEng: 'Calculate Double 24 (24 × 2 = ?)',
-        inputFormat: 'number',
-        correctAnswer: '48',
-        hint1: { khmer: 'ទ្វេដង ២០ = ៤០, ទ្វេដង ៤ = ៨, បន្ទាប់មក ៤០ + ៨ = ៤៨', eng: 'Double 20 = 40, double 4 = 8, 40 + 8 = 48' },
-        hint2: { khmer: '២៤ + ២៤ = ៤៨', eng: '24 + 24 = 48' },
-        hint3: { titleKhmer: 'ការទ្វេដង', titleEng: 'Doubling', exampleKhmer: 'Double 24 = 48', exampleEng: 'Double 24 = 48' },
-        socraticPromptKhmer: 'តើ ២៤ គុណនឹង ២ ស្មើប៉ុន្មាន?',
-        socraticPromptEng: 'What is 24 doubled?',
-        explainDifferently: { simpleKhmer: '២៤ × ២ = ៤៨', simpleEng: '24 × 2 = 48', analogyTitle: 'Doubling', analogyKhmer: '៤៨', analogyEng: '48', analogyType: 'apples' }
-      },
-      {
-        id: 'q7-step-2',
-        stepNumber: 2,
-        totalSteps: 2,
-        questionKhmer: 'គណនា Double 35 (៣៥ × ២ = ?)',
-        questionEng: 'Calculate Double 35 (35 × 2 = ?)',
-        inputFormat: 'number',
-        correctAnswer: '70',
-        hint1: { khmer: 'ទ្វេដង ៣០ = ៦០, ទ្វេដង ៥ = ១០, បន្ទាប់មក ៦០ + ១០ = ៧០', eng: 'Double 30 = 60, double 5 = 10, 60 + 10 = 70' },
-        hint2: { khmer: '៣៥ + ៣៥ = ៧០', eng: '35 + 35 = 70' },
-        hint3: { titleKhmer: 'ការទ្វេដង', titleEng: 'Doubling', exampleKhmer: 'Double 35 = 70', exampleEng: 'Double 35 = 70' },
-        socraticPromptKhmer: 'តើ ៣៥ គុណនឹង ២ ស្មើប៉ុន្មាន?',
-        socraticPromptEng: 'What is 35 doubled?',
-        explainDifferently: { simpleKhmer: '៣៥ × ២ = ៧០', simpleEng: '35 × 2 = 70', analogyTitle: 'Doubling', analogyKhmer: '៧០', analogyEng: '70', analogyType: 'apples' }
-      }
-    ]
   }
-];
-
-export const BACKEND_MOCK_WORKSHEET_PROBLEMS: HomeworkProblem[] = [
-  MOCK_PROBLEMS[MOCK_PROBLEMS.length - 3],
-  MOCK_PROBLEMS[MOCK_PROBLEMS.length - 2],
-  MOCK_PROBLEMS[MOCK_PROBLEMS.length - 1],
 ];
 
 /**
@@ -868,15 +736,15 @@ export function generateHistoryChatForProblem(prob: HomeworkProblem, studentName
     {
       id: `hist-1-${prob.id}`,
       sender: 'sayo',
-      textKhmer: `សួស្តី ${displayName}! តោះដោះស្រាយលំហាត់ "${prob.titleKhmer}" ទាំងអស់គ្នា! ទន្សាយនឹងជួយណែនាំអ្នកជាជំហានៗ។ 🐰✨`,
-      textEng: `Hi ${displayName}! Let's solve "${prob.titleEng}" together! Tunsay will guide you step-by-step. 🐰✨`,
+      textKhmer: `សួស្តី ${displayName}! តោះដោះស្រាយលំហាត់ "${prob.titleKhmer}" ទាំងអស់គ្នា! ReanMoreនឹងជួយណែនាំអ្នកជាជំហានៗ។`,
+      textEng: `Hi ${displayName}! Let's solve "${prob.titleEng}" together! ReanMore will guide you step-by-step.`,
       timestamp: '10:15 AM'
     },
     {
       id: `hist-2-${prob.id}`,
       sender: 'user',
-      textKhmer: `ជំរាបសួរលោកគ្រូទន្សាយ! ខ្ញុំបានអានចំណោទនេះហើយ ៖ "${prob.problemStatementKhmer}" ប៉ុន្តែខ្ញុំមិនទាន់ប្រាកដពីរបៀបចាប់ផ្តើមទេ! អាចជួយពន្យល់ខ្ញុំបន្តិចបានទេ?`,
-      textEng: `Hello Tunsay! I read this question: "${prob.problemStatementEng}" but I'm not sure how to start! Can you help guide me?`,
+      textKhmer: `ជំរាបសួរលោកគ្រូReanMore! ខ្ញុំបានអានចំណោទនេះហើយ ៖ "${prob.problemStatementKhmer}" ប៉ុន្តែខ្ញុំមិនទាន់ប្រាកដពីរបៀបចាប់ផ្តើមទេ! អាចជួយពន្យល់ខ្ញុំបន្តិចបានទេ?`,
+      textEng: `Hello ReanMore! I read this question: "${prob.problemStatementEng}" but I'm not sure how to start! Can you help guide me?`,
       timestamp: '10:16 AM'
     },
     {

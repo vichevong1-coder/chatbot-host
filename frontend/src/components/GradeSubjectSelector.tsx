@@ -1,26 +1,22 @@
-import React from 'react';
-import { Grade, Language, Subject } from '../types';
-import { BookOpen, GraduationCap, Sparkles, Calculator, Atom, Languages, CheckCircle } from 'lucide-react';
+﻿import React from 'react';
+import { Grade, Language } from '../types';
+import { BookOpen, GraduationCap, Sparkles, Calculator, Atom } from 'lucide-react';
 
 interface GradeSubjectSelectorProps {
   currentGrade: Grade;
-  currentSubject?: Subject;
   language?: Language;
   onSelectGrade: (grade: Grade) => void;
-  onSelectSubject?: (subject: Subject) => void;
 }
 
 export const GradeSubjectSelector: React.FC<GradeSubjectSelectorProps> = ({
   currentGrade,
-  currentSubject = 'math',
   language = 'km',
-  onSelectGrade,
-  onSelectSubject,
+  onSelectGrade
 }) => {
   const isKhmer = language === 'km';
   const grades: Grade[] = [1, 2, 3, 4, 5, 6];
 
-  const subjects: { id: Subject; nameKhmer: string; nameEng: string; icon: any; bgColor: string }[] = [
+  const subjects = [
     {
       id: 'math',
       nameKhmer: 'គណិតវិទ្យា',
@@ -34,13 +30,6 @@ export const GradeSubjectSelector: React.FC<GradeSubjectSelectorProps> = ({
       nameEng: 'Science',
       icon: Atom,
       bgColor: 'bg-[#2D6A4F]',
-    },
-    {
-      id: 'english',
-      nameKhmer: 'ភាសាអង់គ្លេស',
-      nameEng: 'English',
-      icon: Languages,
-      bgColor: 'bg-[#40916C]',
     }
   ];
 
@@ -82,45 +71,36 @@ export const GradeSubjectSelector: React.FC<GradeSubjectSelectorProps> = ({
         </div>
       </div>
 
-      {/* Selectable Subject Cards */}
+      {/* Non-selectable Display-Only Subject Cards */}
       <div className="space-y-3 pt-4 border-t-2 border-[#1B4332]/20">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <label className="text-sm sm:text-base font-black text-[#1B4332] font-heading flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-[#1B4332] shrink-0" />
-            <span>{isKhmer ? 'មុខវិជ្ជាចម្បង' : 'Primary Subject'}</span>
+            <span>{isKhmer ? 'មុខវិជ្ជាសិក្សាដែលគាំទ្រ' : 'Supported Subjects'}</span>
           </label>
           <span className="text-[10px] sm:text-xs font-black text-[#1B4332] bg-[#A7CDB4] px-2.5 py-1 rounded-full border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] flex items-center gap-1">
-            {isKhmer ? 'ចុចដើម្បីប្តូរ' : 'Click to Select'}
+            <Sparkles className="w-3 h-3 text-[#1B4332]" />
+            {isKhmer ? 'ស្វ័យប្រវត្តិដោយ AI' : 'Auto-detected by AI'}
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {subjects.map((sub) => {
             const Icon = sub.icon;
-            const isSelected = currentSubject === sub.id;
             return (
-              <button
+              <div
                 key={sub.id}
-                type="button"
-                onClick={() => onSelectSubject?.(sub.id)}
-                className={`p-3.5 sm:p-4 rounded-2xl border-3 border-[#1B4332] transition-all flex items-center justify-between cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#2D6A4F] text-white shadow-[4px_4px_0px_#1B4332] -translate-y-0.5 scale-[1.02]'
-                    : `${sub.bgColor} text-[#1B4332] hover:scale-[1.01] shadow-[2px_2px_0px_#1B4332]`
-                }`}
+                className={`p-3.5 sm:p-4 rounded-2xl border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] ${sub.bgColor} flex items-center select-none cursor-default`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className={`p-2 rounded-xl border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] shrink-0 ${isSelected ? 'bg-white text-[#1B4332]' : 'bg-white text-[#1B4332]'}`}>
-                    <Icon className="w-5 h-5" />
+                  <div className="p-2 bg-white rounded-xl border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] shrink-0">
+                    <Icon className="w-5 h-5 text-[#1B4332]" />
                   </div>
-                  <span className="font-black text-sm sm:text-base truncate">
+                  <span className="font-black text-sm sm:text-base text-[#1B4332] truncate">
                     {isKhmer ? sub.nameKhmer : sub.nameEng}
                   </span>
                 </div>
-                {isSelected && (
-                  <CheckCircle className="w-5 h-5 text-white shrink-0 ml-1" />
-                )}
-              </button>
+              </div>
             );
           })}
         </div>
@@ -128,4 +108,5 @@ export const GradeSubjectSelector: React.FC<GradeSubjectSelectorProps> = ({
     </div>
   );
 };
+
 

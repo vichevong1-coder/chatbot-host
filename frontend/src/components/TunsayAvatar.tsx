@@ -1,11 +1,14 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { TunsayState } from '../types';
 
-import lionIdle        from '../assets/lion_idle.png';
-import lionEncouraging from '../assets/lion_encouraging.png';
-import lionThinking    from '../assets/lion_thinking.png';
-import lionExplaining  from '../assets/lion_explaining.png';
-import lionCelebrating from '../assets/lion_celebrating.png';
+/* Only these 6 mascot images are available in src/assets/.
+   All 11 states map to the closest matching available image.  */
+import lionWaving      from '../assets/lion_waving.png';
+import lionConfused    from '../assets/lion_confused.png';
+import lionListening   from '../assets/lion_listening.png';
+import lionHappy       from '../assets/lion_happy.png';
+import lionJumping     from '../assets/lion_jumping.png';
+import lionWinking     from '../assets/lion_winking.png';
 
 interface TunsayAvatarProps {
   state?: TunsayState;
@@ -16,23 +19,50 @@ interface TunsayAvatarProps {
   speechBubbleText?: string;
 }
 
-const STATE_IMAGE: Record<string, string> = {
-  idle:        lionIdle,
-  thinking:    lionThinking,
-  celebrating: lionCelebrating,
-  explaining:  lionExplaining,
-  encouraging: lionEncouraging,
+/* Map 11 states → 6 available images */
+const STATE_IMAGE: Record<TunsayState, string> = {
+  idle:        lionListening,  // calm sitting smile
+  waving:      lionWaving,     // waving paw
+  thinking:    lionConfused,    // paw on chin, pondering
+  listening:   lionListening,   // gentle attentive smile
+  explaining:  lionHappy,       // lightbulb = idea moment
+  encouraging: lionWinking,     // friendly supportive wink
+  happy:       lionHappy,       // lightbulb moment
+  celebrating: lionJumping,     // jumping with stars
+  jumping:     lionJumping,     // jumping with stars
+  confused:    lionConfused,    // question mark, curious
+  sleeping:    lionListening,   // calm resting fallback
 };
 
-const STATE_ANIM: Record<string, string> = {
+const STATE_ANIM: Record<TunsayState, string> = {
   idle:        'animate-lion-idle',
+  waving:      'animate-lion-wave',
   thinking:    'animate-lion-think',
-  celebrating: 'animate-lion-celebrate',
+  listening:   'animate-lion-listen',
   explaining:  'animate-lion-nod',
-  encouraging: 'animate-lion-wave',
+  encouraging: 'animate-lion-encourage',
+  happy:       'animate-lion-happy',
+  celebrating: 'animate-lion-celebrate',
+  jumping:     'animate-lion-jump',
+  confused:    'animate-lion-confused',
+  sleeping:    'animate-lion-sleep',
 };
 
-export const TunsayAvatar: React.FC<TunsayAvatarProps> = ({
+const BADGE_LABEL: Record<TunsayState, string> = {
+  idle:        'ReanMore WEG',
+  waving:      'Hello!',
+  thinking:    'Thinking...',
+  listening:   'Listening...',
+  explaining:  'Explaining...',
+  encouraging: 'Encouraging!',
+  happy:       'Yay!',
+  celebrating: 'Done!',
+  jumping:     'Amazing!',
+  confused:    'Hmm...',
+  sleeping:    'Zzz...',
+};
+
+export const ReanMoreAvatar: React.FC<TunsayAvatarProps> = ({
   state = 'idle',
   size = 'md',
   showBadge = true,
@@ -55,7 +85,7 @@ export const TunsayAvatar: React.FC<TunsayAvatarProps> = ({
     if (onClick) onClick();
   };
 
-  const imgSrc   = STATE_IMAGE[state] ?? lionIdle;
+  const imgSrc   = STATE_IMAGE[state] ?? lionListening;
   const animCls  = isShaking ? 'animate-lion-shake' : (STATE_ANIM[state] ?? 'animate-lion-idle');
 
   return (
@@ -73,12 +103,12 @@ export const TunsayAvatar: React.FC<TunsayAvatarProps> = ({
       <div
         onClick={handleClick}
         className={`${dimensions} cursor-pointer relative`}
-        title="Tap Tunsay!"
+        title="Tap ReanMore!"
       >
         <img
           key={state}
           src={imgSrc}
-          alt={`Tunsay - ${state}`}
+          alt={`ReanMore - ${state}`}
           className={`w-full h-full object-contain drop-shadow-lg transition-opacity duration-300 ${animCls}`}
           draggable={false}
         />
@@ -87,9 +117,11 @@ export const TunsayAvatar: React.FC<TunsayAvatarProps> = ({
       {/* Badge */}
       {showBadge && (
         <span className="mt-1 px-2 py-0.5 bg-[#4C9A6A]/10 text-[#357A4E] text-[11px] font-extrabold rounded-full tracking-wide uppercase border border-[#4C9A6A]/20">
-          {state === 'thinking' ? 'Thinking...' : 'Tunsay WEG'}
+          {BADGE_LABEL[state] ?? 'ReanMore WEG'}
         </span>
       )}
     </div>
   );
 };
+
+export const TunsayAvatar = ReanMoreAvatar;
