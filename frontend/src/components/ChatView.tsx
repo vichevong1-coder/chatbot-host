@@ -8,7 +8,7 @@ import { ExplanationCard } from './ExplanationCard';
 import { askTunsayTutor } from '../services/geminiService';
 // import { getDisplayName } from '../utils/language';
 import { MOCK_PROBLEMS, generateHistoryChatForProblem } from '../data/mockProblems';
-import { Send, Camera, User, GraduationCap, ArrowLeft, Plus, BookOpen, Trash2, MessageSquare } from 'lucide-react';
+import { Send, Camera, User, GraduationCap, ArrowLeft, Plus, BookOpen, Trash2, MessageSquare, Sparkles } from 'lucide-react';
 import { cleanBilingualOption } from '../utils/language';
 import {
   createActivity,

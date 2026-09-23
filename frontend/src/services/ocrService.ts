@@ -1,5 +1,6 @@
 import { Grade, HomeworkProblem, Subject } from '../types';
-import { BACKEND_MOCK_WORKSHEET_PROBLEMS } from '../data/mockProblems';
+import { MOCK_PROBLEMS as BACKEND_MOCK_WORKSHEET_PROBLEMS } from '../data/mockProblems';
+
 
 export interface OCRProcessResult {
   success: boolean;

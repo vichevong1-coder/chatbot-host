@@ -57,6 +57,26 @@ export interface StepItem {
     analogyEng: string;
     analogyType: 'apples' | 'pizza' | 'water' | 'plants';
   };
+
+  // ── Socratic Stepper Widget fields (added by sovandeth_frontend) ──
+  /** Step title shown in the header and roadmap */
+  title?: string;
+  /** Step status driven by the backend stepper state machine */
+  status?: 'pending' | 'active' | 'completed' | 'skipped';
+  /** Primary mission / question text (maps from backend card schema) */
+  mission?: string;
+  /** Guiding clue shown in the card body (Tier 1 hint equivalent) */
+  clue?: string;
+  /** Friendly analogy or visual example for Tier 2 */
+  helpfulExample?: string;
+  /** Socratic "Your Turn" prompt shown at the bottom of the card */
+  yourTurn?: string;
+  /** Flat array of 3 progressive hint strings from the backend */
+  hints?: [string?, string?, string?];
+  /** Currently unlocked hint tier (0 = no hint shown, 1–3 = tier unlocked) */
+  currentHintLevel?: number;
+  /** Student's recorded answer after solving the step */
+  studentAnswer?: string;
 }
 
 export interface HomeworkProblem {

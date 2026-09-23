@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserProfile } from '../types';
-import { TunsayAvatar } from './TunsayAvatar';
+
 import { Home, BookOpen, User } from 'lucide-react';
 
 import logoWhiteImg from '../assets/logo_white.png';

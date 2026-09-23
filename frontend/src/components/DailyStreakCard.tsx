@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Flame, Sparkles, Trophy, Zap, ShieldCheck, ChevronRight, Award, Star, Gem, Crown, Check } from 'lucide-react';
+import { Flame, Sparkles, Trophy, Zap, ShieldCheck, Award, Star, Gem, Crown, Check } from 'lucide-react';
 import { UserProfile, HomeworkProblem } from '../types';
 
 interface DailyStreakCardProps {
@@ -37,7 +37,7 @@ function getYesterdayString(): string {
   return d.toISOString().split('T')[0];
 }
 
-export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onStartPractice }) => {
+export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onStartPractice: _onStartPractice }) => {
   const isKhmer = profile.language === 'km';
   const today = getTodayString();
   const yesterday = getYesterdayString();
