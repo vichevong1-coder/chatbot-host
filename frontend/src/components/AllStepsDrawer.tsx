@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { StepItem, Language } from '../types';
-import { X, CheckCircle2, CircleDot, Circle, ArrowRight, BookOpen } from 'lucide-react';
+import { X, CheckCircle2, CircleDot, Circle, ArrowRight, ArrowLeft, BookOpen, Edit3, Lock } from 'lucide-react';
 
 interface AllStepsDrawerProps {
   steps: StepItem[];
@@ -36,18 +36,21 @@ export const AllStepsDrawer: React.FC<AllStepsDrawerProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
       <div 
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="all-steps-title"
         className="w-full max-w-lg max-h-[85vh] bg-white rounded-3xl border-3 border-[#1B4332] shadow-[6px_6px_0px_#1B4332] flex flex-col overflow-hidden animate-scaleUp"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="p-4 sm:p-5 bg-[#1B4332] text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-[#40916C] border-2 border-white flex items-center justify-center">
+            <div className="w-9 h-9 rounded-2xl bg-[#40916C] border-2 border-white flex items-center justify-center shadow-[1px_1px_0px_white]">
               <BookOpen className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-heading font-black text-sm sm:text-base leading-tight">
-                {isKhmer ? 'បញ្ជីជំហានទាំងអស់' : 'All Problem Steps'}
+              <h3 id="all-steps-title" className="font-heading font-black text-sm sm:text-base leading-tight">
+                {isKhmer ? '📋 ផែនទីដំណើរការដោះស្រាយ' : '📋 Solution Journey Roadmap'}
               </h3>
               <p className="text-[11px] font-bold text-[#A7CDB4]">
                 {isKhmer
@@ -60,108 +63,183 @@ export const AllStepsDrawer: React.FC<AllStepsDrawerProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-white hover:bg-white/20 rounded-xl transition-all cursor-pointer"
+            className="p-2 text-white hover:bg-white/20 rounded-xl transition-all cursor-pointer border border-white/20"
             title={isKhmer ? 'បិទ' : 'Close'}
           >
             <X className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
 
-        {/* Step Checklist List */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+        {/* Spec §5 Clean Roadmap (No "Your Turn" Questions) */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 bg-[#F9FBF9]">
           {steps.map((s, idx) => {
             const isCompleted = idx < currentStepIndex || s.status === 'completed';
             const isCurrent = idx === currentStepIndex;
+            const isLocked = idx > currentStepIndex && s.status !== 'completed';
+
+            const missionText = s.mission || (isKhmer ? s.questionKhmer : s.questionEng);
+            const ruleText = s.clue || (isKhmer ? s.hint1?.khmer : s.hint1?.eng);
 
             return (
               <div
                 key={s.id || idx}
-                onClick={() => {
-                  onSelectStep(idx);
-                  onClose();
-                }}
-                className={`p-4 rounded-2xl border-3 transition-all cursor-pointer flex items-start gap-3 relative ${
+                className={`p-4 rounded-2xl border-3 transition-all flex flex-col gap-2.5 relative ${
                   isCurrent
-                    ? 'bg-[#E8F5E9] border-[#1B4332] shadow-[3px_3px_0px_#1B4332] scale-[1.01]'
+                    ? 'bg-[#E8F5E9] border-[#1B4332] shadow-[3px_3px_0px_#1B4332]'
                     : isCompleted
-                    ? 'bg-[#F4FBF7] border-[#2D6A4F] hover:bg-[#E8F5E9]'
-                    : 'bg-white border-[#1B4332]/30 hover:border-[#1B4332] hover:bg-[#F9FBF9]'
+                    ? 'bg-white border-[#2D6A4F] shadow-[2px_2px_0px_#2D6A4F]'
+                    : 'bg-white/70 border-[#1B4332]/25 opacity-75'
                 }`}
               >
-                {/* Status Icon */}
-                <div className="shrink-0 mt-0.5">
-                  {isCompleted ? (
-                    <div className="w-7 h-7 rounded-xl bg-[#2D6A4F] text-white flex items-center justify-center border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332]">
-                      <CheckCircle2 className="w-4 h-4 stroke-[3]" />
-                    </div>
-                  ) : isCurrent ? (
-                    <div className="w-7 h-7 rounded-xl bg-[#1B4332] text-white flex items-center justify-center border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] animate-pulse">
-                      <CircleDot className="w-4 h-4 stroke-[3]" />
-                    </div>
-                  ) : (
-                    <div className="w-7 h-7 rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center border-2 border-gray-300">
-                      <Circle className="w-3.5 h-3.5 stroke-[2]" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-[#2D6A4F]">
-                      {isKhmer ? `ជំហានទី ${idx + 1}` : `Step ${idx + 1}`}
-                      {isCurrent && (
-                        <span className="ml-2 px-2 py-0.5 bg-[#2D6A4F] text-white text-[10px] rounded-full">
-                          {isKhmer ? 'សកម្ម' : 'Active'}
-                        </span>
+                {/* Step Header */}
+                <div className="flex items-center justify-between gap-2 border-b border-[#1B4332]/10 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="shrink-0">
+                      {isCompleted ? (
+                        <div className="w-6 h-6 rounded-lg bg-[#2D6A4F] text-white flex items-center justify-center border border-[#1B4332]">
+                          <CheckCircle2 className="w-4 h-4 stroke-[3]" />
+                        </div>
+                      ) : isCurrent ? (
+                        <div className="w-6 h-6 rounded-lg bg-[#1B4332] text-white flex items-center justify-center border border-[#1B4332] animate-pulse">
+                          <CircleDot className="w-4 h-4 stroke-[3]" />
+                        </div>
+                      ) : (
+                        <div className="w-6 h-6 rounded-lg bg-gray-100 text-gray-400 flex items-center justify-center border border-gray-300">
+                          <Circle className="w-3.5 h-3.5 stroke-[2]" />
+                        </div>
                       )}
-                      {isCompleted && (
-                        <span className="ml-2 px-2 py-0.5 bg-[#A7CDB4] text-[#1B4332] text-[10px] rounded-full">
-                          {isKhmer ? 'រួចរាល់' : 'Done'}
-                        </span>
-                      )}
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-wider text-[#1B4332]">
+                      {isKhmer ? `ជំហានទី ${idx + 1}` : `Step ${idx + 1}`}:&nbsp;
+                      <span className="text-[#2D6A4F]">
+                        {s.title || missionText}
+                      </span>
                     </span>
                   </div>
 
-                  <h4 className="font-heading font-black text-xs sm:text-sm text-[#1B4332] mt-0.5 line-clamp-2">
-                    {s.title || s.mission || (isKhmer ? s.questionKhmer : s.questionEng)}
-                  </h4>
-
-                  {/* Mission / Question preview */}
-                  <p className="text-[11px] font-bold text-[#1B4332]/80 mt-1 line-clamp-2">
-                    👉 {s.yourTurn || (isKhmer ? s.socraticPromptKhmer : s.socraticPromptEng)}
-                  </p>
-
-                  {/* Recorded Student Answer if completed */}
-                  {s.studentAnswer && (
-                    <div className="mt-2 p-2 bg-white rounded-xl border border-[#2D6A4F]/40 text-[11px] font-black text-[#1B4332] flex items-center gap-1.5">
-                      <span className="text-[#2D6A4F]">{isKhmer ? 'ចម្លើយរបស់អ្នក៖' : 'Your Answer:'}</span>
-                      <span className="bg-[#E8F5E9] px-2 py-0.5 rounded-md border border-[#1B4332]/20">
-                        {s.studentAnswer}
-                      </span>
-                    </div>
+                  {isCurrent && (
+                    <span className="px-2 py-0.5 bg-[#1B4332] text-white text-[10px] font-black rounded-full uppercase">
+                      {isKhmer ? 'សកម្ម' : 'Active'}
+                    </span>
+                  )}
+                  {isCompleted && (
+                    <span className="px-2 py-0.5 bg-[#A7CDB4] text-[#1B4332] text-[10px] font-black rounded-full uppercase">
+                      {isKhmer ? 'រួចរាល់' : 'Done'}
+                    </span>
+                  )}
+                  {isLocked && (
+                    <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-[10px] font-black rounded-full flex items-center gap-1">
+                      <Lock className="w-2.5 h-2.5" />
+                      {isKhmer ? 'ចាក់សោ' : 'Locked'}
+                    </span>
                   )}
                 </div>
 
-                <div className="shrink-0 self-center text-[#1B4332]/40 hover:text-[#1B4332]">
-                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                {/* Mission & Rule (Spec §5 Roadmap Items) */}
+                <div className="space-y-1.5 text-xs">
+                  {missionText && (
+                    <p className="font-bold text-[#1B4332] flex items-start gap-1.5">
+                      <span className="shrink-0 text-[#2D6A4F]">🌟</span>
+                      <span>
+                        <strong className="text-[#2D6A4F]">{isKhmer ? 'បេសកកម្ម៖' : 'Mission:'}</strong>{' '}
+                        {missionText}
+                      </span>
+                    </p>
+                  )}
+                  {ruleText && (
+                    <p className="font-bold text-[#78350F] flex items-start gap-1.5">
+                      <span className="shrink-0 text-[#D97706]">💡</span>
+                      <span>
+                        <strong className="text-[#B45309]">{isKhmer ? 'វិធាន/គន្លឹះ៖' : 'Rule:'}</strong>{' '}
+                        {ruleText}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Spec §5 Status Line & Action */}
+                <div className="pt-2 border-t border-[#1B4332]/10 flex items-center justify-between gap-2 flex-wrap">
+                  {isCompleted && (
+                    <div className="flex items-center justify-between w-full">
+                      <p className="text-[11px] font-black text-[#2D6A4F] flex items-center gap-1">
+                        <span>✅ {isKhmer ? 'បានដោះស្រាយ' : 'Solved'}</span>
+                        <span className="text-[#1B4332]/80 font-bold">
+                          ({isKhmer ? 'កត់ត្រាទុក៖' : 'Recorded:'} "{s.studentAnswer || (isKhmer ? 'រួចរាល់' : 'Done')}")
+                        </span>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectStep(idx);
+                          onClose();
+                        }}
+                        className="px-2.5 py-1 bg-[#E8F5E9] hover:bg-[#D8F3DC] text-[#1B4332] text-[10px] font-black rounded-lg border border-[#2D6A4F] flex items-center gap-1 cursor-pointer transition-all"
+                      >
+                        <span>{isKhmer ? 'មើលឡើងវិញ' : 'Review'}</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {isCurrent && (
+                    <div className="flex items-center justify-between w-full">
+                      <p className="text-[11px] font-black text-[#1B4332] flex items-center gap-1">
+                        <span>🔄 {isKhmer ? 'កំពុងដំណើរការ' : 'In Progress'}</span>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectStep(idx);
+                          onClose();
+                        }}
+                        className="px-3 py-1.5 bg-[#1B4332] hover:bg-[#2D6A4F] text-white text-xs font-black rounded-xl border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] hover:-translate-y-0.5 flex items-center gap-1.5 cursor-pointer transition-all"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>{isKhmer ? `ទៅដោះស្រាយជំហានទី ${idx + 1}` : `Go to Step ${idx + 1} to Solve`}</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {isLocked && (
+                    <p className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
+                      <span>⏳ {isKhmer ? 'បន្ទាប់ទៀត 🔒' : 'Up Next 🔒'}</span>
+                    </p>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Footer */}
-        <div className="p-3.5 sm:p-4 bg-[#E8F5E9] border-t-2 border-[#1B4332]/20 flex justify-end shrink-0">
+        {/* Spec §5 Footer Navigation Actions */}
+        <div className="p-3.5 sm:p-4 bg-[#E8F5E9] border-t-2 border-[#1B4332]/20 flex items-center justify-between gap-3 shrink-0">
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-2 bg-[#1B4332] text-white font-black text-xs rounded-xl border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] hover:-translate-y-0.5 cursor-pointer transition-all"
+            onClick={() => {
+              onSelectStep(currentStepIndex);
+              onClose();
+            }}
+            className="px-3 sm:px-4 py-2 bg-white hover:bg-[#F4FBF7] text-[#1B4332] font-black text-xs rounded-xl border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] hover:-translate-y-0.5 cursor-pointer transition-all flex items-center gap-1.5"
           >
-            {isKhmer ? 'បិទ' : 'Close'}
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>{isKhmer ? 'ត្រឡប់ទៅកាតសកម្ម' : 'Return to Active Card'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              onSelectStep(currentStepIndex);
+              onClose();
+            }}
+            className="px-3.5 sm:px-4 py-2 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-black text-xs rounded-xl border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] hover:-translate-y-0.5 cursor-pointer transition-all flex items-center gap-1.5"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>{isKhmer ? `ទៅដោះស្រាយជំហានទី ${currentStepIndex + 1}` : `Go to Step ${currentStepIndex + 1}`}</span>
           </button>
         </div>
       </div>
     </div>
   );
 };
+
+

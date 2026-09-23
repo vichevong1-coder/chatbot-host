@@ -105,6 +105,12 @@ export function mapBackendStepsToStepItems(widget: StepWidgetPayload, defaultPro
       yourTurn: s.your_turn || prompt,
       status: (s.status as any) || (idx === widget.current_step_index ? 'in_progress' : idx < widget.current_step_index ? 'completed' : 'pending'),
       studentAnswer: s.student_answer || null,
+      hints: s.hints || [
+        clue || (s.concept ? `Look at the concept: ${s.concept}` : 'Think about what we need to calculate first.'),
+        example || 'Visualize the problem with objects or groups.',
+        `Break it into smaller steps: take it one calculation at a time.`
+      ],
+      currentHintLevel: s.current_hint_level ?? 0,
       questionKhmer: mission,
       questionEng: mission,
       inputFormat: 'text',
@@ -129,8 +135,8 @@ export function mapBackendStepsToStepItems(widget: StepWidgetPayload, defaultPro
         simpleKhmer: clue || mission,
         simpleEng: clue || mission,
         analogyTitle: 'របៀបគិត (Analogy)',
-        analogyKhmer: 'ស្រមៃដូចជាការប្រមូលរបស់របរដាក់ក្នុងកន្ត្រកតែមួយ។',
-        analogyEng: 'Imagine putting items into a single basket together.',
+        analogyKhmer: example || 'ស្រមៃដូចជាការប្រមូលរបស់របរដាក់ក្នុងកន្ត្រកតែមួយ។',
+        analogyEng: example || 'Imagine putting items into a single basket together.',
         analogyType: 'apples',
       },
     };
@@ -330,7 +336,7 @@ export async function requestHintApi(
   sessionId: string,
   language: Language = 'km',
   gradeLevel: string = 'grade_1_3'
-): Promise<{ text: string; hintCount?: number | undefined } | null> {
+): Promise<{ text: string; hintCount?: number | undefined; stepWidget?: StepWidgetPayload | undefined } | null> {
   try {
     const res = await fetch('/api/query', {
       method: 'POST',
@@ -347,6 +353,7 @@ export async function requestHintApi(
     return {
       text: data.solution || data.formatted_markdown || '',
       hintCount: data.hint_count,
+      stepWidget: data.step_widget,
     };
   } catch (err) {
     console.error('Failed to request hint from backend:', err);

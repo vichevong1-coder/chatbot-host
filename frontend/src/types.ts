@@ -49,6 +49,8 @@ export interface StepItem {
   yourTurn?: string | undefined;
   studentAnswer?: string | null | undefined;
   status?: 'completed' | 'in_progress' | 'pending' | 'locked' | undefined;
+  hints?: string[] | undefined;
+  currentHintLevel?: number | undefined;
   explainDifferently: {
     simpleKhmer: string;
     simpleEng: string;

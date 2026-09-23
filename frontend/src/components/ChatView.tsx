@@ -246,10 +246,37 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const handleStepNavigate = async (stepIdx: number) => {
+    if (!activeProblem?.steps || stepIdx < 0 || stepIdx >= activeProblem.steps.length) return;
     setCurrentStepIndex(stepIdx);
+
+    // If card for this step isn't in messages yet, append it so the user can interact with it
+    const cardExists = messages.some(m => m.stepCard?.stepIndex === stepIdx);
+    if (!cardExists) {
+      const newCard = makeStepCardMsg(activeProblem.steps[stepIdx], stepIdx, activeProblem.steps.length);
+      updateMessages([...messages, newCard]);
+    }
+
+    // Smoothly scroll to the target step bubble
+    setTimeout(() => {
+      const el = document.getElementById(`step-bubble-${stepIdx}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 80);
+
     if (currentSessionId) {
       await navigateStepApi(currentSessionId, stepIdx);
     }
+  };
+
+  const handleHintLevelChange = (level: number) => {
+    setActiveProblem(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        steps: prev.steps.map((s, idx) => idx === currentStepIndex ? { ...s, currentHintLevel: level } : s)
+      };
+    });
   };
 
   useEffect(() => {
@@ -709,13 +736,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
             // ── Step Card Bubble (spec §3) ────────────────────────────────
             if (msg.stepCard) {
               const { step, stepIndex, totalSteps } = msg.stepCard;
+              const liveStep = activeProblem?.steps?.[stepIndex] || step;
               return (
-                <div key={msg.id} className="flex items-start gap-2.5 sm:gap-3 w-full flex-row animate-fadeIn">
+                <div key={msg.id} id={`step-bubble-${stepIndex}`} className="flex items-start gap-2.5 sm:gap-3 w-full flex-row animate-fadeIn">
                   <div className="w-9 h-9 sm:w-11 sm:h-11 bg-[#40916C] rounded-xl sm:rounded-2xl shrink-0 border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] flex items-center justify-center p-0.5">
                     <TunsayAvatar size="sm" state="explaining" showBadge={false} />
                   </div>
                   <StepChatBubble
-                    step={step}
+                    step={liveStep}
                     stepIndex={stepIndex}
                     totalSteps={totalSteps}
                     language={profile.language}
@@ -923,6 +951,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           language={profile.language}
           sessionId={currentSessionId}
           gradeLevel={`grade_${profile.grade <= 3 ? '1_3' : '4_6'}`}
+          onHintLevelChange={handleHintLevelChange}
           onClose={() => setIsHintOpen(false)}
         />
       )}

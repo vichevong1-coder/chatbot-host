@@ -133,7 +133,7 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
                 {isKhmer ? explainDifferently.analogyTitle : explainDifferently.analogyTitle}
               </div>
               <p className="text-base text-[#1B4332] font-black leading-relaxed bg-white p-3.5 rounded-xl border-2 border-[#1B4332]">
-                {isKhmer ? explainDifferently.analogyKhmer : explainDifferently.analogyEng}
+                {step.helpfulExample || (isKhmer ? explainDifferently.analogyKhmer : explainDifferently.analogyEng)}
               </p>
 
               {/* Visual representation card */}
