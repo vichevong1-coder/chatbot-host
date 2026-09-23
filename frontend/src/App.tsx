@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { UserProfile, HomeworkProblem, Grade, ChatSession } from './types';
+import { UserProfile, HomeworkProblem, Grade, ChatSession, WorksheetQueue } from './types';
 import { Header } from './components/Header';
 import { HomeView } from './components/HomeView';
 import { ChatView } from './components/ChatView';
@@ -45,6 +45,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'profile'>('home');
   const [activeProblem, setActiveProblem] = useState<HomeworkProblem | undefined>(undefined);
   const [initialChatQuery, setInitialChatQuery] = useState<string | undefined>(undefined);
+
+  // ── Worksheet Exercise Queue ──
+  const [worksheetQueue, setWorksheetQueue] = useState<WorksheetQueue | null>(null);
 
   // ── Session state with localStorage persistence ──
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
@@ -136,13 +139,49 @@ export default function App() {
     setActiveTab('chat');
   };
 
-  const handleHomeworkScanned = (problem: HomeworkProblem) => {
-    setActiveProblem(problem);
+  const handleHomeworkScanned = (problems: HomeworkProblem[], initialIndex: number = 0) => {
+    if (problems.length === 0) return;
+    const initialProblem = problems[initialIndex] || problems[0];
+    setActiveProblem(initialProblem);
     setInitialChatQuery(undefined);
     setIsScannerOpen(false);
-    const sessionId = createNewSession(problem);
+    // Initialize worksheet queue
+    setWorksheetQueue({
+      problems,
+      activeIndex: initialIndex,
+      completedIds: [],
+      ...(problems.length > 1 ? { worksheetTitle: `Worksheet (${problems.length} exercises)` } : {}),
+    });
+    const sessionId = createNewSession(initialProblem);
     setActiveSessionId(sessionId);
     setActiveTab('chat');
+  };
+
+  const handleSelectExercise = (index: number) => {
+    setWorksheetQueue(prev => {
+      if (!prev) return prev;
+      const problem = prev.problems[index];
+      if (!problem) return prev;
+      setActiveProblem(problem);
+      return { ...prev, activeIndex: index };
+    });
+  };
+
+  const handleExerciseComplete = (problemId: string) => {
+    setWorksheetQueue(prev => {
+      if (!prev) return prev;
+      if (prev.completedIds.includes(problemId)) return prev;
+      const newCompleted = [...prev.completedIds, problemId];
+      // Auto-advance to next uncompleted exercise
+      const nextIndex = prev.problems.findIndex(
+        (p, i) => i > prev.activeIndex && !newCompleted.includes(p.id)
+      );
+      const newIndex = nextIndex !== -1 ? nextIndex : prev.activeIndex;
+      if (nextIndex !== -1) {
+        setActiveProblem(prev.problems[nextIndex]);
+      }
+      return { ...prev, completedIds: newCompleted, activeIndex: newIndex };
+    });
   };
 
   const handleSelectSession = (sessionId: string) => {
@@ -196,11 +235,14 @@ export default function App() {
             sessions={sessions}
             activeSessionId={activeSessionId}
             onSelectSession={handleSelectSession}
-            onNewSession={() => createNewSession()}
+            onNewSession={() => { createNewSession(); setWorksheetQueue(null); }}
             onDeleteSession={handleDeleteSession}
             onUpdateMessages={(msgs) => updateSessionMessages(activeSessionId, msgs)}
             onOpenScanner={() => setIsScannerOpen(true)}
             onBackToHome={() => setActiveTab('home')}
+            worksheetQueue={worksheetQueue ?? undefined}
+            onSelectExercise={handleSelectExercise}
+            onExerciseComplete={handleExerciseComplete}
           />
         )}
 

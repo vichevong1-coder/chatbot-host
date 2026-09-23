@@ -9,7 +9,10 @@ Description: Elementary Chemistry & Physical Matter solver tailored specifically
 import re
 import json
 import os
-import google.generativeai as genai
+try:
+    from google import genai
+except ImportError:
+    genai = None
 
 try:
     from app.prompts.controller import prompt_controller
@@ -17,8 +20,9 @@ except ImportError:
     from services.science_service.app.prompts.controller import prompt_controller
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+_genai_client = None
+if GEMINI_API_KEY and genai:
+    _genai_client = genai.Client(api_key=GEMINI_API_KEY)
 
 ATOMIC_WEIGHTS = {
     "H": 1.008, "C": 12.011, "N": 14.007, "O": 15.999, "Na": 22.990,
@@ -154,10 +158,12 @@ def solve_chemistry_ai(expression: str, grade_level: str = "grade_1_3") -> dict:
         }
 
     try:
-        model_name = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
-        model = genai.GenerativeModel(model_name)
+        model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         prompt = prompt_controller.get_prompt("chemistry", expression, grade_level)
-        response = model.generate_content(prompt)
+        response = _genai_client.models.generate_content(
+            model=model_name,
+            contents=prompt
+        )
         text = response.text.strip()
         if text.startswith("```"):
             lines = text.split("\n")

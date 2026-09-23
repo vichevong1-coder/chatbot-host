@@ -86,18 +86,18 @@ export function parseOCRResponse(data: any): OCRProcessResult {
 
   const problems: HomeworkProblem[] = [];
 
-  // Parse grade
+  // Parse grade — supports both direct OCR (data.document) and orchestrator (data.document_meta)
   let grade: Grade = 3;
-  const gradeStr = data.document?.grade_level || data.grade_level || '';
+  const gradeStr = data.document?.grade_level || data.document_meta?.grade_level || data.grade_level || '';
   const gradeMatch = gradeStr.match(/\d+/);
   if (gradeMatch) {
     const g = parseInt(gradeMatch[0], 10);
     if (g >= 1 && g <= 6) grade = g as Grade;
   }
 
-  // Parse subject
+  // Parse subject — supports both direct OCR and orchestrator formats
   let subject: Subject = 'math';
-  const subStr = (data.document?.subject || data.detected_subject || data.subject || '').toLowerCase();
+  const subStr = (data.document?.subject || data.document_meta?.subject || data.detected_subject || data.subject || '').toLowerCase();
   if (subStr.includes('science') || subStr.includes('physic') || subStr.includes('bio') || subStr.includes('chem')) {
     subject = 'science';
   } else if (subStr.includes('eng') || subStr.includes('language') || subStr.includes('vocab')) {

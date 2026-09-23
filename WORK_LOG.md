@@ -42,3 +42,33 @@
 - Staged all integrated files including the unified `docker-compose.yml`, `start_all.ps1`, `WORK_LOG.md`, and `README.md`.
 - Committed the complete integrated architecture and pushed the new branch to the GitHub remote repository (`Sovandeth0063/WEG_MVP_Chatbot`).
 
+### Work Entry 9: Multi-Exercise Worksheet Queue
+- Connected `HomeworkScanner.tsx` to call the real `processHomeworkImage()` OCR service and pass the **full** `HomeworkProblem[]` array via the updated `onHomeworkConfirmed(problems[])` callback.
+- Added `WorksheetQueue` type to `types.ts` to track all scanned exercises, the active index, and completed exercise IDs.
+- Added worksheet queue state (`worksheetQueue`, `handleSelectExercise`, `handleExerciseComplete`) in `App.tsx` with automatic advance to the next uncompleted exercise on completion.
+- Created **`WorksheetExerciseBar.tsx`**: horizontally scrollable pill tab bar shown above the chat when a multi-exercise worksheet is active (Ex 1 → Ex N), with completed ✓ / active ● / pending states and chevron scroll buttons.
+- Created **`WorksheetProgressPanel.tsx`**: replaces the session history list in the left panel when a worksheet queue is active — shows a progress bar, completion fraction, and a vertical exercise list with step dots.
+- Created **`ExerciseCelebrationBanner.tsx`**: animated inline banner with floating stars, bouncing mascot, progress dots, and bilingual (Khmer/English) "Next Exercise" / "Review" CTAs shown after completing each exercise's steps.
+### Work Entry 10: Scanner Preview Image Fix & Multi-Problem Selection Carousel
+- Fixed visual image cropping in `HomeworkScanner.tsx` preview stage by replacing `object-cover` + fixed `max-h-64` with `object-contain` + `max-h-[60vh]`, ensuring tall worksheets display in their entirety before scanning.
+- Restored the **Multi-Problem Selection Carousel** in `HomeworkScanner.tsx` (`stage === 'confirm'`):
+  - Added horizontal scrollable problem pills (`Scanned Problem 1`, `Scanned Problem 2`, etc.) with active selection highlighting.
+  - Interactive selection updates the live detected question statement preview before starting.
+  - Updated `onHomeworkConfirmed(problems, initialIndex)` to pass the chosen problem index, ensuring `App.tsx` initializes directly on the student's chosen exercise while preserving all scanned problems in the worksheet queue.
+### Work Entry 11: Instant Socratic Backend Decomposition on Exercise Selection
+- Integrated automatic backend Socratic query resolution upon exercise selection in `ChatView.tsx`:
+  - When an exercise from OCR or the sample queue is opened, `ChatView` automatically queries the Socratic Orchestrator gateway (`/api/query`) in the background.
+  - The Socratic Orchestrator calls the Math / Science solver, deconstructs the multi-step problem (e.g. `4 + 5 + 6 =` into Step 1: `4 + 5` and Step 2: `9 + 6`), and returns the 4-part Socratic card (*Our Mission*, *Clue*, *Helpful Example*, *Your Turn*).
+  - The Stepper widget and chat are immediately populated with real interactive guiding sub-questions instead of remaining on a static initial placeholder.
+### Work Entry 12: Top Pinned StepCard 4-Part Socratic Card Upgrade
+- Upgraded `StepCard.tsx` to render the complete 4-part Socratic card system (*Our Mission 🌟*, *Clue 💡*, *Helpful Example 🍎*, *Your Turn 👉*) directly in the top pinned container.
+- Added `syncStepsFromWidget` in `ChatView.tsx` to synchronize decomposed steps from backend Socratic responses into `activeProblem.steps`.
+- Wired multi-step navigation (`‹ ថយក្រោយ` / `បន្ទាប់ ›`), step indicator dots, and inline answer evaluation directly into the top card.
+### Work Entry 13: Unified Single Stepper Widget Flow in ChatView
+- Eliminated redundant duplicate card rendering in `ChatView.tsx`.
+- Ensured the conversation flows cleanly as a single unified Socratic Stepper interface (`StepChatBubble` format with dark header bar, 4-part color-coded cards, step pagination dots, drawer button, and inline submission), matching the exact layout shown in design screenshot 2.
+- Verified production build: **0 errors**.
+
+
+
+

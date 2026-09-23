@@ -257,7 +257,10 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
         )
 
         # Print tidy structured projection box to logs
-        logger.info("\n" + format_tidy_pipeline_log(pipeline_trace))
+        try:
+            logger.info("\n" + format_tidy_pipeline_log(pipeline_trace))
+        except Exception:
+            pass
 
         # 8. Update session context
         session.subject = subject

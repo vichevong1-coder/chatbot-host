@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChatMessage, HomeworkProblem, UserProfile, TunsayState, ChatSession } from '../types';
+import { ChatMessage, HomeworkProblem, UserProfile, TunsayState, ChatSession, WorksheetQueue } from '../types';
 import { TunsayAvatar } from './TunsayAvatar';
 import { StepTrail } from './StepTrail';
 import { StepCard } from './StepCard';
@@ -7,6 +7,9 @@ import { HintSheet } from './HintSheet';
 import { ExplanationCard } from './ExplanationCard';
 import { StepChatBubble } from './StepChatBubble';
 import { AllStepsDrawer } from './AllStepsDrawer';
+import { WorksheetExerciseBar } from './WorksheetExerciseBar';
+import { WorksheetProgressPanel } from './WorksheetProgressPanel';
+import { ExerciseCelebrationBanner } from './ExerciseCelebrationBanner';
 import { StepItem } from '../types';
 import { askTunsayTutor } from '../services/geminiService';
 // import { getDisplayName } from '../utils/language';
@@ -174,6 +177,10 @@ interface ChatViewProps {
   onUpdateMessages: (messages: ChatMessage[]) => void;
   onOpenScanner: () => void;
   onBackToHome?: () => void;
+  /** Worksheet exercise queue state (set after scanning a multi-exercise worksheet) */
+  worksheetQueue?: WorksheetQueue | undefined;
+  onSelectExercise?: (index: number) => void;
+  onExerciseComplete?: (problemId: string) => void;
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({
@@ -188,11 +195,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onDeleteSession,
   onUpdateMessages,
   onOpenScanner,
-  onBackToHome
+  onBackToHome,
+  worksheetQueue,
+  onSelectExercise,
+  onExerciseComplete,
 }) => {
   const isKhmer = profile.language === 'km';
   const [activeProblem, setActiveProblem] = useState<HomeworkProblem | undefined>(initialProblem);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+
+  // Track exercise completion celebration
+  const [celebratingProblemId, setCelebratingProblemId] = useState<string | null>(null);
+  const celebrationShownRef = useRef<Set<string>>(new Set());
 
   const activeSession = sessions.find(s => s.id === activeSessionId);
   const messages = activeSession?.messages ?? [];
@@ -230,6 +244,43 @@ export const ChatView: React.FC<ChatViewProps> = ({
       setThinkingTextIdx(0);
     }
   }, [sayoStatus]);
+
+  // Sync backend decomposed steps into activeProblem so top StepCard renders the real 4-part Socratic card
+  const syncStepsFromWidget = (widget: any, rawMsgText?: string) => {
+    if (widget && Array.isArray(widget.steps) && widget.steps.length > 0) {
+      const total = widget.total_steps || widget.steps.length;
+      const mapped: StepItem[] = widget.steps.map((st: any, i: number) => ({
+        id: `step-${st.step_number || i + 1}`,
+        stepNumber: st.step_number || i + 1,
+        totalSteps: total,
+        title: st.title || `Step ${st.step_number || i + 1}`,
+        mission: st.mission || st.questionKhmer || st.questionEng || '',
+        clue: st.clue || st.hint1?.khmer || '',
+        helpfulExample: st.helpful_example || st.helpfulExample || st.hint2?.khmer || '',
+        yourTurn: st.your_turn || st.yourTurn || st.socraticPromptKhmer || st.socraticPromptEng || '',
+        questionKhmer: st.mission || st.title || `Step ${i + 1}`,
+        questionEng: st.mission || st.title || `Step ${i + 1}`,
+        socraticPromptKhmer: st.your_turn || st.yourTurn || st.mission || '',
+        socraticPromptEng: st.your_turn || st.yourTurn || st.mission || '',
+        inputFormat: 'text',
+        correctAnswer: st.expected_answer || st.expectedAnswer || st.correctAnswer || '',
+        expectedAnswer: st.expected_answer || st.expectedAnswer || st.correctAnswer || '',
+        hint1: { khmer: st.clue || '', eng: st.clue || '' },
+        hint2: { khmer: st.helpful_example || st.helpfulExample || '', eng: st.helpful_example || st.helpfulExample || '' },
+        hint3: { titleKhmer: 'ជំនួយ', titleEng: 'Help', exampleKhmer: '', exampleEng: '' },
+        explainDifferently: { simpleKhmer: st.clue || '', simpleEng: st.clue || '', analogyTitle: '', analogyKhmer: '', analogyEng: '', analogyType: 'apples' },
+      }));
+      setActiveProblem((prev) => (prev ? { ...prev, steps: mapped } : prev));
+      if (widget.current_step_index !== undefined) {
+        setCurrentStepIndex(widget.current_step_index);
+      }
+    } else if (rawMsgText) {
+      const parsed = extractStepWidgetFromMessage({ id: 'temp', sender: 'sayo', textEng: rawMsgText });
+      if (parsed && parsed.widget) {
+        syncStepsFromWidget(parsed.widget);
+      }
+    }
+  };
 
   const updateMessages = (newMsgs: ChatMessage[]) => {
     onUpdateMessages(newMsgs);
@@ -526,6 +577,37 @@ export const ChatView: React.FC<ChatViewProps> = ({
       problem: initialProblem,
     };
     updateMessages([initialMsg]);
+
+    // Automatically trigger backend Socratic decomposition for the problem
+    const probStatement = initialProblem.problemStatementKhmer || initialProblem.problemStatementEng;
+    if (probStatement) {
+      setIsSayoThinking(true);
+      askTunsayTutor(probStatement, initialProblem, profile.language, activeSessionId)
+        .then((sayoRes) => {
+          if (!isMountedRef.current) return;
+          setIsSayoThinking(false);
+          if (sayoRes.stepWidget) {
+            syncStepsFromWidget(sayoRes.stepWidget, sayoRes.textEng || sayoRes.textKhmer);
+          } else if (sayoRes.textEng || sayoRes.textKhmer) {
+            syncStepsFromWidget(null, sayoRes.textEng || sayoRes.textKhmer);
+          }
+
+          if (sayoRes.textKhmer || sayoRes.textEng || sayoRes.stepWidget) {
+            const guidedMsg: ChatMessage = {
+              id: `guide-${initialProblem.id}-${Date.now()}`,
+              sender: 'sayo',
+              textKhmer: sayoRes.textKhmer,
+              textEng: sayoRes.textEng,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              stepWidget: sayoRes.stepWidget,
+            };
+            updateMessages([initialMsg, guidedMsg]);
+          }
+        })
+        .catch(() => {
+          if (isMountedRef.current) setIsSayoThinking(false);
+        });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialProblem]);
 
@@ -549,6 +631,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
     askTunsayTutor(queryText, activeProblem, profile.language, activeSessionId).then((sayoRes) => {
       if (!isMountedRef.current) return;
       setIsSayoThinking(false);
+      if (sayoRes.stepWidget) {
+        syncStepsFromWidget(sayoRes.stepWidget, sayoRes.textEng || sayoRes.textKhmer);
+      } else if (sayoRes.textEng || sayoRes.textKhmer) {
+        syncStepsFromWidget(null, sayoRes.textEng || sayoRes.textKhmer);
+      }
 
       const sayoMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -612,6 +699,37 @@ export const ChatView: React.FC<ChatViewProps> = ({
       prob.steps.length
     );
     currentActivityRef.current = act.id;
+
+    // Trigger decomposition for topic card
+    const probStatement = prob.problemStatementKhmer || prob.problemStatementEng || prob.titleKhmer || prob.titleEng;
+    if (probStatement) {
+      setIsSayoThinking(true);
+      askTunsayTutor(probStatement, prob, profile.language, activeSessionId)
+        .then((sayoRes) => {
+          if (!isMountedRef.current) return;
+          setIsSayoThinking(false);
+          if (sayoRes.stepWidget) {
+            syncStepsFromWidget(sayoRes.stepWidget, sayoRes.textEng || sayoRes.textKhmer);
+          } else if (sayoRes.textEng || sayoRes.textKhmer) {
+            syncStepsFromWidget(null, sayoRes.textEng || sayoRes.textKhmer);
+          }
+
+          if (sayoRes.textKhmer || sayoRes.textEng || sayoRes.stepWidget) {
+            const guidedMsg: ChatMessage = {
+              id: `guide-${prob.id}-${Date.now()}`,
+              sender: 'sayo',
+              textKhmer: sayoRes.textKhmer,
+              textEng: sayoRes.textEng,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              stepWidget: sayoRes.stepWidget,
+            };
+            updateMessages([initialMsg, guidedMsg]);
+          }
+        })
+        .catch(() => {
+          if (isMountedRef.current) setIsSayoThinking(false);
+        });
+    }
   };
 
   const handleStepAnswer = (studentAnswer: string): boolean => {
@@ -633,10 +751,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
     lastInteractionRef.current = Date.now();
 
     if (isCorrect) {
-      if (activeProblem && currentStepIndex + 1 < activeProblem.steps.length) {
+      const nextStepIdx = currentStepIndex + 1;
+      if (activeProblem && nextStepIdx < activeProblem.steps.length) {
         setTimeout(() => {
           setCurrentStepIndex((prev: number) => prev + 1);
         }, 800);
+      } else if (activeProblem && nextStepIdx >= activeProblem.steps.length) {
+        // All steps done — trigger exercise celebration if in queue
+        if (worksheetQueue && !celebrationShownRef.current.has(activeProblem.id)) {
+          celebrationShownRef.current.add(activeProblem.id);
+          setCelebratingProblemId(activeProblem.id);
+          transitionMascotState('celebrating', 4000);
+          onExerciseComplete?.(activeProblem.id);
+        }
       }
       transitionMascotState('jumping', 2000);
 
@@ -692,6 +819,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (!isMountedRef.current) return;
 
     setIsSayoThinking(false);
+    if (sayoRes.stepWidget) {
+      syncStepsFromWidget(sayoRes.stepWidget, sayoRes.textEng || sayoRes.textKhmer);
+    } else if (sayoRes.textEng || sayoRes.textKhmer) {
+      syncStepsFromWidget(null, sayoRes.textEng || sayoRes.textKhmer);
+    }
 
     const sayoMsg: ChatMessage = {
       id: (Date.now() + 1).toString(),
@@ -787,8 +919,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
         </div>
 
-        {/* Session History List */}
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 relative z-10">
+        {/* Session History List — replaced by WorksheetProgressPanel when worksheet active */}
+        {worksheetQueue && worksheetQueue.problems.length > 1 ? (
+          <WorksheetProgressPanel
+            problems={worksheetQueue.problems}
+            activeIndex={worksheetQueue.activeIndex}
+            completedIds={worksheetQueue.completedIds}
+            language={profile.language}
+            {...(worksheetQueue.worksheetTitle ? { worksheetTitle: worksheetQueue.worksheetTitle } : {})}
+            onSelectExercise={(idx) => onSelectExercise?.(idx)}
+          />
+        ) : (
+          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 relative z-10">
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] font-black text-[#1B4332]/60 uppercase tracking-wider">
               {isKhmer ? 'ការជជែកថ្មីៗ' : 'Recent Chats'}
@@ -847,6 +989,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             );
           })}
         </div>
+        )}
 
         <div className="w-full pt-2.5 pb-3 px-4 border-t-2 border-[#1B4332]/15 relative z-10 shrink-0">
           <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider truncate text-center">
@@ -901,61 +1044,63 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
         </div>
 
+        {/* Worksheet Exercise Bar — shown above scrollable area when multi-exercise queue active */}
+        {worksheetQueue && worksheetQueue.problems.length > 1 && (
+          <WorksheetExerciseBar
+            problems={worksheetQueue.problems}
+            activeIndex={worksheetQueue.activeIndex}
+            completedIds={worksheetQueue.completedIds}
+            language={profile.language}
+            onSelectExercise={(idx) => onSelectExercise?.(idx)}
+          />
+        )}
+
         {/* Scrollable Conversation Area */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-5">
-          {activeProblem && (
-            <div className="space-y-4">
-              <StepTrail
-                currentStep={currentStepIndex + 1}
-                totalSteps={activeProblem.steps.length}
+          {/* Celebration banner — shown inline after exercise completion */}
+          {activeProblem && celebratingProblemId === activeProblem.id && worksheetQueue && (() => {
+            const exIdx = worksheetQueue.problems.findIndex(p => p.id === celebratingProblemId);
+            const hasNext = worksheetQueue.problems.some(
+              (p, i) => i > exIdx && !worksheetQueue.completedIds.includes(p.id)
+            );
+            return (
+              <ExerciseCelebrationBanner
+                exerciseNumber={exIdx + 1}
+                totalExercises={worksheetQueue.problems.length}
+                exerciseTitleKhmer={activeProblem.titleKhmer}
+                exerciseTitleEng={activeProblem.titleEng}
                 language={profile.language}
-                onSelectStep={(stepIdx) => setCurrentStepIndex(stepIdx)}
+                hasNext={hasNext}
+                onNext={() => {
+                  setCelebratingProblemId(null);
+                  const nextIdx = worksheetQueue.problems.findIndex(
+                    (p, i) => i > exIdx && !worksheetQueue.completedIds.includes(p.id)
+                  );
+                  if (nextIdx !== -1) onSelectExercise?.(nextIdx);
+                }}
+                onReview={() => setCelebratingProblemId(null)}
               />
+            );
+          })()}
 
-              {currentStep && (
-                <StepCard
-                  step={currentStep}
-                  language={profile.language}
-                  onAnswerSubmit={handleStepAnswer}
-                  onOpenHints={() => {
-                    setIsHintOpen(true);
-                    /* Track hint usage */
-                    if (currentActivityRef.current) {
-                      const act = findActiveActivity(activeSessionId);
-                      if (act) {
-                        updateActivity(currentActivityRef.current, {
-                          hintsUsed: act.hintsUsed + 1,
-                        });
-                      }
-                    }
-                  }}
-                  onOpenExplainDifferently={() => {
-                    setIsExplainOpen(true);
-                    /* Track explain usage */
-                    if (currentActivityRef.current) {
-                      const act = findActiveActivity(activeSessionId);
-                      if (act) {
-                        updateActivity(currentActivityRef.current, {
-                          explainUsed: act.explainUsed + 1,
-                        });
-                      }
-                    }
-                  }}
-                />
-              )}
-            </div>
-          )}
-
+          {/* Conversation History stream */}
           {messages.map((msg) => {
             const isUser = msg.sender === 'user';
             let displayText = '';
             if (isUser) {
               displayText = msg.textEng || msg.textKhmer || '';
             } else {
-              displayText = isKhmer ? (msg.textKhmer || msg.textEng || '') : (msg.textEng || msg.textKhmer || '');
+              const extracted = extractStepWidgetFromMessage(msg);
+              if (extracted && activeProblem) {
+                displayText =
+                  extracted.introText?.trim() ||
+                  (isKhmer
+                    ? `តោះយើងដោះស្រាយជំហានទី ${extracted.activeIdx + 1} ទាំងអស់គ្នា!`
+                    : `Let's solve Step ${extracted.activeIdx + 1} together!`);
+              } else {
+                displayText = isKhmer ? (msg.textKhmer || msg.textEng || '') : (msg.textEng || msg.textKhmer || '');
+              }
             }
-
-            const stepCardData = !isUser ? extractStepWidgetFromMessage(msg) : null;
 
             return (
               <div
@@ -976,52 +1121,78 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   </div>
                 )}
 
-                {stepCardData ? (
-                  <div className="w-full max-w-[92%] sm:max-w-[85%] flex flex-col gap-2 min-w-0">
-                    {stepCardData.introText && (
-                      <div className="p-3 sm:p-4 rounded-2xl bg-white text-[#1B4332] border-2.5 border-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] speech-tail-left text-xs sm:text-sm font-black leading-relaxed">
-                        {stepCardData.introText}
-                      </div>
-                    )}
-                    <StepChatBubble
-                      step={stepCardData.activeStep}
-                      stepIndex={stepCardData.activeIdx}
-                      totalSteps={stepCardData.totalSteps}
-                      language={profile.language}
-                      completedStepIndices={stepCardData.completedSteps}
-                      isLatest={msg.id === messages[messages.length - 1]?.id}
-                      onOpenHints={() => handleStepHint(msg.id)}
-                      onOpenAllSteps={() => handleOpenAllSteps(msg.id, stepCardData.widget)}
-                      onNavigateStep={(targetIdx) => handleStepNavigate(msg.id, targetIdx)}
-                      onStepAnswerSubmit={(stepIdx, ans, isCorrect) =>
-                        handleInlineStepAnswer(msg.id, stepIdx, ans, isCorrect)
-                      }
-                    />
-                    <span className="text-[10px] block font-black opacity-60 ml-2">
-                      {msg.timestamp}
-                    </span>
+                <div
+                  className={`max-w-[85%] sm:max-w-[80%] min-w-0 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2.5 sm:border-3 border-[#1B4332] text-sm leading-relaxed break-words overflow-hidden ${
+                    isUser
+                      ? 'bg-[#1B4332] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-right'
+                      : msg.isSafetyRefusal
+                      ? 'bg-[#2D6A4F] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
+                      : 'bg-white text-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
+                  }`}
+                >
+                  <div className="font-black text-xs sm:text-base leading-relaxed break-words whitespace-pre-wrap">
+                    {formatMessageText(displayText)}
                   </div>
-                ) : (
-                  <div
-                    className={`max-w-[85%] sm:max-w-[80%] min-w-0 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2.5 sm:border-3 border-[#1B4332] text-sm leading-relaxed break-words overflow-hidden ${
-                      isUser
-                        ? 'bg-[#1B4332] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-right'
-                        : msg.isSafetyRefusal
-                        ? 'bg-[#2D6A4F] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
-                        : 'bg-white text-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
-                    }`}
-                  >
-                    <div className="font-black text-xs sm:text-base leading-relaxed break-words whitespace-pre-wrap">
-                      {formatMessageText(displayText)}
-                    </div>
-                    <span className="text-[10px] mt-2 block text-right font-black opacity-80">
-                      {msg.timestamp}
-                    </span>
-                  </div>
-                )}
+                  <span className="text-[10px] mt-2 block text-right font-black opacity-80">
+                    {msg.timestamp}
+                  </span>
+                </div>
               </div>
             );
           })}
+
+          {/* Active StepCard & StepTrail — interactive solving workspace (shown when steps are ready & not thinking) */}
+          {!isSayoThinking && activeProblem && currentStep && (
+            <div className="space-y-3 pt-1">
+              <StepTrail
+                currentStep={currentStepIndex + 1}
+                totalSteps={activeProblem.steps.length}
+                language={profile.language}
+                onSelectStep={(stepIdx) => setCurrentStepIndex(stepIdx)}
+              />
+
+              <StepCard
+                step={currentStep}
+                language={profile.language}
+                onAnswerSubmit={handleStepAnswer}
+                onNavigateStep={(stepIdx) => setCurrentStepIndex(stepIdx)}
+                onOpenHints={() => {
+                  setIsHintOpen(true);
+                  if (currentActivityRef.current) {
+                    const act = findActiveActivity(activeSessionId);
+                    if (act) {
+                      updateActivity(currentActivityRef.current, {
+                        hintsUsed: act.hintsUsed + 1,
+                      });
+                    }
+                  }
+                }}
+                onOpenExplainDifferently={() => {
+                  setIsExplainOpen(true);
+                  if (currentActivityRef.current) {
+                    const act = findActiveActivity(activeSessionId);
+                    if (act) {
+                      updateActivity(currentActivityRef.current, {
+                        explainUsed: act.explainUsed + 1,
+                      });
+                    }
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {/* Socratic preparation indicator while waiting for steps */}
+          {isSayoThinking && (
+            <div className="flex items-center gap-3 p-4 bg-white/90 rounded-2xl border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] animate-pulse">
+              <div className="w-8 h-8 rounded-xl bg-[#40916C] flex items-center justify-center border-2 border-[#1B4332]">
+                <TunsayAvatar size="sm" state="thinking" showBadge={false} />
+              </div>
+              <p className="text-xs sm:text-sm font-black text-[#1B4332]">
+                {isKhmer ? 'ReanMore កំពុងរៀបចំជំហានដោះស្រាយជូនអ្នក...' : 'ReanMore is preparing the step-by-step guidance for you...'}
+              </p>
+            </div>
+          )}
 
           {/* Fresh Start: Scan + Topic Cards */}
           {!activeProblem && messages.length <= 1 && (

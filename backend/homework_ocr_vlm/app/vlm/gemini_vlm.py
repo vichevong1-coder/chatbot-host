@@ -27,18 +27,23 @@ logger = logging.getLogger(__name__)
 class GeminiVLM(VLMProvider):
     """Google Gemini Vision provider using the new google-genai SDK."""
 
-    def __init__(self, api_key: str, model_name: str = "gemini-3.5-flash"):
+    def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash"):
         from google import genai
         from google.genai import types as genai_types
+        if not api_key or not api_key.strip():
+            logger.warning(
+                "GeminiVLM: GEMINI_API_KEY is empty! "
+                "This project uses Gemma via Ollama (VLM_PROVIDER=ollama). "
+                "Gemini will not be invoked unless VLM_PROVIDER=gemini and a valid key is set."
+            )
         self._client = genai.Client(api_key=api_key)
-        
-        # Google deprecates older models for new API keys; map seamlessly to fastest available flash model
+
+        # Map legacy/alias names to real available Gemini model identifiers
         alias_map = {
-            "gemini-2.5-flash": "gemini-3.5-flash",
-            "gemini-2.5-flash-lite": "gemini-3.5-flash",
-            "gemini-2.0-flash": "gemini-3.5-flash",
-            "gemini-flash-latest": "gemini-3.5-flash",
-            "gemini-flash-lite-latest": "gemini-3.5-flash",
+            "gemini-flash-latest": "gemini-2.0-flash",
+            "gemini-flash-lite-latest": "gemini-2.0-flash-lite",
+            "gemini-3.5-flash": "gemini-2.0-flash",   # fix: 3.5 doesn't exist
+            "gemini-3.6-flash": "gemini-2.0-flash",   # fix: 3.6 doesn't exist
         }
         self._model_name = alias_map.get(model_name, model_name)
         self._genai_types = genai_types
@@ -58,7 +63,7 @@ class GeminiVLM(VLMProvider):
     def _call_model(self, contents: list, max_retries: int = 2) -> str:
         """Call Gemini with automatic model failover if a model encounters temporary demand spikes (503)."""
         candidate_models = [self._model_name]
-        for m in ["gemini-3.5-flash", "gemini-3.6-flash"]:
+        for m in ["gemini-2.0-flash", "gemini-1.5-flash"]:
             if m not in candidate_models:
                 candidate_models.append(m)
 
