@@ -27,6 +27,7 @@ from app.services.pipeline_tracer import (
     format_tidy_pipeline_log,
 )
 from app.services.nlu.router import route_subject_heuristic
+from app.services.nlu.intent import classify_intent_heuristic, IntentType
 
 router = APIRouter()
 
@@ -63,6 +64,13 @@ class NavigateRequest(BaseModel):
     target_step_index: Optional[int] = Field(default=None, description="0-indexed target step number (0, 1, 2...)")
     step_number: Optional[int] = Field(default=None, description="1-indexed target step number for clicking dots (1, 2, 3...)")
     direction: Optional[str] = Field(default=None, description="Relative step movement: 'next', 'back', or 'prev'")
+
+
+class StepAnswerRequest(BaseModel):
+    session_id: str
+    step_number: int = Field(..., description="1-indexed step number")
+    student_answer: str = Field(..., description="Student input text or numeral")
+    is_correct: Optional[bool] = Field(default=None, description="Optional pre-evaluated correctness flag")
 
 
 async def translate_to_khmer(text: str) -> str:
@@ -141,6 +149,13 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
         detected_subject = route_res.subject.value
         detected_subtopic = route_res.subtopic
 
+        # 4. Classify intent via heuristic NLU engine
+        intent_res = classify_intent_heuristic(
+            query=normalized_query,
+            history=session.turns,
+            current_step=active_step_dict
+        )
+
         state_input: Dict[str, Any] = {
             "session_id": session_id,
             "raw_user_input": raw_query,
@@ -150,13 +165,24 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
             "subtopic": detected_subtopic,
         }
 
-        # If starting a fresh problem (no active stepper widget)
+        # Route according to classified intent
         if not has_active_state:
-            state_input["problem_text"] = rewritten_query if rewrite_needed else normalized_query
-            state_input["detected_intent"] = "INITIAL_QUESTION"
+            if intent_res.intent == IntentType.CHITCHAT:
+                state_input["detected_intent"] = "CHITCHAT"
+            elif intent_res.intent == IntentType.OFF_TOPIC:
+                state_input["detected_intent"] = "OFF_TOPIC_DEFLECTED"
+            elif intent_res.intent == IntentType.CLARIFY:
+                state_input["detected_intent"] = "CLARIFY"
+            else:
+                state_input["problem_text"] = rewritten_query if rewrite_needed else normalized_query
+                state_input["detected_intent"] = "INITIAL_QUESTION"
+        else:
+            state_input["detected_intent"] = intent_res.intent.value
+            if intent_res.extracted_answer:
+                state_input["student_attempt"] = intent_res.extracted_answer
 
-        # 4. Invoke Socratic Graph
-        res = socratic_graph.invoke(state_input, config=config)
+        # 5. Invoke Socratic Graph asynchronously
+        res = await socratic_graph.ainvoke(state_input, config=config)
 
         # 5. Extract results
         widget_dict = res.get("step_widget")
@@ -231,7 +257,10 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
         )
 
         # Print tidy structured projection box to logs
-        logger.info("\n" + format_tidy_pipeline_log(pipeline_trace))
+        try:
+            logger.info("\n" + format_tidy_pipeline_log(pipeline_trace))
+        except Exception:
+            pass
 
         # 8. Update session context
         session.subject = subject
@@ -373,18 +402,20 @@ async def navigate_step(request: NavigateRequest):
     }
 
     try:
-        res = socratic_graph.invoke(state_input, config=config)
+        res = await socratic_graph.ainvoke(state_input, config=config)
         updated_widget = res.get("step_widget")
         res_idx = res.get("current_step_index", target_idx)
         formatted_md = res.get("formatted_markdown")
         feedback = res.get("feedback_message")
 
         # 5. Persist updated step in SessionManager
-        if updated_widget:
-            session.set_step_widget(updated_widget)
         session.current_step_index = res_idx
         if formatted_md:
             session.formatted_markdown = formatted_md
+        if updated_widget:
+            session.set_step_widget(updated_widget)
+        else:
+            session._trigger_change()
 
         active_step_obj = None
         if updated_widget and "steps" in updated_widget and 0 <= res_idx < len(updated_widget["steps"]):
@@ -403,6 +434,87 @@ async def navigate_step(request: NavigateRequest):
     except Exception as e:
         logger.error(f"Error navigating step: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Navigation error: {str(e)}")
+
+
+@router.post("/step/answer")
+async def submit_step_answer(request: StepAnswerRequest):
+    """
+    Records and deterministically validates an inline student answer for a specific step.
+    Updates session stepper widget state without incurring an expensive LLM round-trip.
+    """
+    config = {"configurable": {"thread_id": request.session_id}}
+    session = session_manager.get_or_create_session(request.session_id)
+
+    # Re-hydrate state if needed
+    state_snapshot = socratic_graph.get_state(config)
+    has_active_state = bool(state_snapshot and state_snapshot.values and state_snapshot.values.get("step_widget"))
+
+    widget_dict = None
+    if has_active_state and state_snapshot and state_snapshot.values:
+        widget_dict = state_snapshot.values.get("step_widget")
+    elif session.step_widget:
+        widget_dict = session.step_widget
+
+    if not widget_dict or "steps" not in widget_dict or not widget_dict["steps"]:
+        return {
+            "session_id": request.session_id,
+            "step_number": request.step_number,
+            "student_answer": request.student_answer,
+            "is_correct": request.is_correct if request.is_correct is not None else True,
+            "message": "Answer recorded"
+        }
+
+    step_idx = request.step_number - 1
+    total_steps = widget_dict.get("total_steps", len(widget_dict["steps"]))
+
+    if 0 <= step_idx < len(widget_dict["steps"]):
+        target_step = widget_dict["steps"][step_idx]
+        expected_ans = target_step.get("expected_answer", "")
+
+        is_correct = request.is_correct
+        if is_correct is None:
+            ans_clean = request.student_answer.strip().lower()
+            exp_clean = str(expected_ans).strip().lower()
+            is_correct = ans_clean == exp_clean or (exp_clean and exp_clean in ans_clean)
+
+        target_step["student_answer"] = request.student_answer
+        target_step["status"] = "completed" if is_correct else "in_progress"
+
+        completed_steps = widget_dict.get("completed_steps", [])
+        if is_correct and step_idx not in completed_steps:
+            completed_steps.append(step_idx)
+            widget_dict["completed_steps"] = completed_steps
+
+        is_all_complete = len(completed_steps) >= total_steps
+        widget_dict["is_problem_complete"] = is_all_complete
+        session.is_problem_complete = is_all_complete
+        session.set_step_widget(widget_dict)
+
+        try:
+            socratic_graph.update_state(config, {
+                "step_widget": widget_dict,
+                "is_problem_complete": is_all_complete,
+            })
+        except Exception as e:
+            logger.warning(f"Could not update graph state for answer: {e}")
+
+        logger.info(f"Recorded step {request.step_number} answer for session {request.session_id}: correct={is_correct}")
+
+        return {
+            "session_id": request.session_id,
+            "step_number": request.step_number,
+            "student_answer": request.student_answer,
+            "is_correct": is_correct,
+            "is_problem_complete": is_all_complete,
+            "step_widget": widget_dict
+        }
+
+    return {
+        "session_id": request.session_id,
+        "step_number": request.step_number,
+        "student_answer": request.student_answer,
+        "is_correct": request.is_correct if request.is_correct is not None else True
+    }
 
 
 @router.get("/session/{session_id}")

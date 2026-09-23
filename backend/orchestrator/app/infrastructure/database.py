@@ -63,17 +63,25 @@ class TelemetryLog(Base):
 engine = create_async_engine(settings.DATABASE_URL, echo=False, connect_args={"timeout": 1.5})
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
+_db_available: bool = False
+
 async def init_db():
     """
     Initializes database tables during application startup.
     """
+    global _db_available
     logger.info("Initializing Postgres database tables...")
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+        _db_available = True
         logger.info("Postgres database tables initialized successfully.")
     except Exception as e:
-        logger.error(f"Error initializing Postgres database: {e}", exc_info=True)
+        _db_available = False
+        logger.warning(
+            f"Postgres database unavailable ({e}). "
+            "Telemetry and session logs will operate in memory/offline mode for local development."
+        )
 
 
 async def save_session_and_telemetry(
@@ -95,8 +103,11 @@ async def save_session_and_telemetry(
     """
     Saves session metadata (upserts) and inserts a telemetry record inside a transaction.
     """
-    async with AsyncSessionLocal() as session:
-        try:
+    if not _db_available:
+        return
+
+    try:
+        async with AsyncSessionLocal() as session:
             async with session.begin():
                 # 1. Upsert SessionLog
                 db_session = await session.get(SessionLog, session_id)
@@ -136,5 +147,5 @@ async def save_session_and_telemetry(
                 session.add(telemetry)
             
             logger.info(f"Database: Saved session & telemetry turn for '{session_id}' successfully.")
-        except Exception as e:
-            logger.error(f"Database: Failed to save session/telemetry for session '{session_id}': {e}", exc_info=True)
+    except Exception as e:
+        logger.warning(f"Database: Could not persist telemetry for '{session_id}': {e}")

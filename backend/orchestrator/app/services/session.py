@@ -230,31 +230,54 @@ class SessionManager:
         self.redis_client: Optional[redis.Redis] = redis_client
         
         if self.redis_client is None and connect_redis:
-            redis_host = os.getenv("REDIS_HOST", "127.0.0.1")
-            redis_port = int(os.getenv("REDIS_PORT", "6379"))
-            redis_password = os.getenv("REDIS_PASSWORD") or None
+            from app.core.config import settings
+            redis_url = os.getenv("REDIS_URL") or getattr(settings, "REDIS_URL", None)
             
-            logger.info(f"Connecting to Redis session store at {redis_host}:{redis_port}...")
-            try:
-                client = redis.Redis(
-                    host=redis_host,
-                    port=redis_port,
-                    password=redis_password,
-                    decode_responses=True,
-                    socket_timeout=0.5,
-                    socket_connect_timeout=0.5
-                )
-                client.ping()
-                self.redis_client = client
-                logger.info("Redis session store connected successfully.")
-            except Exception as e:
-                logger.warning(f"Redis unavailable ({e}). SessionManager running in local in-memory fallback mode.")
+            if redis_url:
+                logger.info(f"Connecting to Redis session store via URL ({redis_url})...")
+                try:
+                    client = redis.from_url(
+                        redis_url,
+                        decode_responses=True,
+                        socket_timeout=1.0,
+                        socket_connect_timeout=1.0
+                    )
+                    client.ping()
+                    self.redis_client = client
+                    logger.info("Redis session store connected successfully.")
+                except Exception as e:
+                    logger.warning(f"Redis unavailable ({e}). SessionManager running in local in-memory fallback mode.")
+            else:
+                redis_host = os.getenv("REDIS_HOST", "127.0.0.1")
+                redis_port = int(os.getenv("REDIS_PORT", "6379"))
+                redis_password = os.getenv("REDIS_PASSWORD") or None
+
+                logger.info(f"Connecting to Redis session store at {redis_host}:{redis_port}...")
+                try:
+                    client = redis.Redis(
+                        host=redis_host,
+                        port=redis_port,
+                        password=redis_password,
+                        decode_responses=True,
+                        socket_timeout=1.0,
+                        socket_connect_timeout=1.0
+                    )
+                    client.ping()
+                    self.redis_client = client
+                    logger.info("Redis session store connected successfully.")
+                except Exception as e:
+                    logger.warning(f"Redis unavailable ({e}). SessionManager running in local in-memory fallback mode.")
 
     def get_session(self, session_id: str) -> Optional[SessionContext]:
         """
         Retrieves an existing session without creating a new one if it does not exist.
         Checks Redis first, then in-memory local cache.
         """
+        if session_id in self._local_sessions:
+            session = self._local_sessions[session_id]
+            session._on_change = lambda: self._save_session(session)
+            return session
+
         if self.redis_client:
             try:
                 raw_data = self.redis_client.get(f"session:{session_id}:context")
@@ -267,11 +290,6 @@ class SessionManager:
                     return session
             except Exception as e:
                 logger.warning(f"Failed to load session context from Redis ({e}). Checking local cache.")
-
-        if session_id in self._local_sessions:
-            session = self._local_sessions[session_id]
-            session._on_change = lambda: self._save_session(session)
-            return session
 
         return None
 

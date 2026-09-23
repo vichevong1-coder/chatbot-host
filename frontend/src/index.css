@@ -231,6 +231,52 @@
   100%      { transform: translateY(0px)   scale(1, 1)       rotate(0deg); }
 }
 
+/* Listening: gentle head tilt side to side + subtle nod */
+@keyframes lionListen {
+  0%, 100% { transform: rotate(0deg) translateY(0px); }
+  25%      { transform: rotate(-5deg) translateY(-1px); }
+  75%      { transform: rotate(5deg) translateY(-1px); }
+}
+
+/* Confused: head tilt + subtle look-around */
+@keyframes lionConfused {
+  0%, 100% { transform: rotate(0deg) translateX(0px); }
+  20%      { transform: rotate(-6deg) translateX(-2px); }
+  50%      { transform: rotate(4deg) translateX(2px); }
+  80%      { transform: rotate(-2deg) translateX(-1px); }
+}
+
+/* Jumping: joyful squash-and-stretch jump */
+@keyframes lionJump {
+  0%, 100% { transform: translateY(0px) scale(1, 1); }
+  15%      { transform: translateY(-4px) scale(0.95, 1.05); }
+  30%      { transform: translateY(-20px) scale(0.9, 1.1); }
+  50%      { transform: translateY(0px) scale(1.05, 0.95); }
+  70%      { transform: translateY(-6px) scale(0.98, 1.02); }
+}
+
+/* Sleeping: very slow subtle breathe */
+@keyframes lionSleep {
+  0%, 100% { transform: translateY(0px) scale(1) rotate(0deg); }
+  50%      { transform: translateY(2px) scale(1.01, 0.99) rotate(1deg); }
+}
+
+/* Happy: gentle happy sway */
+@keyframes lionHappy {
+  0%, 100% { transform: rotate(0deg) translateY(0px) scale(1); }
+  25%      { transform: rotate(-3deg) translateY(-3px) scale(1.02); }
+  75%      { transform: rotate(3deg) translateY(-3px) scale(1.02); }
+}
+
+/* Encouraging: gentle supportive nod + subtle reach */
+@keyframes lionEncourage {
+  0%, 100% { transform: rotate(0deg) translateY(0px); }
+  20%      { transform: rotate(-3deg) translateY(-2px); }
+  40%      { transform: rotate(3deg) translateY(-1px); }
+  60%      { transform: rotate(-2deg) translateY(-2px); }
+  80%      { transform: rotate(0deg) translateY(0px); }
+}
+
 /* On-click shake/wiggle */
 @keyframes lionShake {
   0%, 100% { transform: rotate(0deg); }
@@ -302,6 +348,30 @@
 
 .animate-lion-celebrate {
   animation: lionCelebrate 0.9s ease-in-out infinite;
+}
+
+.animate-lion-listen {
+  animation: lionListen 2.5s ease-in-out infinite;
+}
+
+.animate-lion-confused {
+  animation: lionConfused 3s ease-in-out infinite;
+}
+
+.animate-lion-jump {
+  animation: lionJump 1.2s ease-in-out infinite;
+}
+
+.animate-lion-sleep {
+  animation: lionSleep 4s ease-in-out infinite;
+}
+
+.animate-lion-happy {
+  animation: lionHappy 1.8s ease-in-out infinite;
+}
+
+.animate-lion-encourage {
+  animation: lionEncourage 2s ease-in-out infinite;
 }
 
 .animate-lion-shake {

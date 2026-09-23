@@ -49,7 +49,7 @@ export const HintSheet: React.FC<HintSheetProps> = ({
             <div>
               <h3 id="hint-sheet-title" className="text-base sm:text-lg font-black text-white font-heading flex items-center gap-1.5 drop-shadow-[1px_1px_0px_#1B4332]">
                 <Lightbulb className="w-5 h-5 text-[#40916C] fill-[#40916C]" />
-                {isKhmer ? 'តម្រុយពី ទន្សាយ' : "Tunsay's Hints"}
+                {isKhmer ? 'តម្រុយពី ReanMore' : "Tunsay's Hints"}
               </h3>
               <p className="text-xs text-[#40916C] font-bold">
                 {isKhmer 

@@ -18,11 +18,11 @@ export default defineConfig(() => {
           changeOrigin: true,
         },
         '/process-homework': {
-          target: 'http://localhost:8000',
+          target: 'http://localhost:9003',
           changeOrigin: true,
         },
         '/ocr': {
-          target: 'http://localhost:8000',
+          target: 'http://localhost:9003',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/ocr/, ''),
         },

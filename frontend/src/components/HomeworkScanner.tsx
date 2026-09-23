@@ -7,7 +7,8 @@ import { processHomeworkImage } from '../services/ocrService';
 
 interface HomeworkScannerProps {
   language?: Language;
-  onHomeworkConfirmed: (problem: HomeworkProblem, allProblems?: HomeworkProblem[]) => void;
+  /** Called with ALL detected problems from the scan (or [sampleProblem] for single samples) */
+  onHomeworkConfirmed: (problems: HomeworkProblem[], initialIndex?: number) => void;
   onCancel: () => void;
 }
 
@@ -17,15 +18,13 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
   onCancel
 }) => {
   const isKhmer = language === 'km';
-  const [stage, setStage] = useState<'capture' | 'preview' | 'analyzing' | 'confirm'>('capture');
+  const [stage, setStage] = useState<'capture' | 'preview' | 'analyzing' | 'confirm' | 'error'>('capture');
   const [imageUri, setImageUri] = useState<string>('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedProblem, setSelectedProblem] = useState<HomeworkProblem>(MOCK_PROBLEMS[0]);
-  const [detectedProblems, setDetectedProblems] = useState<HomeworkProblem[]>([]);
-  const [ocrError, setOcrError] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string>('');
-  
+  const [scannedProblems, setScannedProblems] = useState<HomeworkProblem[]>([]);
+  const [ocrError, setOcrError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadedFileRef = useRef<File | null>(null);   // <-- stores the actual File
   const sampleScrollRef = useRef<HTMLDivElement>(null);
   const objectUrlRef = useRef<string | null>(null);
 
@@ -53,10 +52,7 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
       URL.revokeObjectURL(objectUrlRef.current);
       objectUrlRef.current = null;
     }
-    setSelectedFile(null);
-    setOcrError(null);
     setSelectedProblem(problem);
-    setDetectedProblems([problem]);
     setImageUri(problem.imageUri || 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=600&auto=format&fit=crop&q=80');
     setStage('preview');
   };
@@ -67,10 +63,9 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
       if (objectUrlRef.current) {
         URL.revokeObjectURL(objectUrlRef.current);
       }
+      uploadedFileRef.current = file;   // <-- keep the File object for OCR
       const url = URL.createObjectURL(file);
       objectUrlRef.current = url;
-      setSelectedFile(file);
-      setOcrError(null);
       setImageUri(url);
       setStage('preview');
     }
@@ -78,38 +73,31 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
 
   const handleConfirmPhoto = async () => {
     setStage('analyzing');
-    setOcrError(null);
+    setOcrError('');
 
-    // If it's a real uploaded file, run actual OCR pipeline
-    if (selectedFile) {
-      setStatusMessage(isKhmer ? 'កំពុងដំណើរការ OCR & VLM លើលំហាត់របស់អ្នក...' : 'Running OCR & VLM pipeline on your worksheet...');
+    // If a real file was uploaded, run OCR on it
+    if (uploadedFileRef.current) {
       try {
-        const result = await processHomeworkImage(selectedFile);
+        const result = await processHomeworkImage(uploadedFileRef.current);
         if (result.success && result.problems.length > 0) {
-          const probs = result.problems.map(p => ({
-            ...p,
-            imageUri: imageUri
-          }));
-          setDetectedProblems(probs);
-          setSelectedProblem(probs[0]);
+          setScannedProblems(result.problems);
+          setSelectedProblem(result.problems[0]);
           setStage('confirm');
-          return;
         } else {
-          setOcrError(result.error || (isKhmer ? 'មិនអាចអានអត្ថបទពីសន្លឹកកិច្ចការបានទេ។ សូមសាកល្បងរូបភាពច្បាស់ជាងនេះ។' : 'Could not detect clear questions from the image. Please try a clearer photo.'));
-          setStage('confirm');
-          return;
+          // OCR returned no problems — show the error
+          setOcrError(result.error || (isKhmer ? 'មិនអាចអានលំហាត់បានទេ។' : 'Could not read homework from image.'));
+          setStage('error');
         }
       } catch (err: any) {
-        setOcrError(err?.message || 'Error processing OCR');
-        setStage('confirm');
-        return;
+        setOcrError(err?.message || (isKhmer ? 'មានបញ្ហាក្នុងការដំណើរការ។' : 'Processing error.'));
+        setStage('error');
       }
+    } else {
+      // Sample problem selected — no OCR needed, just confirm
+      setTimeout(() => {
+        setStage('confirm');
+      }, 900);
     }
-
-    // Sample fallback simulation
-    setTimeout(() => {
-      setStage('confirm');
-    }, 1500);
   };
 
   return (
@@ -129,7 +117,7 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
           <ArrowLeft className="w-4 h-4 stroke-[3]" /> {isKhmer ? 'ត្រឡប់' : 'Back'}
         </button>
         <div className="flex items-center gap-1.5 font-black text-sm text-[#40916C] drop-shadow-[1px_1px_0px_#1B4332]">
-          <Camera className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? 'ស្កែនលំហាត់ (OCR + VLM)' : 'Homework Scanner (OCR + VLM)'}
+          <Camera className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? 'ស្កែនលំហាត់' : 'Homework Scanner'}
         </div>
       </div>
 
@@ -148,18 +136,18 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
               <TunsayAvatar size="sm" state="idle" showBadge={false} className="mb-1" />
               <p className="text-sm sm:text-base font-black text-[#1B4332] font-heading flex items-center justify-center gap-1.5">
                 <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-[#1B4332]" />
-                {isKhmer ? 'ថតរូប ឬ ដាក់ឯកសារលំហាត់' : 'Upload or Scan Homework'}
+                {isKhmer ? 'ថតរូបលំហាត់របស់អ្នក' : 'Scan your homework'}
               </p>
               <p className="text-xs font-bold text-[#1B4332]/80 mt-0.5 max-w-xs">
                 {isKhmer 
-                  ? 'គាំទ្ររូបភាព JPG, PNG ឬឯកសារ PDF' 
-                  : 'Supports JPG, PNG photos or PDF worksheets'}
+                  ? 'ដាក់ក្រដាសលំហាត់របស់អ្នកឲ្យចំកណ្តាលស៊ុម' 
+                  : 'Fit your homework page inside the frame'}
               </p>
 
               <input
                 type="file"
                 ref={fileInputRef}
-                accept="image/*,application/pdf"
+                accept="image/*"
                 onChange={handleFileUpload}
                 className="hidden"
               />
@@ -167,14 +155,14 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="mt-3 px-5 py-2.5 bg-[#2D6A4F] hover:bg-[#40916C] text-white font-black rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] transition-all flex items-center gap-2 cursor-pointer text-xs sm:text-sm"
+                className="mt-3 px-5 py-2.5 bg-[#2D6A4F] hover:bg-[#40916C] text-[#1B4332] font-black rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] transition-all flex items-center gap-2 cursor-pointer text-xs sm:text-sm"
               >
                 <Upload className="w-4 h-4 stroke-[2.5]" />
-                {isKhmer ? 'ជ្រើសរើសរូបថត / PDF' : 'Upload Photo / PDF'}
+                {isKhmer ? 'ជ្រើសរើសរូបថត' : 'Upload Photo'}
               </button>
             </div>
 
-            {/* Sample Demo Homework Buttons */}
+            {/* Sample Demo Homework Buttons - Single Row Horizontal Scroll with < > */}
             <div className="space-y-2 pt-1 text-left">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider">
@@ -239,22 +227,15 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
         {/* Stage 2: Preview */}
         {stage === 'preview' && (
           <div className="p-6 space-y-5 text-center">
-            <div className="relative rounded-2xl overflow-hidden border-3 border-[#1B4332] shadow-[4px_4px_0px_#1B4332] max-h-64 bg-black/5 flex items-center justify-center">
-              {selectedFile?.type === 'application/pdf' ? (
-                <div className="p-8 text-center">
-                  <span className="text-4xl">📄</span>
-                  <p className="font-black text-sm mt-2 text-[#1B4332]">{selectedFile.name}</p>
-                </div>
-              ) : (
-                <img
-                  src={imageUri}
-                  alt="Homework preview"
-                  className="w-full h-full object-contain max-h-64"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%23E8F5E9%22 width=%22400%22 height=%22300%22/%3E%3Ctext fill=%22%231B4332%22 font-family=%22sans-serif%22 font-size=%2218%22 dy=%22.3em%22 text-anchor=%22middle%22 x=%22200%22 y=%22150%22%3EImage unavailable%3C/text%3E%3C/svg%3E';
-                  }}
-                />
-              )}
+            <div className="relative rounded-2xl overflow-hidden border-3 border-[#1B4332] shadow-[4px_4px_0px_#1B4332] max-h-[60vh] bg-black/5 flex items-center justify-center p-2">
+              <img
+                src={imageUri}
+                alt="Homework preview"
+                className="max-h-[55vh] w-auto max-w-full object-contain rounded-xl"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%23E8F5E9%22 width=%22400%22 height=%22300%22/%3E%3Ctext fill=%22%231B4332%22 font-family=%22sans-serif%22 font-size=%2218%22 dy=%22.3em%22 text-anchor=%22middle%22 x=%22200%22 y=%22150%22%3EImage unavailable%3C/text%3E%3C/svg%3E';
+                }}
+              />
             </div>
 
             <div className="flex gap-3">
@@ -263,14 +244,14 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                 onClick={() => setStage('capture')}
                 className="flex-1 py-3 px-4 rounded-2xl border-3 border-[#1B4332] bg-white text-[#1B4332] font-black text-sm flex items-center justify-center gap-1.5 shadow-[3px_3px_0px_#1B4332] hover:-translate-y-0.5 transition-all cursor-pointer"
               >
-                <RefreshCw className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? 'ថតសារថ្មី' : 'Retake / Reselect'}
+                <RefreshCw className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? 'ថតសារថ្មី' : 'Retake'}
               </button>
               <button
                 type="button"
                 onClick={handleConfirmPhoto}
-                className="flex-1 py-3 px-4 rounded-2xl bg-[#2D6A4F] text-white font-black text-sm border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1.5 hover:-translate-y-0.5 transition-all cursor-pointer"
+                className="flex-1 py-3 px-4 rounded-2xl bg-[#2D6A4F] text-[#1B4332] font-black text-sm border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1.5 hover:-translate-y-0.5 transition-all cursor-pointer"
               >
-                <CheckCircle className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? 'ដំណើរការ OCR' : 'Analyze with OCR'}
+                <CheckCircle className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? 'ប្រើរូបនេះ' : 'Use Photo'}
               </button>
             </div>
           </div>
@@ -283,66 +264,47 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
             <div className="space-y-1">
               <h3 className="text-lg font-black text-[#1B4332] font-heading flex items-center justify-center gap-2">
                 <Sparkles className="w-5 h-5 text-[#2D6A4F] animate-spin" />
-                {isKhmer ? 'ទន្សាយកំពុងអានលំហាត់របស់អ្នក...' : 'Tunsay is reading your homework...'}
+                {isKhmer ? 'ReanMoreកំពុងអានលំហាត់របស់អ្នក...' : 'Tunsay is reading your homework...'}
               </h3>
-              <p className="text-xs font-bold text-[#1B4332]/70">
-                {statusMessage || (isKhmer ? 'PaddleOCR & Gemini VLM កំពុងវិភាគ...' : 'Detecting layout, text, and diagrams...')}
-              </p>
             </div>
             <div className="w-48 h-3 bg-[#E8F5E9] border-2 border-[#1B4332] rounded-full mx-auto overflow-hidden">
-              <div className="h-full bg-[#2D6A4F] animate-pulse rounded-full w-3/4" />
+              <div className="h-full bg-[#A7CDB4] animate-pulse rounded-full w-3/4" />
             </div>
           </div>
         )}
 
         {/* Stage 4: Confirm Analyzed Question */}
         {stage === 'confirm' && (
-          <div className="p-6 space-y-5">
-            {ocrError ? (
-              <div className="p-4 bg-amber-50 rounded-2xl border-3 border-amber-500 text-amber-900 space-y-2">
-                <div className="flex items-center gap-2 font-black text-sm text-amber-800">
-                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-                  {isKhmer ? 'ដំណឹងពីសេវា OCR' : 'OCR Service Notice'}
-                </div>
-                <p className="text-xs font-semibold">{ocrError}</p>
-                <p className="text-xs text-amber-700">
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-[#40916C] rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332]">
+              <TunsayAvatar size="sm" state="explaining" showBadge={false} />
+              <div>
+                <p className="font-black text-sm text-[#1B4332]">
                   {isKhmer 
-                    ? 'អ្នកអាចសរសេរសំណួររបស់អ្នកដោយផ្ទាល់នៅក្នុងការជជែក ឬជ្រើសរើសលំហាត់គំរូ។' 
-                    : 'Make sure the OCR service is running on port 8000, or you can choose a sample problem.'}
+                    ? 'ខ្ញុំឃើញលំហាត់របស់អ្នកហើយ! តោះដោះស្រាយវាជាមួយគ្នា!' 
+                    : "I can see your homework problem. Let's solve it together!"}
                 </p>
               </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-3 p-3 bg-[#40916C] rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332]">
-                  <TunsayAvatar size="sm" state="explaining" showBadge={false} />
-                  <div>
-                    <p className="font-black text-sm text-white">
-                      {isKhmer 
-                        ? 'ខ្ញុំឃើញលំហាត់របស់អ្នកហើយ! តោះដោះស្រាយវាជាមួយគ្នា!' 
-                        : "I can see your homework problem. Let's solve it together!"}
-                    </p>
-                  </div>
-                </div>
+            </div>
 
                 {/* Multiple detected questions selector */}
-                {detectedProblems.length > 1 && (
-                  <div className="space-y-1.5">
+                {scannedProblems.length > 1 && (
+                  <div className="space-y-1.5 text-left">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-black text-[#1B4332]">
-                        {isKhmer ? `សំណួរដែលរកឃើញ (${detectedProblems.length} លំហាត់)៖` : `Detected Questions (${detectedProblems.length} problems):`}
+                        {isKhmer ? `សំណួរដែលរកឃើញ (${scannedProblems.length} លំហាត់)៖` : `Detected Questions (${scannedProblems.length} problems):`}
                       </p>
                       <span className="text-[10px] font-bold text-[#1B4332]/60">
                         {isKhmer ? 'អូសដើម្បីមើលបន្ថែម →' : 'Scroll for more →'}
                       </span>
                     </div>
-                    <div className="flex gap-2 overflow-x-auto pb-2 pt-0.5 no-scrollbar">
-                      {detectedProblems.map((prob, idx) => {
+                    <div className="flex gap-2 overflow-x-auto pb-2 pt-0.5 scrollbar-none">
+                      {scannedProblems.map((prob, idx) => {
                         const isSelected = selectedProblem.id === prob.id;
-                        // Use concise title label
                         const label = prob.titleEng || `Q${idx + 1}`;
                         return (
                           <button
-                            key={prob.id}
+                            key={prob.id || idx}
                             type="button"
                             onClick={() => setSelectedProblem(prob)}
                             className={`px-3 py-1.5 rounded-xl border-2 font-black text-xs cursor-pointer transition-all whitespace-nowrap shrink-0 ${
@@ -359,7 +321,7 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                   </div>
                 )}
 
-                <div className="p-4 bg-[#E8F5E9] rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] space-y-2">
+                <div className="p-4 bg-[#E8F5E9] rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] space-y-2 text-left">
                   <div className="flex items-center justify-between border-b border-[#1B4332]/20 pb-1.5">
                     <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider">
                       {isKhmer ? 'សំណួរដែលស្កែនបាន៖' : 'Detected Question:'}
@@ -376,26 +338,47 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                 <p className="text-center font-black text-sm text-[#1B4332]">
                   {isKhmer ? 'តើសំណួរនេះត្រឹមត្រូវទេ?' : 'Does this look correct?'}
                 </p>
-              </>
-            )}
 
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setStage('capture')}
-                className="flex-1 py-3 px-4 rounded-2xl border-3 border-[#1B4332] bg-white text-[#1B4332] font-black text-xs sm:text-sm shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1 transition-all cursor-pointer hover:-translate-y-0.5"
+                className="flex-1 py-3 px-4 rounded-2xl border-3 border-[#1B4332] bg-white text-[#1B4332] font-black text-xs sm:text-sm shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1.5 transition-all cursor-pointer hover:-translate-y-0.5 active:translate-y-0.5"
               >
-                <RefreshCw className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? 'ថតឡើងវិញ' : 'Retake / Choose Other'}
+                <RefreshCw className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? 'ថតឡើងវិញ' : 'Retake Photo'}
               </button>
               <button
                 type="button"
-                onClick={() => onHomeworkConfirmed(selectedProblem, detectedProblems.length > 0 ? detectedProblems : [selectedProblem])}
-                className="flex-1 py-3 px-4 rounded-2xl bg-[#2D6A4F] text-white font-black text-xs sm:text-sm border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1 transition-all cursor-pointer hover:-translate-y-0.5 active:translate-y-0.5"
+                onClick={() => {
+                  const queue = scannedProblems.length > 0 ? scannedProblems : [selectedProblem];
+                  const selectedIdx = queue.findIndex(p => p.id === selectedProblem.id);
+                  onHomeworkConfirmed(queue, selectedIdx >= 0 ? selectedIdx : 0);
+                }}
+                className="flex-1 py-3 px-4 rounded-2xl bg-[#2D6A4F] text-[#1B4332] font-black text-xs sm:text-sm border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1.5 transition-all cursor-pointer hover:-translate-y-0.5 active:translate-y-0.5"
               >
                 <span>{isKhmer ? 'តោះចាប់ផ្តើម!' : "Yes, let's start!"}</span>
                 <CheckCircle className="w-4 h-4 stroke-[2.5]" />
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Stage 5: Error */}
+        {stage === 'error' && (
+          <div className="p-8 text-center space-y-4">
+            <AlertCircle className="w-14 h-14 text-red-500 mx-auto" />
+            <h3 className="text-lg font-black text-[#1B4332]">
+              {isKhmer ? 'មានបញ្ហា!' : 'Something went wrong'}
+            </h3>
+            <p className="text-sm font-bold text-[#1B4332]/70">{ocrError}</p>
+            <button
+              type="button"
+              onClick={() => { setStage('capture'); uploadedFileRef.current = null; }}
+              className="mt-2 px-6 py-3 bg-[#2D6A4F] text-white font-black rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] flex items-center gap-2 mx-auto cursor-pointer hover:-translate-y-0.5 transition-all"
+            >
+              <RefreshCw className="w-4 h-4 stroke-[2.5]" />
+              {isKhmer ? 'ព្យាយាមម្តងទៀត' : 'Try Again'}
+            </button>
           </div>
         )}
       </div>

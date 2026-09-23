@@ -1,20 +1,19 @@
-version: '3.8'
+
 
 services:
-  # ──────────────────────────────────────────────
-  # Stateful Infrastructure
-  # ──────────────────────────────────────────────
+  # State Checkpointing & Cache
   redis:
     image: redis/redis-stack-server:latest
-    container_name: weg-redis
+    container_name: science-redis
     ports:
       - "6379:6379"
     networks:
-      - weg-network
+      - science-network
 
+  # Persistent Logs Database (Postgres)
   db:
     image: postgres:15-alpine
-    container_name: weg-postgres
+    container_name: science-postgres
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -25,94 +24,77 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - weg-network
+      - science-network
 
+  # Vector DB for Physics & Biology RAG
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: weg-qdrant
+    container_name: science-qdrant
     ports:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
     networks:
-      - weg-network
+      - science-network
 
-  # ──────────────────────────────────────────────
-  # Backend Microservices
-  # ──────────────────────────────────────────────
+  # Main API Gateway
   orchestrator:
     build:
       context: ./backend/orchestrator
       dockerfile: Dockerfile
-    container_name: weg-orchestrator
+    container_name: science-orchestrator
     ports:
       - "${ORCHESTRATOR_PORT:-9000}:${ORCHESTRATOR_PORT:-9000}"
     env_file:
-      - ./backend/.env
+      - .env
     depends_on:
       - redis
       - qdrant
       - db
     networks:
-      - weg-network
+      - science-network
 
+  # Math Solver
   math-service:
     build:
       context: ./backend/services/math_service
       dockerfile: Dockerfile
-    container_name: weg-math-service
+    container_name: math-service
     ports:
       - "${MATH_SERVICE_PORT:-9001}:${MATH_SERVICE_PORT:-9001}"
     env_file:
-      - ./backend/.env
+      - .env
     networks:
-      - weg-network
+      - science-network
 
+  # Unified Science Solver (Physics, Chemistry, Biology)
   science-service:
     build:
       context: ./backend/services/science_service
       dockerfile: Dockerfile
-    container_name: weg-science-service
+    container_name: science-service
     ports:
       - "${SCIENCE_SERVICE_PORT:-9002}:${SCIENCE_SERVICE_PORT:-9002}"
     env_file:
-      - ./backend/.env
+      - .env
     networks:
-      - weg-network
+      - science-network
 
-  # ──────────────────────────────────────────────
-  # Homework OCR + VLM Pipeline Microservice
-  # ──────────────────────────────────────────────
-  ocr-service:
+  # Homework OCR + VLM Pipeline
+  homework-scanner:
     build:
-      context: ./homework_ocr_vlm
+      context: ./backend/homework_ocr_vlm
       dockerfile: Dockerfile
-    container_name: weg-ocr-service
+    container_name: homework-scanner
     ports:
-      - "${OCR_PORT:-8000}:8000"
+      - "${HOMEWORK_SCANNER_PORT:-9003}:9003"
     env_file:
-      - ./homework_ocr_vlm/.env
+      - .env
     networks:
-      - weg-network
-
-  # ──────────────────────────────────────────────
-  # Frontend Web UI
-  # ──────────────────────────────────────────────
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: weg-frontend
-    ports:
-      - "80:80"
-    depends_on:
-      - orchestrator
-      - ocr-service
-    networks:
-      - weg-network
+      - science-network
 
 networks:
-  weg-network:
+  science-network:
     driver: bridge
 
 volumes:

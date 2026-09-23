@@ -283,6 +283,95 @@ class SocraticPromptController:
             logger.warning(f"LLM call failed in SocraticPromptController: {e}. Falling back to Curricular Engine.")
         return None
 
+    def plan_exercise_socratic_widget(
+        self,
+        problem_text: str,
+        grade_level: str = "grade_1_3",
+        session_id: str = "default_session"
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Plans and decomposes a homework problem into sequential Socratic step cards
+        with zero answer leakage, isomorphic parallel examples, and 3 progressive hints.
+        Returns the parsed and sanitized `step_widget` dictionary.
+        """
+        template = self.templates.get("exercise_planning")
+        if not template:
+            return None
+        group, _ = self._get_grade_info(grade_level)
+        try:
+            system_prompt = template["system"].format(
+                grade_level_group=group,
+                session_id=session_id
+            )
+            user_prompt = template["user"].format(problem_text=problem_text)
+            prompt = f"{system_prompt}\n\n{user_prompt}"
+
+            raw_resp = self._call_gemini_llm(prompt)
+            if not raw_resp:
+                return None
+
+            data = self._extract_json(raw_resp)
+            if not data or not isinstance(data, dict):
+                return None
+
+            widget_dict = data.get("step_widget") or data
+            steps = widget_dict.get("steps")
+            if not isinstance(steps, list) or len(steps) < 2:
+                return None
+
+            def _clean_str(val: Any) -> str:
+                if isinstance(val, dict):
+                    text = " ".join(f"{v}" for v in val.values() if v)
+                elif isinstance(val, list):
+                    text = " ".join(str(item) for item in val)
+                else:
+                    text = str(val) if val is not None else ""
+                # Strip markdown syntax
+                text = re.sub(r'\*{1,2}(.*?)\*{1,2}', r'\1', text)
+                text = re.sub(r'^\s*>\s*', '', text, flags=re.MULTILINE)
+                text = re.sub(r'^\s*#+\s*', '', text, flags=re.MULTILINE)
+                text = text.replace('`', '')
+                return text.strip()
+
+            sanitized_steps = []
+            for i, st in enumerate(steps):
+                step_num = st.get("step_number", i + 1)
+                hints = st.get("hints") or []
+                if not isinstance(hints, list) or len(hints) != 3:
+                    hints = [
+                        _clean_str(hints[0]) if len(hints) > 0 else "💡 Focus on the main clue and what the question is asking.",
+                        _clean_str(hints[1]) if len(hints) > 1 else "🍎 Picture the helpful example and apply the same operation step-by-step!",
+                        _clean_str(hints[2]) if len(hints) > 2 else "📐 Break the calculation into two smaller sub-steps."
+                    ]
+                else:
+                    hints = [_clean_str(h) for h in hints]
+
+                status = "in_progress" if i == 0 else ("up_next" if i == 1 else "locked")
+                sanitized_steps.append({
+                    "step_number": step_num,
+                    "title": _clean_str(st.get("title", f"Step {step_num}")),
+                    "status": status,
+                    "mission": _clean_str(st.get("mission", "")),
+                    "clue": _clean_str(st.get("clue", "")),
+                    "helpful_example": _clean_str(st.get("helpful_example", "")),
+                    "your_turn": _clean_str(st.get("your_turn", "")),
+                    "student_answer": None,
+                    "hints": hints,
+                    "current_hint_level": 0,
+                    "concept": _clean_str(st.get("concept", "")),
+                    "expected_answer": _clean_str(st.get("expected_answer", str(step_num)))
+                })
+
+            return {
+                "total_steps": len(sanitized_steps),
+                "current_step_index": 0,
+                "completed_steps": [],
+                "steps": sanitized_steps
+            }
+        except Exception as e:
+            logger.warning(f"Error in plan_exercise_socratic_widget: {e}", exc_info=True)
+            return None
+
     def breakdown_problem_into_steps(
         self,
         problem_text: str,
@@ -845,12 +934,21 @@ class SocraticPromptController:
             if isinstance(parsed, dict) and all(k in parsed for k in ["mission", "clue", "helpful_example", "your_turn"]):
                 def _to_clean_str(val: Any) -> str:
                     if isinstance(val, dict):
-                        return " ".join(f"{v}" for v in val.values() if v)
+                        text = " ".join(f"{v}" for v in val.values() if v)
                     elif isinstance(val, list):
-                        return " ".join(str(item) for item in val)
-                    return str(val)
+                        text = " ".join(str(item) for item in val)
+                    else:
+                        text = str(val) if val is not None else ""
+                    # Strip markdown emphasis (** or *), blockquotes (>), headers (#), backticks (`)
+                    text = re.sub(r'\*{1,2}(.*?)\*{1,2}', r'\1', text)
+                    text = re.sub(r'^\s*>\s*', '', text, flags=re.MULTILINE)
+                    text = re.sub(r'^\s*#+\s*', '', text, flags=re.MULTILINE)
+                    text = text.replace('`', '')
+                    return text.strip()
 
                 sanitized = {k: _to_clean_str(parsed[k]) for k in ["mission", "clue", "helpful_example", "your_turn"]}
+                if isinstance(parsed.get("hints"), list) and len(parsed.get("hints")) == 3:
+                    sanitized["hints"] = [_to_clean_str(h) for h in parsed["hints"]]
                 logger.info(f"Successfully generated Step {step_number} card using Gemini/Ollama LLM.")
                 return sanitized
 
@@ -1005,11 +1103,15 @@ class SocraticPromptController:
                     "your_turn": f"If Leo had {a} apples and gave away {b}, how many apples are left?"
                 }
             else:
+                # Parallel example uses different numbers to avoid leaking the answer
+                ex_start = a + 2 if a + 2 != b else a + 4
+                ex_take = b + 1 if b + 1 != ex_start else 2
+                ex_result = ex_start - ex_take
                 return {
-                    "mission": f"Calculate the final count of remaining items ({a} - {b}).",
-                    "clue": f"Count down {b} steps starting from {a}.",
-                    "helpful_example": f"🌟 {a} minus {b} is {a - b}. Count down step-by-step!",
-                    "your_turn": f"What is {a} minus {b}?"
+                    "mission": "Count how many remain after the items are taken away.",
+                    "clue": "Start from your first number and count backward the number that was taken.",
+                    "helpful_example": f"🌟 Sam had {ex_start} star stickers and gave {ex_take} to a friend. Start at {ex_start} and count back {ex_take} steps: {ex_result} star stickers remain! ⭐",
+                    "your_turn": f"Now try yours: start at {a} and count backward {b} steps. How many are left?"
                 }
 
         # 10. Birds & Feathers

@@ -1,19 +1,14 @@
-# Start All Services for Homework AI Ecosystem
-Write-Host "=============================================" -ForegroundColor Cyan
-Write-Host "  WEG Homework AI & Socratic Tutoring System " -ForegroundColor Cyan
-Write-Host "=============================================" -ForegroundColor Cyan
+# PowerShell script to launch all Science Chatbot & Frontend services in ONE unified terminal
 
-Write-Host "`nOptions to start the ecosystem:" -ForegroundColor Yellow
-Write-Host "1. Docker (All services: Backend + OCR + Databases)" -ForegroundColor Green
-Write-Host "   Run: docker compose up --build" -ForegroundColor White
-Write-Host "2. Local Development (Frontend dev server + local Python)" -ForegroundColor Green
+$root = $PSScriptRoot
 
-# Launch Docker Compose for Backend + OCR + Databases
-Write-Host "`nLaunching Docker Compose (Backend + OCR + DBs)..." -ForegroundColor Cyan
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd 'd:\User\homework_ocr_vlm'; docker compose up"
+# Detect virtual environment python if present
+if (Test-Path "$root\.venv\Scripts\python.exe") {
+    $python = "$root\.venv\Scripts\python.exe"
+} else {
+    $python = "python"
+}
 
-# Launch Frontend in Dev mode
-Write-Host "Launching Frontend Dev Server on http://localhost:5173..." -ForegroundColor Cyan
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd 'd:\User\homework_ocr_vlm\frontend'; npm run dev"
+# Run single unified terminal multiplexer
+& $python "$root\dev.py"
 
-Write-Host "`nServices started! Open http://localhost:5173 in your browser." -ForegroundColor Yellow

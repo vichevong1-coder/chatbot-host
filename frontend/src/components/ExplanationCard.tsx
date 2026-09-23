@@ -54,7 +54,7 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
                 {isKhmer ? 'ពន្យល់តាមរបៀបផ្សេង' : 'Explain Differently'}
               </h3>
               <p className="text-xs font-bold text-[#1B4332]">
-                {isKhmer ? 'ទន្សាយពន្យល់តាមរបៀបងាយយល់!' : 'Tunsay explains in simpler ways!'}
+                {isKhmer ? 'ReanMoreពន្យល់តាមរបៀបងាយយល់!' : 'Tunsay explains in simpler ways!'}
               </p>
             </div>
           </div>
