@@ -104,5 +104,6 @@ async def log_requests(request: Request, call_next):
 
 # Register API routers
 app.include_router(health_router)
+app.include_router(health_router, prefix="/api")
 app.include_router(api_router, prefix="/api")
 app.include_router(upload_router, prefix="/api")
