@@ -40,7 +40,7 @@ services:
   # Main API Gateway
   orchestrator:
     build:
-      context: ./orchestrator
+      context: ./backend/orchestrator
       dockerfile: Dockerfile
     container_name: science-orchestrator
     ports:
@@ -57,7 +57,7 @@ services:
   # Math Solver
   math-service:
     build:
-      context: ./services/math_service
+      context: ./backend/services/math_service
       dockerfile: Dockerfile
     container_name: math-service
     ports:
@@ -70,7 +70,7 @@ services:
   # Unified Science Solver (Physics, Chemistry, Biology)
   science-service:
     build:
-      context: ./services/science_service
+      context: ./backend/services/science_service
       dockerfile: Dockerfile
     container_name: science-service
     ports:
@@ -80,16 +80,16 @@ services:
     networks:
       - science-network
 
-  # Frontend Client
-  frontend:
+  # Homework OCR + VLM Pipeline
+  homework-scanner:
     build:
-      context: ./frontend
+      context: ./backend/homework_ocr_vlm
       dockerfile: Dockerfile
-    container_name: science-frontend
+    container_name: homework-scanner
     ports:
-      - "3000:80"
-    depends_on:
-      - orchestrator
+      - "${HOMEWORK_SCANNER_PORT:-9003}:9003"
+    env_file:
+      - .env
     networks:
       - science-network
 

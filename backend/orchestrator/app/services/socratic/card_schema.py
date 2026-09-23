@@ -21,7 +21,7 @@ class SocraticStep(BaseModel):
 
     step_number: int = Field(..., description="1-indexed step number (e.g. 1, 2, 3)")
     title: str = Field(..., description="Short friendly title for the step")
-    status: Literal["completed", "in_progress", "pending", "locked"] = Field(
+    status: Literal["completed", "in_progress", "pending", "locked", "up_next"] = Field(
         default="pending",
         description="Status of this step in the student's workflow"
     )
@@ -58,23 +58,23 @@ class SocraticStep(BaseModel):
         description="Underlying mathematical or scientific concept tag"
     )
 
-    def to_markdown(self, active_hint: Optional[str] = None) -> str:
+    def to_plain_text(self, active_hint: Optional[str] = None) -> str:
         """
-        Renders the step into a beautifully formatted Markdown card with emojis.
+        Renders the step as emoji-annotated plain text with NO markdown syntax.
+        Fields are rendered directly into pre-styled UI components on the frontend,
+        so all formatting is conveyed through emoji and sentence structure only.
         """
         lines = [
-            f"🌟 **Our Mission:** {self.mission.strip()}",
+            f"🌟 Our Mission: {self.mission.strip()}",
             "",
-            f"💡 **Clue:** {self.clue.strip()}",
+            f"💡 Clue: {self.clue.strip()}",
             "",
-            "🍎 **Helpful Picture / Example:**",
-            f"> {self.helpful_example.strip()}",
+            f"🍎 Helpful Example: {self.helpful_example.strip()}",
             "",
-            "👉 **Your Turn:**",
-            f"{self.your_turn.strip()}"
+            f"👉 Your Turn: {self.your_turn.strip()}"
         ]
 
-        # Append hint if explicitly passed or active
+        # Append hint if explicitly passed or active hint tier unlocked
         hint_to_show = active_hint
         if not hint_to_show and 0 < self.current_hint_level <= len(self.hints):
             hint_to_show = self.hints[self.current_hint_level - 1]
@@ -82,10 +82,15 @@ class SocraticStep(BaseModel):
         if hint_to_show:
             lines.extend([
                 "",
-                f"💡 **Hint ({max(1, self.current_hint_level)}/3):** {hint_to_show.strip()}"
+                f"💡 Hint ({max(1, self.current_hint_level)}/3): {hint_to_show.strip()}"
             ])
 
         return "\n".join(lines)
+
+    # Keep to_markdown as alias for backwards-compatibility with any callers
+    def to_markdown(self, active_hint: Optional[str] = None) -> str:
+        return self.to_plain_text(active_hint=active_hint)
+
 
 
 class StepWidgetPayload(BaseModel):
@@ -152,13 +157,10 @@ class StepWidgetPayload(BaseModel):
 
     def to_overview_markdown(self) -> str:
         """
-        Renders the clean, question-free roadmap view (Overview Mode).
-        Excludes all 'Your Turn' prompts to provide a peaceful bird's-eye solution summary.
+        Renders the plain-text roadmap view (Overview Mode) with emoji labels.
+        No markdown tokens — formatting conveyed through emoji and sentence structure only.
         """
-        lines = [
-            "📋 **Full Solution Journey (Overview Mode)**",
-            ""
-        ]
+        lines = ["📋 Full Solution Journey (Overview Mode)", ""]
 
         for idx, step in enumerate(self.steps):
             if step.status == "completed":
@@ -172,10 +174,10 @@ class StepWidgetPayload(BaseModel):
                 status_text = "Up Next 🔒"
 
             lines.extend([
-                f"{status_icon} **Step {step.step_number}: {step.title}**",
-                f"   • Mission: {step.mission}",
-                f"   • Rule: {step.clue}",
-                f"   • Status: {status_text}",
+                f"{status_icon} Step {step.step_number}: {step.title}",
+                f"   Mission: {step.mission}",
+                f"   Clue: {step.clue}",
+                f"   Status: {status_text}",
                 ""
             ])
 

@@ -5,9 +5,12 @@ import { StepTrail } from './StepTrail';
 import { StepCard } from './StepCard';
 import { HintSheet } from './HintSheet';
 import { ExplanationCard } from './ExplanationCard';
+import { StepChatBubble } from './StepChatBubble';
+import { AllStepsDrawer } from './AllStepsDrawer';
+import { StepItem } from '../types';
 import { askTunsayTutor } from '../services/geminiService';
 // import { getDisplayName } from '../utils/language';
-import { MOCK_PROBLEMS, generateHistoryChatForProblem } from '../data/mockProblems';
+import { MOCK_PROBLEMS } from '../data/mockProblems';
 import { Send, Camera, User, GraduationCap, ArrowLeft, Plus, BookOpen, Trash2, MessageSquare, Sparkles } from 'lucide-react';
 import { cleanBilingualOption } from '../utils/language';
 import {
@@ -37,6 +40,125 @@ function formatMessageText(text: string): React.ReactNode[] {
     }
     return <div key={i} className="mb-2 last:mb-0">{trimmed}</div>;
   });
+}
+
+interface ExtractedStepWidget {
+  widget: any;
+  activeStep: StepItem;
+  activeIdx: number;
+  totalSteps: number;
+  completedSteps: number[];
+  introText?: string;
+}
+
+/**
+ * Extracts structured StepWidgetPayload from a ChatMessage.
+ * Supports both direct `msg.stepWidget` payload and regex fallback parsing
+ * for messages containing the 4-part Socratic card pattern.
+ */
+function extractStepWidgetFromMessage(msg: ChatMessage): ExtractedStepWidget | null {
+  if (msg.stepWidget && msg.stepWidget.steps && msg.stepWidget.steps.length > 0) {
+    const w = msg.stepWidget;
+    const activeIdx = Math.max(0, Math.min(w.current_step_index ?? 0, w.steps.length - 1));
+    const activeStep = w.steps[activeIdx];
+    const totalSteps = w.total_steps || w.steps.length;
+    const completedSteps = w.completed_steps || [];
+    return {
+      widget: w,
+      activeStep,
+      activeIdx,
+      totalSteps,
+      completedSteps,
+    };
+  }
+
+  const rawText = msg.textEng || msg.textKhmer || '';
+  const missionRegex = /(?:🌟\s*)?\*{0,2}(?:Our Mission|បេសកកម្មរបស់យើង)\*{0,2}:?\s*([\s\S]*?)(?=(?:💡\s*)?\*{0,2}(?:Clue|តម្រុយគន្លឹះ)\*{0,2}:|$)/i;
+  const clueRegex = /(?:💡\s*)?\*{0,2}(?:Clue|តម្រុយគន្លឹះ)\*{0,2}:?\s*([\s\S]*?)(?=(?:🍎\s*)?\*{0,2}(?:Helpful (?:Picture \/ )?Example|រូបភាព \/ ឧទាហរណ៍ជំនួយ)\*{0,2}:|$)/i;
+  const exampleRegex = /(?:🍎\s*)?\*{0,2}(?:Helpful (?:Picture \/ )?Example|រូបភាព \/ ឧទាហរណ៍ជំនួយ)\*{0,2}:?\s*([\s\S]*?)(?=(?:👉\s*)?\*{0,2}(?:Your Turn|វេនរបស់អ្នក)\*{0,2}:|$)/i;
+  const yourTurnRegex = /(?:👉\s*)?\*{0,2}(?:Your Turn|វេនរបស់អ្នក)\*{0,2}:?\s*([\s\S]*?)$/i;
+
+  const missionMatch = rawText.match(missionRegex);
+  const yourTurnMatch = rawText.match(yourTurnRegex);
+
+  if (missionMatch && yourTurnMatch) {
+    const firstSectionIdx = rawText.search(/(?:🌟\s*)?\*{0,2}(?:Our Mission|បេសកកម្មរបស់យើង)\*{0,2}:/i);
+    let intro = '';
+    if (firstSectionIdx > 0) {
+      intro = rawText.slice(0, firstSectionIdx).replace(/---\s*$/g, '').trim();
+    }
+
+    const clueMatch = rawText.match(clueRegex);
+    const exampleMatch = rawText.match(exampleRegex);
+
+    const clean = (s?: string) => {
+      if (!s) return '';
+      return s
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/^>\s?/gm, '')
+        .replace(/^#+\s?/gm, '')
+        .replace(/`([^`]+)`/g, '$1')
+        .trim();
+    };
+
+    const mission = clean(missionMatch[1]);
+    const clue = clean(clueMatch?.[1]);
+    const helpfulExample = clean(exampleMatch?.[1]);
+    const yourTurn = clean(yourTurnMatch[1]);
+
+    let stepNum = 1;
+    const numMatch = (intro || rawText).match(/(?:Step|ជំហានទី)\s*(\d+)/i);
+    if (numMatch) {
+      stepNum = parseInt(numMatch[1], 10);
+    }
+
+    const synthesizedStep: StepItem = {
+      id: `step-${stepNum}`,
+      stepNumber: stepNum,
+      title: `Step ${stepNum}`,
+      status: 'in_progress',
+      mission,
+      clue,
+      helpfulExample,
+      yourTurn,
+      currentHintLevel: 0,
+      hints: [
+        clue,
+        helpfulExample,
+        `Think about: ${yourTurn}`
+      ],
+      questionEng: mission,
+      questionKhmer: mission,
+      inputFormat: 'text',
+      correctAnswer: '',
+      hint1: { khmer: clue, eng: clue },
+      hint2: { khmer: helpfulExample, eng: helpfulExample },
+      hint3: { titleKhmer: 'Example', titleEng: 'Example', exampleKhmer: helpfulExample, exampleEng: helpfulExample },
+      socraticPromptEng: yourTurn,
+      socraticPromptKhmer: yourTurn,
+      explainDifferently: { simpleKhmer: clue, simpleEng: clue, analogyTitle: '', analogyKhmer: '', analogyEng: '', analogyType: 'plants' },
+      totalSteps: Math.max(stepNum, 3)
+    };
+
+    const synthesizedWidget = {
+      total_steps: Math.max(stepNum, 3),
+      current_step_index: stepNum - 1,
+      completed_steps: [],
+      steps: [synthesizedStep]
+    };
+
+    return {
+      widget: synthesizedWidget,
+      activeStep: synthesizedStep,
+      activeIdx: 0,
+      totalSteps: Math.max(stepNum, 3),
+      completedSteps: [],
+      introText: intro
+    };
+  }
+
+  return null;
 }
 
 interface ChatViewProps {
@@ -206,6 +328,184 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [isHintOpen, setIsHintOpen] = useState(false);
   const [isExplainOpen, setIsExplainOpen] = useState(false);
 
+  // ── Socratic Stepper Solution Journey Drawer state ──
+  const [isAllStepsDrawerOpen, setIsAllStepsDrawerOpen] = useState(false);
+  const [activeDrawerSteps, setActiveDrawerSteps] = useState<StepItem[]>([]);
+  const [activeDrawerStepIdx, setActiveDrawerStepIdx] = useState(0);
+  const [activeDrawerMsgId, setActiveDrawerMsgId] = useState<string | null>(null);
+
+  const handleStepHint = (msgId: string) => {
+    const idx = messages.findIndex((m) => m.id === msgId);
+    if (idx === -1) return;
+    const targetMsg = messages[idx];
+    const parsed = extractStepWidgetFromMessage(targetMsg);
+    if (!parsed) return;
+
+    const widget = targetMsg.stepWidget || parsed.widget;
+    const activeIdx = widget.current_step_index ?? 0;
+    const step = widget.steps?.[activeIdx];
+    if (!step) return;
+
+    const curLevel = step.currentHintLevel ?? step.current_hint_level ?? 0;
+    if (curLevel < 3) {
+      const nextLevel = curLevel + 1;
+      const newSteps = [...widget.steps];
+      newSteps[activeIdx] = {
+        ...step,
+        currentHintLevel: nextLevel,
+        current_hint_level: nextLevel,
+      };
+      const newWidget = {
+        ...widget,
+        steps: newSteps,
+      };
+      const newMsg: ChatMessage = {
+        ...targetMsg,
+        stepWidget: newWidget,
+      };
+      const updated = [...messages];
+      updated[idx] = newMsg;
+
+      if (currentActivityRef.current) {
+        const act = findActiveActivity(activeSessionId);
+        if (act) {
+          updateActivity(currentActivityRef.current, {
+            hintsUsed: act.hintsUsed + 1,
+          });
+        }
+      }
+
+      updateMessages(updated);
+    }
+  };
+
+  const handleStepNavigate = async (msgId: string, targetIdx: number) => {
+    const idx = messages.findIndex((m) => m.id === msgId);
+    if (idx === -1) return;
+    const targetMsg = messages[idx];
+    const parsed = extractStepWidgetFromMessage(targetMsg);
+    if (!parsed) return;
+
+    const widget = targetMsg.stepWidget || parsed.widget;
+    if (!widget.steps || targetIdx < 0 || targetIdx >= widget.steps.length) return;
+
+    const newWidget = {
+      ...widget,
+      current_step_index: targetIdx,
+    };
+    const newMsg: ChatMessage = {
+      ...targetMsg,
+      stepWidget: newWidget,
+    };
+    const updated = [...messages];
+    updated[idx] = newMsg;
+    updateMessages(updated);
+
+    try {
+      await fetch('/api/step/navigate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: activeSessionId,
+          target_step_index: targetIdx,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to sync step navigation with backend:', err);
+    }
+  };
+
+  const handleOpenAllSteps = (msgId: string, widget: any) => {
+    if (!widget || !widget.steps) return;
+    setActiveDrawerSteps(widget.steps);
+    setActiveDrawerStepIdx(widget.current_step_index ?? 0);
+    setActiveDrawerMsgId(msgId);
+    setIsAllStepsDrawerOpen(true);
+  };
+
+  const handleInlineStepAnswer = async (
+    msgId: string,
+    stepIndex: number,
+    studentAnswer: string,
+    isCorrect: boolean
+  ) => {
+    const idx = messages.findIndex((m) => m.id === msgId);
+    if (idx === -1) return;
+    const targetMsg = messages[idx];
+    const parsed = extractStepWidgetFromMessage(targetMsg);
+    if (!parsed) return;
+
+    const widget = targetMsg.stepWidget || parsed.widget;
+    if (!widget.steps || stepIndex < 0 || stepIndex >= widget.steps.length) return;
+
+    const currentStepObj = widget.steps[stepIndex];
+    const updatedStep = {
+      ...currentStepObj,
+      status: isCorrect ? 'completed' : 'in_progress',
+      student_answer: studentAnswer,
+      studentAnswer: studentAnswer,
+    };
+
+    const newSteps = [...widget.steps];
+    newSteps[stepIndex] = updatedStep;
+
+    const existingCompleted: number[] = widget.completed_steps || [];
+    const newCompleted =
+      isCorrect && !existingCompleted.includes(stepIndex)
+        ? [...existingCompleted, stepIndex]
+        : existingCompleted;
+
+    const newWidget = {
+      ...widget,
+      steps: newSteps,
+      completed_steps: newCompleted,
+    };
+
+    const newMsg: ChatMessage = {
+      ...targetMsg,
+      stepWidget: newWidget,
+    };
+
+    const updated = [...messages];
+    updated[idx] = newMsg;
+    updateMessages(updated);
+
+    if (isCorrect) {
+      transitionMascotState('jumping', 2000);
+      /* Track activity */
+      if (currentActivityRef.current) {
+        const act = findActiveActivity(activeSessionId);
+        if (act) {
+          const nextSteps = (act.stepsCompleted || 0) + 1;
+          const isDone = nextSteps >= (widget.total_steps || widget.steps.length);
+          updateActivity(currentActivityRef.current, {
+            stepsCompleted: nextSteps,
+            status: isDone ? 'completed' : 'in_progress',
+          });
+          if (isDone) currentActivityRef.current = null;
+        }
+      }
+    } else {
+      transitionMascotState('encouraging', 2000);
+    }
+
+    // Inform backend of step answer to keep session synchronized
+    try {
+      await fetch('/api/step/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: activeSessionId,
+          step_number: stepIndex + 1,
+          student_answer: studentAnswer,
+          is_correct: isCorrect,
+        }),
+      });
+    } catch (err) {
+      // Graceful offline fallback
+    }
+  };
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const isMountedRef = useRef(true);
   useEffect(() => {
@@ -217,8 +517,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (!initialProblem) return;
     setActiveProblem(initialProblem);
     setCurrentStepIndex(0);
-    const historyMsgs = generateHistoryChatForProblem(initialProblem, profile.name);
-    updateMessages(historyMsgs);
+    const initialMsg: ChatMessage = {
+      id: `init-${initialProblem.id}`,
+      sender: 'sayo',
+      textKhmer: `សួស្តី ${profile.name || 'សុជា'}! តោះដោះស្រាយលំហាត់ "${initialProblem.titleKhmer}" ទាំងអស់គ្នា! ReanMore នឹងជួយណែនាំអ្នកជាជំហានៗ។`,
+      textEng: `Hi ${profile.name || 'Sochea'}! Let's solve "${initialProblem.titleEng}" together! ReanMore will guide you step-by-step.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      problem: initialProblem,
+    };
+    updateMessages([initialMsg]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialProblem]);
 
@@ -239,7 +546,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setIsSayoThinking(true);
     lastInteractionRef.current = Date.now();
 
-    askTunsayTutor(queryText, activeProblem, profile.language).then((sayoRes) => {
+    askTunsayTutor(queryText, activeProblem, profile.language, activeSessionId).then((sayoRes) => {
       if (!isMountedRef.current) return;
       setIsSayoThinking(false);
 
@@ -250,6 +557,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         textEng: sayoRes.textEng,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isSafetyRefusal: sayoRes.isSafetyRefusal ?? false,
+        stepWidget: sayoRes.stepWidget,
       };
       updateMessages([...updatedWithUser, sayoMsg]);
 
@@ -282,8 +590,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const handleSelectTopicCard = (prob: HomeworkProblem) => {
     setActiveProblem(prob);
     setCurrentStepIndex(0);
-    const historyMsgs = generateHistoryChatForProblem(prob, profile.name);
-    updateMessages(historyMsgs);
+    const initialMsg: ChatMessage = {
+      id: `init-${prob.id}`,
+      sender: 'sayo',
+      textKhmer: `សួស្តី ${profile.name || 'សុជា'}! តោះដោះស្រាយលំហាត់ "${prob.titleKhmer}" ទាំងអស់គ្នា! ReanMore នឹងជួយណែនាំអ្នកជាជំហានៗ។`,
+      textEng: `Hi ${profile.name || 'Sochea'}! Let's solve "${prob.titleEng}" together! ReanMore will guide you step-by-step.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      problem: prob,
+    };
+    updateMessages([initialMsg]);
     transitionMascotState('explaining');
 
     /* Track: start new activity */
@@ -373,7 +688,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setIsSayoThinking(true);
     lastInteractionRef.current = Date.now();
 
-    const sayoRes = await askTunsayTutor(userText, activeProblem, profile.language);
+    const sayoRes = await askTunsayTutor(userText, activeProblem, profile.language, activeSessionId);
     if (!isMountedRef.current) return;
 
     setIsSayoThinking(false);
@@ -385,6 +700,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       textEng: sayoRes.textEng,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSafetyRefusal: sayoRes.isSafetyRefusal ?? false,
+      stepWidget: sayoRes.stepWidget,
     };
 
     updateMessages([...updatedWithUser, sayoMsg]);
@@ -639,6 +955,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
               displayText = isKhmer ? (msg.textKhmer || msg.textEng || '') : (msg.textEng || msg.textKhmer || '');
             }
 
+            const stepCardData = !isUser ? extractStepWidgetFromMessage(msg) : null;
+
             return (
               <div
                 key={msg.id}
@@ -658,22 +976,49 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   </div>
                 )}
 
-                <div
-                  className={`max-w-[85%] sm:max-w-[80%] min-w-0 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2.5 sm:border-3 border-[#1B4332] text-sm leading-relaxed break-words overflow-hidden ${
-                    isUser
-                      ? 'bg-[#1B4332] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-right'
-                      : msg.isSafetyRefusal
-                      ? 'bg-[#2D6A4F] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
-                      : 'bg-white text-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
-                  }`}
-                >
-                  <div className="font-black text-xs sm:text-base leading-relaxed break-words whitespace-pre-wrap">
-                    {formatMessageText(displayText)}
+                {stepCardData ? (
+                  <div className="w-full max-w-[92%] sm:max-w-[85%] flex flex-col gap-2 min-w-0">
+                    {stepCardData.introText && (
+                      <div className="p-3 sm:p-4 rounded-2xl bg-white text-[#1B4332] border-2.5 border-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] speech-tail-left text-xs sm:text-sm font-black leading-relaxed">
+                        {stepCardData.introText}
+                      </div>
+                    )}
+                    <StepChatBubble
+                      step={stepCardData.activeStep}
+                      stepIndex={stepCardData.activeIdx}
+                      totalSteps={stepCardData.totalSteps}
+                      language={profile.language}
+                      completedStepIndices={stepCardData.completedSteps}
+                      isLatest={msg.id === messages[messages.length - 1]?.id}
+                      onOpenHints={() => handleStepHint(msg.id)}
+                      onOpenAllSteps={() => handleOpenAllSteps(msg.id, stepCardData.widget)}
+                      onNavigateStep={(targetIdx) => handleStepNavigate(msg.id, targetIdx)}
+                      onStepAnswerSubmit={(stepIdx, ans, isCorrect) =>
+                        handleInlineStepAnswer(msg.id, stepIdx, ans, isCorrect)
+                      }
+                    />
+                    <span className="text-[10px] block font-black opacity-60 ml-2">
+                      {msg.timestamp}
+                    </span>
                   </div>
-                  <span className="text-[10px] mt-2 block text-right font-black opacity-80">
-                    {msg.timestamp}
-                  </span>
-                </div>
+                ) : (
+                  <div
+                    className={`max-w-[85%] sm:max-w-[80%] min-w-0 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2.5 sm:border-3 border-[#1B4332] text-sm leading-relaxed break-words overflow-hidden ${
+                      isUser
+                        ? 'bg-[#1B4332] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-right'
+                        : msg.isSafetyRefusal
+                        ? 'bg-[#2D6A4F] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
+                        : 'bg-white text-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
+                    }`}
+                  >
+                    <div className="font-black text-xs sm:text-base leading-relaxed break-words whitespace-pre-wrap">
+                      {formatMessageText(displayText)}
+                    </div>
+                    <span className="text-[10px] mt-2 block text-right font-black opacity-80">
+                      {msg.timestamp}
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -752,7 +1097,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     setSayoStatus(prev => prev === 'listening' ? 'idle' : prev);
                   }, 1500);
                 }}
-                placeholder={isKhmer ? 'វាយបញ្ចូលសំណួររបស់អ្នកនៅទីនេះ...' : 'Type your question here...'}
+                placeholder={
+                  isKhmer
+                    ? 'សួរអ្វីបន្ថែម ឬ "ខ្ញុំមិនយល់ទេ"...'
+                    : 'Ask for help or "I\'m stuck"...'
+                }
                 className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-sm sm:text-base py-3 font-bold text-[#1B4332] placeholder:text-[#1B4332]/50"
               />
             </div>
@@ -785,6 +1134,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
           />
         </>
       )}
+
+      {/* Socratic Stepper Solution Journey Drawer */}
+      <AllStepsDrawer
+        steps={activeDrawerSteps}
+        currentStepIndex={activeDrawerStepIdx}
+        isOpen={isAllStepsDrawerOpen}
+        language={profile.language}
+        onSelectStep={(idx) => {
+          if (activeDrawerMsgId) {
+            handleStepNavigate(activeDrawerMsgId, idx);
+          }
+          setIsAllStepsDrawerOpen(false);
+        }}
+        onClose={() => setIsAllStepsDrawerOpen(false)}
+      />
     </div>
   );
 };

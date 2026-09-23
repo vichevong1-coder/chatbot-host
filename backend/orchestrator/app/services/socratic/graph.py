@@ -136,7 +136,14 @@ def process_nlu_node(state: TutorState) -> Dict[str, Any]:
         lower = raw_input.lower()
         widget = _get_widget_from_state(state)
 
-        if any(h in lower for h in ["hint", "clue", "help", "i'm stuck", "stuck", "don't know", "dont know"]):
+        from app.services.nlu.intent import classify_intent_heuristic, IntentType
+        heur = classify_intent_heuristic(raw_input)
+
+        if heur.intent == IntentType.CHITCHAT:
+            intent = "CHITCHAT"
+        elif heur.intent == IntentType.OFF_TOPIC:
+            intent = "OFF_TOPIC_DEFLECTED"
+        elif any(h in lower for h in ["hint", "clue", "help", "i'm stuck", "stuck", "don't know", "dont know"]):
             intent = StudentIntent.REQUEST_HINT.value
         elif lower.startswith("goto") or lower.startswith("jump") or lower.startswith("step"):
             intent = "NAVIGATION_JUMP"
@@ -164,20 +171,92 @@ def process_nlu_node(state: TutorState) -> Dict[str, Any]:
     }
 
 
-def initial_problem_node(state: TutorState) -> Dict[str, Any]:
+async def initial_problem_node(state: TutorState) -> Dict[str, Any]:
     """
-    Decomposes the homework problem into 2–4 Socratic steps and generates Step 1 card.
+    Decomposes the homework problem into 2–4 Socratic step cards using the
+    exercise_planning prompt (zero answer leakage, isomorphic parallel examples,
+    3-tier progressive hints).  Falls back to the legacy two-step pipeline when
+    the LLM is unavailable.
     """
     problem = state.get("problem_text") or state.get("raw_user_input", "Solve the homework problem.")
     grade_level = state.get("grade_level", "grade_1_3")
+    session_id = state.get("session_id", "default_session")
+    subject = (state.get("subject") or "math").upper()
 
-    # Decompose into steps using prompt controller
+    # 1. Attempt to query downstream solver microservice (fire-and-forget context enrichment)
+    try:
+        from app.infrastructure.clients import solver_client
+        downstream_res = await solver_client.solve(
+            subject=subject,
+            service_url="",
+            query=problem,
+            grade_level=grade_level
+        )
+        if downstream_res and downstream_res.get("success") and downstream_res.get("steps"):
+            logger.info(f"Received {len(downstream_res.get('steps', []))} steps from downstream {subject} service.")
+    except Exception as e:
+        logger.warning(f"Downstream {subject} solver call failed/timed out: {e}. Continuing with prompt controller.")
+
+    # 2a. PRIMARY PATH — unified exercise_planning prompt (full card + hints, no answer leakage)
+    widget_dict = controller.plan_exercise_socratic_widget(
+        problem_text=problem,
+        grade_level=grade_level,
+        session_id=session_id
+    )
+    if widget_dict and widget_dict.get("steps") and len(widget_dict["steps"]) >= 2:
+        logger.info(f"exercise_planning produced {widget_dict['total_steps']}-step widget via LLM.")
+        # Validate / coerce each step through SocraticStep to catch schema mismatches early
+        try:
+            coerced_steps = []
+            for raw in widget_dict["steps"]:
+                coerced_steps.append(SocraticStep(
+                    step_number=raw.get("step_number", 1),
+                    title=raw.get("title", ""),
+                    status=raw.get("status", "locked"),
+                    mission=raw.get("mission", ""),
+                    clue=raw.get("clue", ""),
+                    helpful_example=raw.get("helpful_example", ""),
+                    your_turn=raw.get("your_turn", ""),
+                    expected_answer=raw.get("expected_answer", ""),
+                    concept=raw.get("concept", ""),
+                    hints=raw.get("hints", []),
+                    current_hint_level=0
+                ))
+            widget = StepWidgetPayload(
+                total_steps=len(coerced_steps),
+                current_step_index=0,
+                completed_steps=[],
+                steps=coerced_steps
+            )
+            return {
+                "problem_text": problem,
+                "total_steps_count": len(coerced_steps),
+                "step_widget": widget.model_dump(),
+                "current_step_index": 0,
+                "active_hint": None,
+                "current_hint_tier": 0,
+                "feedback_message": "🚀 Let's solve this together, step-by-step! Here is Step 1:",
+                "is_problem_complete": False,
+                "is_problem_solved": False,
+                "clarification_needed": False
+            }
+        except Exception as coerce_err:
+            logger.warning(f"SocraticStep coercion failed after exercise_planning: {coerce_err}. Falling back.")
+
+    # 2b. FALLBACK PATH — two-step breakdown → generate_step_card pipeline
+    logger.info("exercise_planning unavailable or returned invalid data; using legacy breakdown pipeline.")
     steps_data = controller.breakdown_problem_into_steps(problem, grade_level=grade_level)
     socratic_steps: List[SocraticStep] = []
 
+    def _safe_str(val: Any) -> str:
+        if isinstance(val, dict):
+            return " ".join(f"{v}" for v in val.values() if v)
+        elif isinstance(val, list):
+            return " ".join(str(item) for item in val)
+        return str(val) if val is not None else ""
+
     for idx, s in enumerate(steps_data):
         step_num = s.get("step_number", idx + 1)
-        # Generate 4-part card content for each step
         card_content = controller.generate_step_card(
             homework_problem=problem,
             step_number=step_num,
@@ -187,26 +266,29 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
             expected_operation=s.get("clue", ""),
             grade_level=grade_level
         )
-        def _safe_str(val: Any) -> str:
-            if isinstance(val, dict):
-                return " ".join(f"{v}" for v in val.values() if v)
-            elif isinstance(val, list):
-                return " ".join(str(item) for item in val)
-            return str(val) if val is not None else ""
 
-        step_obj = SocraticStep(
+        step_hints = card_content.get("hints")
+        if not step_hints or len(step_hints) != 3:
+            step_title_label = s.get("title", f"Step {step_num}")
+            step_hints = [
+                f"💡 Focus on the key idea in '{step_title_label}' and identify what the question is asking.",
+                f"🍎 Picture the parallel example and apply the same operation step-by-step!",
+                f"📐 Break the calculation into two smaller sub-steps without solving either yet."
+            ]
+
+        socratic_steps.append(SocraticStep(
             step_number=step_num,
-            title=s.get("title", f"Step {step_num}"),
-            status="in_progress" if idx == 0 else "pending",
+            title=_safe_str(s.get("title", f"Step {step_num}")),
+            status="in_progress" if idx == 0 else ("up_next" if idx == 1 else "locked"),
             mission=_safe_str(card_content.get("mission")),
             clue=_safe_str(card_content.get("clue")),
             helpful_example=_safe_str(card_content.get("helpful_example")),
             your_turn=_safe_str(card_content.get("your_turn")),
             expected_answer=s.get("expected_answer", str(step_num)),
-            concept=s.get("concept", "")
-        )
-
-        socratic_steps.append(step_obj)
+            concept=s.get("concept", ""),
+            hints=step_hints,
+            current_hint_level=0
+        ))
 
     widget = StepWidgetPayload(
         total_steps=len(socratic_steps),
@@ -229,11 +311,10 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
     }
 
 
-def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
+async def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
     """
     Evaluates student answer against active step's expected target.
-    If correct -> advances step and emits praise.
-    If incorrect -> triggers progressive hint and gentle encouragement.
+    Checks in-memory equivalence and queries downstream validator if needed.
     """
     widget = _get_widget_from_state(state)
     if not widget:
@@ -248,7 +329,24 @@ def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
     grade_level = state.get("grade_level", "grade_1_3")
     history = list(state.get("attempt_history", []))
 
+    # 1. Fast path: in-memory rule-based equivalence
     is_correct = _is_answer_equivalent(attempt, expected)
+
+    # 2. Downstream path: query microservice validator if heuristic is not yet matched
+    if not is_correct and expected and attempt:
+        try:
+            from app.infrastructure.clients import solver_client
+            subject = (state.get("subject") or "math").upper()
+            is_valid = await solver_client.validate(
+                subject=subject,
+                service_url="",
+                student_attempt=attempt,
+                expected_step=expected
+            )
+            if is_valid:
+                is_correct = True
+        except Exception as e:
+            logger.warning(f"Downstream validator call failed: {e}")
 
     if is_correct:
         # Praise feedback
@@ -390,6 +488,23 @@ def clarify_node(state: TutorState) -> Dict[str, Any]:
     }
 
 
+def chitchat_node(state: TutorState) -> Dict[str, Any]:
+    """
+    Handles friendly student greetings and polite chit-chat without launching a stepper card.
+    """
+    greeting_msg = (
+        "👋 Hello there! I'm ReanMore, your AI study buddy! 🦁\n\n"
+        "What math or science homework problem would you like to explore together today? "
+        "You can type your problem or tap the camera icon 📷 to scan a worksheet!"
+    )
+    return {
+        "feedback_message": greeting_msg,
+        "formatted_markdown": greeting_msg,
+        "is_deflected": False,
+        "detected_intent": "CHITCHAT"
+    }
+
+
 def guardrails_node(state: TutorState) -> Dict[str, Any]:
     """
     Evaluates child safety, redacts PII, and detects off-topic distractions.
@@ -528,6 +643,8 @@ def route_by_intent(state: TutorState) -> str:
 
     if intent in ("GUARDRAIL_BLOCKED", "OFF_TOPIC_DEFLECTED"):
         return "deflect"
+    elif intent in ("CHITCHAT", "GREETING"):
+        return "chitchat"
     elif intent == StudentIntent.REQUEST_HINT.value:
         return "request_hint"
     elif intent == "NAVIGATION_JUMP":
@@ -555,6 +672,7 @@ def build_socratic_graph(checkpointer=None):
     builder.add_node("process_nlu", process_nlu_node)
     builder.add_node("guardrails", guardrails_node)
     builder.add_node("deflect", deflect_node)
+    builder.add_node("chitchat", chitchat_node)
     builder.add_node("initial_problem", initial_problem_node)
     builder.add_node("validate_attempt", validate_attempt_node)
     builder.add_node("request_hint", request_hint_node)
@@ -571,6 +689,7 @@ def build_socratic_graph(checkpointer=None):
         route_by_intent,
         {
             "deflect": "deflect",
+            "chitchat": "chitchat",
             "initial_problem": "initial_problem",
             "validate_attempt": "validate_attempt",
             "request_hint": "request_hint",
@@ -580,6 +699,7 @@ def build_socratic_graph(checkpointer=None):
     )
 
     builder.add_edge("deflect", "compile_response")
+    builder.add_edge("chitchat", "compile_response")
     builder.add_edge("initial_problem", "compile_response")
     builder.add_edge("validate_attempt", "compile_response")
     builder.add_edge("request_hint", "compile_response")

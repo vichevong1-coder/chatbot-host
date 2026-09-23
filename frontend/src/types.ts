@@ -62,7 +62,7 @@ export interface StepItem {
   /** Step title shown in the header and roadmap */
   title?: string;
   /** Step status driven by the backend stepper state machine */
-  status?: 'pending' | 'active' | 'completed' | 'skipped';
+  status?: 'pending' | 'active' | 'completed' | 'skipped' | 'locked' | 'up_next' | 'in_progress';
   /** Primary mission / question text (maps from backend card schema) */
   mission?: string;
   /** Guiding clue shown in the card body (Tier 1 hint equivalent) */
@@ -77,6 +77,10 @@ export interface StepItem {
   currentHintLevel?: number;
   /** Student's recorded answer after solving the step */
   studentAnswer?: string;
+  student_answer?: string;
+  /** Ground truth or normalized target answer for evaluation */
+  expectedAnswer?: string;
+  expected_answer?: string;
 }
 
 export interface HomeworkProblem {
@@ -101,6 +105,7 @@ export interface ChatMessage {
   problem?: HomeworkProblem;
   activeStepIndex?: number;
   isSafetyRefusal?: boolean;
+  stepWidget?: any;
 }
 
 export interface ChatSession {

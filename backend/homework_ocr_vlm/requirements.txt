@@ -15,7 +15,7 @@ paddlepaddle>=2.6.1
 paddleocr>=2.7.3
 
 # VLM
-google-generativeai>=0.7.0
+google-genai>=1.0.0
 
 # Schema / config
 pydantic>=2.7.0

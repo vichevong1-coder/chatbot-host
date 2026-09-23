@@ -81,15 +81,15 @@ services:
       - science-network
 
   # Homework OCR + VLM Pipeline
-  ocr-service:
+  homework-scanner:
     build:
-      context: ../homework_ocr_vlm
+      context: ./homework_ocr_vlm
       dockerfile: Dockerfile
-    container_name: ocr-service
+    container_name: homework-scanner
     ports:
-      - "8000:8000"
+      - "${HOMEWORK_SCANNER_PORT:-9003}:9003"
     env_file:
-      - ../homework_ocr_vlm/.env
+      - .env
     networks:
       - science-network
 

@@ -4,6 +4,7 @@ interface BackendResponse {
   category: string;
   solution: string;
   steps?: any[];
+  step_widget?: any;
   source?: string;
   current_step_index?: number;
   hint_count?: number;
@@ -139,8 +140,9 @@ function getSocraticFallback(_language: Language, prompt: string): { textKhmer: 
 export async function askReanMoreTutor(
   userPrompt: string,
   problemContext?: HomeworkProblem,
-  language: Language = 'km'
-): Promise<{ textKhmer: string; textEng: string; isSafetyRefusal?: boolean }> {
+  language: Language = 'km',
+  sessionId?: string
+): Promise<{ textKhmer: string; textEng: string; isSafetyRefusal?: boolean; stepWidget?: any }> {
 
   // ── Safety Check FIRST ──
   if (isUnsafePrompt(userPrompt)) {
@@ -157,6 +159,7 @@ export async function askReanMoreTutor(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query: userPrompt,
+        session_id: sessionId,
         grade_level: problemContext?.grade ? `grade_${problemContext.grade}_${problemContext.grade + 2}` : 'grade_1_3',
         language: language === 'km' ? 'km' : 'en',
         // Send Socratic system prompt to backend
@@ -183,12 +186,14 @@ export async function askReanMoreTutor(
           textKhmer: text,
           textEng: '',
           isSafetyRefusal: false,
+          stepWidget: data.step_widget,
         };
       } else {
         return {
           textKhmer: '',
           textEng: text,
           isSafetyRefusal: false,
+          stepWidget: data.step_widget,
         };
       }
     }
