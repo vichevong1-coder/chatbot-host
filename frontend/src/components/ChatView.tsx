@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChatMessage, HomeworkProblem, UserProfile, TunsayState, ChatSession, WorksheetQueue } from '../types';
+import { ChatMessage, HomeworkProblem, UserProfile, TunsayState, ChatSession } from '../types';
 import { TunsayAvatar } from './TunsayAvatar';
 import { StepTrail } from './StepTrail';
 import { StepCard } from './StepCard';
@@ -7,9 +7,6 @@ import { HintSheet } from './HintSheet';
 import { ExplanationCard } from './ExplanationCard';
 import { StepChatBubble } from './StepChatBubble';
 import { AllStepsDrawer } from './AllStepsDrawer';
-import { WorksheetExerciseBar } from './WorksheetExerciseBar';
-import { WorksheetProgressPanel } from './WorksheetProgressPanel';
-import { ExerciseCelebrationBanner } from './ExerciseCelebrationBanner';
 import { StepItem } from '../types';
 import { askTunsayTutor } from '../services/geminiService';
 // import { getDisplayName } from '../utils/language';
@@ -177,10 +174,6 @@ interface ChatViewProps {
   onUpdateMessages: (messages: ChatMessage[]) => void;
   onOpenScanner: () => void;
   onBackToHome?: () => void;
-  /** Worksheet exercise queue state (set after scanning a multi-exercise worksheet) */
-  worksheetQueue?: WorksheetQueue | undefined;
-  onSelectExercise?: (index: number) => void;
-  onExerciseComplete?: (problemId: string) => void;
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({
@@ -195,18 +188,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onDeleteSession,
   onUpdateMessages,
   onOpenScanner,
-  onBackToHome,
-  worksheetQueue,
-  onSelectExercise,
-  onExerciseComplete,
+  onBackToHome
 }) => {
   const isKhmer = profile.language === 'km';
   const [activeProblem, setActiveProblem] = useState<HomeworkProblem | undefined>(initialProblem);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
-
-  // Track exercise completion celebration
-  const [celebratingProblemId, setCelebratingProblemId] = useState<string | null>(null);
-  const celebrationShownRef = useRef<Set<string>>(new Set());
 
   const activeSession = sessions.find(s => s.id === activeSessionId);
   const messages = activeSession?.messages ?? [];
@@ -244,43 +230,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
       setThinkingTextIdx(0);
     }
   }, [sayoStatus]);
-
-  // Sync backend decomposed steps into activeProblem so top StepCard renders the real 4-part Socratic card
-  const syncStepsFromWidget = (widget: any, rawMsgText?: string) => {
-    if (widget && Array.isArray(widget.steps) && widget.steps.length > 0) {
-      const total = widget.total_steps || widget.steps.length;
-      const mapped: StepItem[] = widget.steps.map((st: any, i: number) => ({
-        id: `step-${st.step_number || i + 1}`,
-        stepNumber: st.step_number || i + 1,
-        totalSteps: total,
-        title: st.title || `Step ${st.step_number || i + 1}`,
-        mission: st.mission || st.questionKhmer || st.questionEng || '',
-        clue: st.clue || st.hint1?.khmer || '',
-        helpfulExample: st.helpful_example || st.helpfulExample || st.hint2?.khmer || '',
-        yourTurn: st.your_turn || st.yourTurn || st.socraticPromptKhmer || st.socraticPromptEng || '',
-        questionKhmer: st.mission || st.title || `Step ${i + 1}`,
-        questionEng: st.mission || st.title || `Step ${i + 1}`,
-        socraticPromptKhmer: st.your_turn || st.yourTurn || st.mission || '',
-        socraticPromptEng: st.your_turn || st.yourTurn || st.mission || '',
-        inputFormat: 'text',
-        correctAnswer: st.expected_answer || st.expectedAnswer || st.correctAnswer || '',
-        expectedAnswer: st.expected_answer || st.expectedAnswer || st.correctAnswer || '',
-        hint1: { khmer: st.clue || '', eng: st.clue || '' },
-        hint2: { khmer: st.helpful_example || st.helpfulExample || '', eng: st.helpful_example || st.helpfulExample || '' },
-        hint3: { titleKhmer: 'ជំនួយ', titleEng: 'Help', exampleKhmer: '', exampleEng: '' },
-        explainDifferently: { simpleKhmer: st.clue || '', simpleEng: st.clue || '', analogyTitle: '', analogyKhmer: '', analogyEng: '', analogyType: 'apples' },
-      }));
-      setActiveProblem((prev) => (prev ? { ...prev, steps: mapped } : prev));
-      if (widget.current_step_index !== undefined) {
-        setCurrentStepIndex(widget.current_step_index);
-      }
-    } else if (rawMsgText) {
-      const parsed = extractStepWidgetFromMessage({ id: 'temp', sender: 'sayo', textEng: rawMsgText });
-      if (parsed && parsed.widget) {
-        syncStepsFromWidget(parsed.widget);
-      }
-    }
-  };
 
   const updateMessages = (newMsgs: ChatMessage[]) => {
     onUpdateMessages(newMsgs);
@@ -577,37 +526,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
       problem: initialProblem,
     };
     updateMessages([initialMsg]);
-
-    // Automatically trigger backend Socratic decomposition for the problem
-    const probStatement = initialProblem.problemStatementKhmer || initialProblem.problemStatementEng;
-    if (probStatement) {
-      setIsSayoThinking(true);
-      askTunsayTutor(probStatement, initialProblem, profile.language, activeSessionId)
-        .then((sayoRes) => {
-          if (!isMountedRef.current) return;
-          setIsSayoThinking(false);
-          if (sayoRes.stepWidget) {
-            syncStepsFromWidget(sayoRes.stepWidget, sayoRes.textEng || sayoRes.textKhmer);
-          } else if (sayoRes.textEng || sayoRes.textKhmer) {
-            syncStepsFromWidget(null, sayoRes.textEng || sayoRes.textKhmer);
-          }
-
-          if (sayoRes.textKhmer || sayoRes.textEng || sayoRes.stepWidget) {
-            const guidedMsg: ChatMessage = {
-              id: `guide-${initialProblem.id}-${Date.now()}`,
-              sender: 'sayo',
-              textKhmer: sayoRes.textKhmer,
-              textEng: sayoRes.textEng,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              stepWidget: sayoRes.stepWidget,
-            };
-            updateMessages([initialMsg, guidedMsg]);
-          }
-        })
-        .catch(() => {
-          if (isMountedRef.current) setIsSayoThinking(false);
-        });
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialProblem]);
 
@@ -631,11 +549,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
     askTunsayTutor(queryText, activeProblem, profile.language, activeSessionId).then((sayoRes) => {
       if (!isMountedRef.current) return;
       setIsSayoThinking(false);
-      if (sayoRes.stepWidget) {
-        syncStepsFromWidget(sayoRes.stepWidget, sayoRes.textEng || sayoRes.textKhmer);
-      } else if (sayoRes.textEng || sayoRes.textKhmer) {
-        syncStepsFromWidget(null, sayoRes.textEng || sayoRes.textKhmer);
-      }
 
       const sayoMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -699,37 +612,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
       prob.steps.length
     );
     currentActivityRef.current = act.id;
-
-    // Trigger decomposition for topic card
-    const probStatement = prob.problemStatementKhmer || prob.problemStatementEng || prob.titleKhmer || prob.titleEng;
-    if (probStatement) {
-      setIsSayoThinking(true);
-      askTunsayTutor(probStatement, prob, profile.language, activeSessionId)
-        .then((sayoRes) => {
-          if (!isMountedRef.current) return;
-          setIsSayoThinking(false);
-          if (sayoRes.stepWidget) {
-            syncStepsFromWidget(sayoRes.stepWidget, sayoRes.textEng || sayoRes.textKhmer);
-          } else if (sayoRes.textEng || sayoRes.textKhmer) {
-            syncStepsFromWidget(null, sayoRes.textEng || sayoRes.textKhmer);
-          }
-
-          if (sayoRes.textKhmer || sayoRes.textEng || sayoRes.stepWidget) {
-            const guidedMsg: ChatMessage = {
-              id: `guide-${prob.id}-${Date.now()}`,
-              sender: 'sayo',
-              textKhmer: sayoRes.textKhmer,
-              textEng: sayoRes.textEng,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              stepWidget: sayoRes.stepWidget,
-            };
-            updateMessages([initialMsg, guidedMsg]);
-          }
-        })
-        .catch(() => {
-          if (isMountedRef.current) setIsSayoThinking(false);
-        });
-    }
   };
 
   const handleStepAnswer = (studentAnswer: string): boolean => {
@@ -751,19 +633,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
     lastInteractionRef.current = Date.now();
 
     if (isCorrect) {
-      const nextStepIdx = currentStepIndex + 1;
-      if (activeProblem && nextStepIdx < activeProblem.steps.length) {
+      if (activeProblem && currentStepIndex + 1 < activeProblem.steps.length) {
         setTimeout(() => {
           setCurrentStepIndex((prev: number) => prev + 1);
         }, 800);
-      } else if (activeProblem && nextStepIdx >= activeProblem.steps.length) {
-        // All steps done — trigger exercise celebration if in queue
-        if (worksheetQueue && !celebrationShownRef.current.has(activeProblem.id)) {
-          celebrationShownRef.current.add(activeProblem.id);
-          setCelebratingProblemId(activeProblem.id);
-          transitionMascotState('celebrating', 4000);
-          onExerciseComplete?.(activeProblem.id);
-        }
       }
       transitionMascotState('jumping', 2000);
 
@@ -819,11 +692,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (!isMountedRef.current) return;
 
     setIsSayoThinking(false);
-    if (sayoRes.stepWidget) {
-      syncStepsFromWidget(sayoRes.stepWidget, sayoRes.textEng || sayoRes.textKhmer);
-    } else if (sayoRes.textEng || sayoRes.textKhmer) {
-      syncStepsFromWidget(null, sayoRes.textEng || sayoRes.textKhmer);
-    }
 
     const sayoMsg: ChatMessage = {
       id: (Date.now() + 1).toString(),
@@ -869,33 +737,35 @@ export const ChatView: React.FC<ChatViewProps> = ({
   return (
     <div className="w-full h-full flex-1 flex flex-row items-stretch gap-4 sm:gap-5 overflow-hidden">
       {/* Left Panel: Mascot + Session History */}
-      <div className="hidden lg:flex lg:w-[30%] lg:min-w-[240px] lg:max-w-[360px] shrink-0 h-full bg-[#F1EFFF] rounded-3xl border-3 border-[#1B4332] shadow-[6px_6px_0px_#1B4332] flex-col select-none z-10 relative overflow-hidden">
+      <div
+        className="hidden lg:flex lg:w-[30%] lg:min-w-[260px] lg:max-w-[360px] shrink-0 h-full bg-[#E8F5E9] rounded-3xl border-3 border-[#1B4332] shadow-[6px_6px_0px_#1B4332] flex-col select-none z-10 relative overflow-hidden"
+      >
         {/* Decorative blobs */}
-        <div className="absolute -top-10 -left-10 w-28 h-28 bg-[#40916C]/25 rounded-full blur-sm pointer-events-none" />
-        <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[#2D6A4F]/25 rounded-full blur-sm pointer-events-none" />
+        <div className="absolute -top-10 -left-10 w-28 h-28 bg-[#40916C]/20 rounded-full blur-sm pointer-events-none" />
+        <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[#2D6A4F]/20 rounded-full blur-sm pointer-events-none" />
 
         {/* Mascot area */}
-        <div className="flex flex-col items-center gap-3 pt-4 pb-3 px-4 relative z-10 shrink-0 border-b-2 border-[#1B4332]/10">
-          <div className="w-full max-w-[220px]">
+        <div className="flex flex-col items-center gap-3 pt-4 pb-3 px-4 relative z-10 shrink-0 border-b-2 border-[#1B4332]/15">
+          <div className="w-full max-w-[240px]">
             {(() => {
               const badges: Record<TunsayState, { text: string; style: string; icon: 'ping' | 'sparkle' | 'dot' | 'none' }> = {
                 thinking:    { text: isKhmer ? 'កំពុងគិត...' : 'Thinking...', style: 'bg-[#2D6A4F] text-white animate-pulse', icon: 'ping' },
-                celebrating: { text: isKhmer ? 'រួចរាល់ហើយ!' : 'Done!', style: 'bg-[#2D6A4F] text-[#1B4332] animate-bounce', icon: 'sparkle' },
-                jumping:     { text: isKhmer ? 'អស្ចារ្យមែន!' : 'Amazing!', style: 'bg-[#2D6A4F] text-[#1B4332] animate-bounce', icon: 'sparkle' },
+                celebrating: { text: isKhmer ? 'រួចរាល់ហើយ!' : 'Done!', style: 'bg-[#2D6A4F] text-white animate-bounce', icon: 'sparkle' },
+                jumping:     { text: isKhmer ? 'អស្ចារ្យមែន!' : 'Amazing!', style: 'bg-[#2D6A4F] text-white animate-bounce', icon: 'sparkle' },
                 encouraging: { text: isKhmer ? 'កុំបារម្ភ!' : 'No worries!', style: 'bg-[#A7CDB4] text-[#1B4332]', icon: 'dot' },
                 listening:   { text: isKhmer ? 'កំពុងស្ដាប់...' : 'Listening...', style: 'bg-[#A7CDB4] text-[#1B4332] animate-pulse', icon: 'dot' },
                 explaining:  { text: isKhmer ? 'កំពុងពន្យល់...' : 'Explaining...', style: 'bg-[#A7CDB4] text-[#1B4332]', icon: 'dot' },
                 waving:      { text: isKhmer ? 'សួស្តី!' : 'Hello!', style: 'bg-[#A7CDB4] text-[#1B4332] animate-bounce', icon: 'dot' },
-                happy:       { text: isKhmer ? 'ពីរនេះ!' : 'Yay!', style: 'bg-[#2D6A4F] text-[#1B4332] animate-bounce', icon: 'sparkle' },
+                happy:       { text: isKhmer ? 'ពីរនេះ!' : 'Yay!', style: 'bg-[#2D6A4F] text-white animate-bounce', icon: 'sparkle' },
                 confused:    { text: isKhmer ? 'ហ៊ឹម...' : 'Hmm...', style: 'bg-[#A7CDB4] text-[#1B4332]', icon: 'dot' },
-                sleeping:    { text: isKhmer ? 'កំពុងសម្រាក...' : 'Resting...', style: 'bg-gray-200 text-gray-500', icon: 'none' },
+                sleeping:    { text: isKhmer ? 'កំពុងសម្រាក...' : 'Resting...', style: 'bg-gray-200 text-gray-700', icon: 'none' },
                 idle:        { text: isKhmer ? 'ReanMore AI Tutor' : 'ReanMore AI Tutor', style: 'bg-[#A7CDB4] text-[#1B4332]', icon: 'dot' },
               };
               const b = badges[sayoStatus];
               return (
                 <span className={`px-3 py-1.5 text-xs font-black rounded-full border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] inline-flex items-center justify-center gap-1.5 uppercase tracking-wider w-full ${b.style}`}>
                   {b.icon === 'ping' && <span className="w-2 h-2 bg-white rounded-full animate-ping shrink-0" />}
-                  {b.icon === 'sparkle' && <Sparkles className="w-3 h-3 text-[#1B4332]" />}
+                  {b.icon === 'sparkle' && <Sparkles className="w-3 h-3 text-white" />}
                   {b.icon === 'dot' && <span className="w-2 h-2 bg-[#2D6A4F] rounded-full border border-[#1B4332] shrink-0" />}
                   <span className="truncate">{b.text}</span>
                 </span>
@@ -910,38 +780,31 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <TunsayAvatar size="xl" state={sayoStatus} showBadge={false} />
             </div>
 
-            <div className="mt-3 px-2 w-full max-w-[240px] bg-white rounded-2xl p-2.5 border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] relative">
+            <div className="mt-3 px-3 w-full max-w-[260px] bg-white rounded-2xl p-2.5 sm:p-3 border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] relative">
               <div className="w-3 h-3 bg-white border-t-3 border-l-3 border-[#1B4332] rotate-45 absolute -top-2 left-1/2 -translate-x-1/2" />
-              <p className="font-heading font-black text-xs text-[#1B4332] leading-snug transition-all duration-300">
+              <p className="font-heading font-black text-xs sm:text-sm text-[#1B4332] leading-snug text-center transition-all duration-300">
                 {getMascotContextText(sayoStatus)}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Session History List — replaced by WorksheetProgressPanel when worksheet active */}
-        {worksheetQueue && worksheetQueue.problems.length > 1 ? (
-          <WorksheetProgressPanel
-            problems={worksheetQueue.problems}
-            activeIndex={worksheetQueue.activeIndex}
-            completedIds={worksheetQueue.completedIds}
-            language={profile.language}
-            {...(worksheetQueue.worksheetTitle ? { worksheetTitle: worksheetQueue.worksheetTitle } : {})}
-            onSelectExercise={(idx) => onSelectExercise?.(idx)}
-          />
-        ) : (
-          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 relative z-10">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-black text-[#1B4332]/60 uppercase tracking-wider">
-              {isKhmer ? 'ការជជែកថ្មីៗ' : 'Recent Chats'}
+        {/* Session History List */}
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5 relative z-10">
+          <div className="flex items-center justify-between mb-2 px-0.5">
+            <p className="text-xs sm:text-sm font-black text-[#1B4332] uppercase tracking-wider flex items-center gap-1.5">
+              <span>{isKhmer ? 'ការជជែកថ្មីៗ' : 'Recent Chats'}</span>
+              <span className="text-[10px] px-1.5 py-0.5 bg-[#40916C]/20 text-[#1B4332] rounded-full font-bold">
+                {sessions.length}
+              </span>
             </p>
             <button
               onClick={handleNewChat}
-              className="text-[10px] font-black text-[#2D6A4F] hover:text-[#1B4332] flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-xs font-black text-[#1B4332] bg-white hover:bg-[#A7CDB4] border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] active:translate-y-0.5 px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-all"
               title={isKhmer ? 'ចាប់ផ្តើមជជែកថ្មី' : 'New Chat'}
             >
-              <Plus className="w-3 h-3" />
-              {isKhmer ? 'ថ្មី' : 'New'}
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              <span>{isKhmer ? 'ថ្មី' : 'New'}</span>
             </button>
           </div>
 
@@ -951,24 +814,26 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <button
                 key={session.id}
                 onClick={() => onSelectSession(session.id)}
-                className={`w-full text-left rounded-xl border-2 p-2.5 transition-all cursor-pointer group ${
+                className={`w-full text-left rounded-xl border-2 sm:border-2.5 p-3 transition-all cursor-pointer group ${
                   isActive
-                    ? 'bg-white border-[#1B4332] shadow-[2px_2px_0px_#1B4332]'
-                    : 'bg-[#40916C]/10 border-transparent hover:bg-white hover:border-[#1B4332]/30'
+                    ? 'bg-white border-[#1B4332] shadow-[3px_3px_0px_#1B4332] translate-x-0.5'
+                    : 'bg-white/80 hover:bg-white border-[#1B4332]/30 hover:border-[#1B4332] shadow-[2px_2px_0px_rgba(27,67,50,0.12)] hover:shadow-[3px_3px_0px_#1B4332]'
                 }`}
               >
-                <div className="flex items-start gap-2">
-                  <MessageSquare className={`w-4 h-4 shrink-0 mt-0.5 ${isActive ? 'text-[#1B4332]' : 'text-[#1B4332]/40'}`} />
+                <div className="flex items-start gap-2.5">
+                  <div className={`p-1.5 rounded-lg border-2 shrink-0 mt-0.5 ${isActive ? 'bg-[#A7CDB4] text-[#1B4332] border-[#1B4332]' : 'bg-[#E8F5E9] text-[#1B4332] border-[#1B4332]/40 group-hover:border-[#1B4332]'}`}>
+                    <MessageSquare className="w-3.5 h-3.5 stroke-[2.5]" />
+                  </div>
                   <div className="min-w-0 flex-1">
-                    <p className={`text-xs font-black truncate ${isActive ? 'text-[#1B4332]' : 'text-[#1B4332]/70'}`}>
+                    <p className="text-xs sm:text-sm font-black text-[#1B4332] truncate leading-tight">
                       {isKhmer ? session.titleKhmer : session.title}
                     </p>
-                    <p className="text-[10px] text-[#1B4332]/50 truncate mt-0.5 leading-tight">
+                    <p className="text-[11px] sm:text-xs font-bold text-[#1B4332]/75 truncate mt-1 leading-snug">
                       {getSessionPreview(session)}
                     </p>
                   </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="text-[9px] text-[#1B4332]/40 font-semibold">
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <span className="text-[10px] sm:text-[11px] font-black text-[#1B4332]/70 bg-[#A7CDB4]/30 px-1.5 py-0.5 rounded-md">
                       {formatSessionTime(session.updatedAt)}
                     </span>
                     {sessions.length > 1 && (
@@ -977,10 +842,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           e.stopPropagation();
                           onDeleteSession(session.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[#1B4332]/30 hover:text-red-500 cursor-pointer"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[#1B4332]/40 hover:text-red-600 hover:scale-110 p-0.5 cursor-pointer"
                         title={isKhmer ? 'លុប' : 'Delete'}
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
@@ -989,10 +854,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
             );
           })}
         </div>
-        )}
 
-        <div className="w-full pt-2.5 pb-3 px-4 border-t-2 border-[#1B4332]/15 relative z-10 shrink-0">
-          <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider truncate text-center">
+        <div className="w-full pt-3 pb-3 px-4 border-t-2 border-[#1B4332]/20 relative z-10 shrink-0 bg-white/40">
+          <p className="text-xs sm:text-sm font-black text-[#1B4332] uppercase tracking-widest truncate text-center">
             ReanMore WEG
           </p>
         </div>
@@ -1014,8 +878,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <h3 className="font-black text-xs sm:text-base text-white flex items-center gap-1 font-heading leading-tight drop-shadow-[1px_1px_0px_#1B4332]">
                 {isKhmer ? 'ReanMore' : 'ReanMore AI'}
               </h3>
-              <p className="text-[10px] sm:text-xs text-[#40916C] font-black flex items-center gap-1 drop-shadow-[1px_1px_0px_#1B4332]">
-                <GraduationCap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#40916C]" />
+              <p className="text-[10px] sm:text-xs text-white font-black flex items-center gap-1 drop-shadow-[1px_1px_0px_#1B4332]">
+                <GraduationCap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                 {isKhmer ? `ថ្នាក់ទី ${profile.grade}` : `Grade ${profile.grade}`}
               </p>
             </div>
@@ -1025,7 +889,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             <button
               type="button"
               onClick={handleNewChat}
-              className="w-8 h-8 sm:w-10 sm:h-10 bg-[#40916C] text-[#1B4332] hover:bg-white rounded-xl sm:rounded-2xl flex items-center justify-center transition-all cursor-pointer border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 shrink-0"
+              className="w-8 h-8 sm:w-10 sm:h-10 bg-[#40916C] text-white hover:bg-white hover:text-[#1B4332] rounded-xl sm:rounded-2xl flex items-center justify-center transition-all cursor-pointer border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 shrink-0"
               title={isKhmer ? 'ចាប់ផ្តើមជជែកថ្មី' : 'New Chat'}
             >
               <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
@@ -1035,7 +899,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <button
                 type="button"
                 onClick={onBackToHome}
-                className="px-2.5 sm:px-3.5 py-1.5 bg-[#40916C] text-[#1B4332] hover:bg-white rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center gap-1 cursor-pointer border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 shrink-0"
+                className="px-2.5 sm:px-3.5 py-1.5 bg-[#40916C] text-white hover:bg-white hover:text-[#1B4332] rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center gap-1 cursor-pointer border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 shrink-0"
               >
                 <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
                 <span className="hidden min-[380px]:inline">{isKhmer ? 'ទំព័រដើម' : 'Home'}</span>
@@ -1044,63 +908,61 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
         </div>
 
-        {/* Worksheet Exercise Bar — shown above scrollable area when multi-exercise queue active */}
-        {worksheetQueue && worksheetQueue.problems.length > 1 && (
-          <WorksheetExerciseBar
-            problems={worksheetQueue.problems}
-            activeIndex={worksheetQueue.activeIndex}
-            completedIds={worksheetQueue.completedIds}
-            language={profile.language}
-            onSelectExercise={(idx) => onSelectExercise?.(idx)}
-          />
-        )}
-
         {/* Scrollable Conversation Area */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-5">
-          {/* Celebration banner — shown inline after exercise completion */}
-          {activeProblem && celebratingProblemId === activeProblem.id && worksheetQueue && (() => {
-            const exIdx = worksheetQueue.problems.findIndex(p => p.id === celebratingProblemId);
-            const hasNext = worksheetQueue.problems.some(
-              (p, i) => i > exIdx && !worksheetQueue.completedIds.includes(p.id)
-            );
-            return (
-              <ExerciseCelebrationBanner
-                exerciseNumber={exIdx + 1}
-                totalExercises={worksheetQueue.problems.length}
-                exerciseTitleKhmer={activeProblem.titleKhmer}
-                exerciseTitleEng={activeProblem.titleEng}
+          {activeProblem && (
+            <div className="space-y-4">
+              <StepTrail
+                currentStep={currentStepIndex + 1}
+                totalSteps={activeProblem.steps.length}
                 language={profile.language}
-                hasNext={hasNext}
-                onNext={() => {
-                  setCelebratingProblemId(null);
-                  const nextIdx = worksheetQueue.problems.findIndex(
-                    (p, i) => i > exIdx && !worksheetQueue.completedIds.includes(p.id)
-                  );
-                  if (nextIdx !== -1) onSelectExercise?.(nextIdx);
-                }}
-                onReview={() => setCelebratingProblemId(null)}
+                onSelectStep={(stepIdx) => setCurrentStepIndex(stepIdx)}
               />
-            );
-          })()}
 
-          {/* Conversation History stream */}
+              {currentStep && (
+                <StepCard
+                  step={currentStep}
+                  language={profile.language}
+                  onAnswerSubmit={handleStepAnswer}
+                  onOpenHints={() => {
+                    setIsHintOpen(true);
+                    /* Track hint usage */
+                    if (currentActivityRef.current) {
+                      const act = findActiveActivity(activeSessionId);
+                      if (act) {
+                        updateActivity(currentActivityRef.current, {
+                          hintsUsed: act.hintsUsed + 1,
+                        });
+                      }
+                    }
+                  }}
+                  onOpenExplainDifferently={() => {
+                    setIsExplainOpen(true);
+                    /* Track explain usage */
+                    if (currentActivityRef.current) {
+                      const act = findActiveActivity(activeSessionId);
+                      if (act) {
+                        updateActivity(currentActivityRef.current, {
+                          explainUsed: act.explainUsed + 1,
+                        });
+                      }
+                    }
+                  }}
+                />
+              )}
+            </div>
+          )}
+
           {messages.map((msg) => {
             const isUser = msg.sender === 'user';
             let displayText = '';
             if (isUser) {
               displayText = msg.textEng || msg.textKhmer || '';
             } else {
-              const extracted = extractStepWidgetFromMessage(msg);
-              if (extracted && activeProblem) {
-                displayText =
-                  extracted.introText?.trim() ||
-                  (isKhmer
-                    ? `តោះយើងដោះស្រាយជំហានទី ${extracted.activeIdx + 1} ទាំងអស់គ្នា!`
-                    : `Let's solve Step ${extracted.activeIdx + 1} together!`);
-              } else {
-                displayText = isKhmer ? (msg.textKhmer || msg.textEng || '') : (msg.textEng || msg.textKhmer || '');
-              }
+              displayText = isKhmer ? (msg.textKhmer || msg.textEng || '') : (msg.textEng || msg.textKhmer || '');
             }
+
+            const stepCardData = !isUser ? extractStepWidgetFromMessage(msg) : null;
 
             return (
               <div
@@ -1121,78 +983,52 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   </div>
                 )}
 
-                <div
-                  className={`max-w-[85%] sm:max-w-[80%] min-w-0 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2.5 sm:border-3 border-[#1B4332] text-sm leading-relaxed break-words overflow-hidden ${
-                    isUser
-                      ? 'bg-[#1B4332] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-right'
-                      : msg.isSafetyRefusal
-                      ? 'bg-[#2D6A4F] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
-                      : 'bg-white text-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
-                  }`}
-                >
-                  <div className="font-black text-xs sm:text-base leading-relaxed break-words whitespace-pre-wrap">
-                    {formatMessageText(displayText)}
+                {stepCardData ? (
+                  <div className="w-full max-w-[92%] sm:max-w-[85%] flex flex-col gap-2 min-w-0">
+                    {stepCardData.introText && (
+                      <div className="p-3 sm:p-4 rounded-2xl bg-white text-[#1B4332] border-2.5 border-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] speech-tail-left text-xs sm:text-sm font-black leading-relaxed">
+                        {stepCardData.introText}
+                      </div>
+                    )}
+                    <StepChatBubble
+                      step={stepCardData.activeStep}
+                      stepIndex={stepCardData.activeIdx}
+                      totalSteps={stepCardData.totalSteps}
+                      language={profile.language}
+                      completedStepIndices={stepCardData.completedSteps}
+                      isLatest={msg.id === messages[messages.length - 1]?.id}
+                      onOpenHints={() => handleStepHint(msg.id)}
+                      onOpenAllSteps={() => handleOpenAllSteps(msg.id, stepCardData.widget)}
+                      onNavigateStep={(targetIdx) => handleStepNavigate(msg.id, targetIdx)}
+                      onStepAnswerSubmit={(stepIdx, ans, isCorrect) =>
+                        handleInlineStepAnswer(msg.id, stepIdx, ans, isCorrect)
+                      }
+                    />
+                    <span className="text-[10px] block font-black opacity-60 ml-2">
+                      {msg.timestamp}
+                    </span>
                   </div>
-                  <span className="text-[10px] mt-2 block text-right font-black opacity-80">
-                    {msg.timestamp}
-                  </span>
-                </div>
+                ) : (
+                  <div
+                    className={`max-w-[85%] sm:max-w-[80%] min-w-0 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2.5 sm:border-3 border-[#1B4332] text-sm leading-relaxed break-words overflow-hidden ${
+                      isUser
+                        ? 'bg-[#1B4332] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-right'
+                        : msg.isSafetyRefusal
+                        ? 'bg-[#2D6A4F] text-white shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
+                        : 'bg-white text-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
+                    }`}
+                  >
+                    <div className="font-black text-sm sm:text-base leading-relaxed break-words whitespace-pre-wrap">
+                      {formatMessageText(displayText)}
+                    </div>
+                    <span className="text-[10px] mt-2 block text-right font-black opacity-80">
+                      {msg.timestamp}
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}
-
-          {/* Active StepCard & StepTrail — interactive solving workspace (shown when steps are ready & not thinking) */}
-          {!isSayoThinking && activeProblem && currentStep && (
-            <div className="space-y-3 pt-1">
-              <StepTrail
-                currentStep={currentStepIndex + 1}
-                totalSteps={activeProblem.steps.length}
-                language={profile.language}
-                onSelectStep={(stepIdx) => setCurrentStepIndex(stepIdx)}
-              />
-
-              <StepCard
-                step={currentStep}
-                language={profile.language}
-                onAnswerSubmit={handleStepAnswer}
-                onNavigateStep={(stepIdx) => setCurrentStepIndex(stepIdx)}
-                onOpenHints={() => {
-                  setIsHintOpen(true);
-                  if (currentActivityRef.current) {
-                    const act = findActiveActivity(activeSessionId);
-                    if (act) {
-                      updateActivity(currentActivityRef.current, {
-                        hintsUsed: act.hintsUsed + 1,
-                      });
-                    }
-                  }
-                }}
-                onOpenExplainDifferently={() => {
-                  setIsExplainOpen(true);
-                  if (currentActivityRef.current) {
-                    const act = findActiveActivity(activeSessionId);
-                    if (act) {
-                      updateActivity(currentActivityRef.current, {
-                        explainUsed: act.explainUsed + 1,
-                      });
-                    }
-                  }
-                }}
-              />
-            </div>
-          )}
-
-          {/* Socratic preparation indicator while waiting for steps */}
-          {isSayoThinking && (
-            <div className="flex items-center gap-3 p-4 bg-white/90 rounded-2xl border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] animate-pulse">
-              <div className="w-8 h-8 rounded-xl bg-[#40916C] flex items-center justify-center border-2 border-[#1B4332]">
-                <TunsayAvatar size="sm" state="thinking" showBadge={false} />
-              </div>
-              <p className="text-xs sm:text-sm font-black text-[#1B4332]">
-                {isKhmer ? 'ReanMore កំពុងរៀបចំជំហានដោះស្រាយជូនអ្នក...' : 'ReanMore is preparing the step-by-step guidance for you...'}
-              </p>
-            </div>
-          )}
 
           {/* Fresh Start: Scan + Topic Cards */}
           {!activeProblem && messages.length <= 1 && (
@@ -1201,7 +1037,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <button
                   type="button"
                   onClick={onOpenScanner}
-                  className="px-4 py-2.5 bg-[#2D6A4F] text-[#1B4332] hover:bg-[#40916C] rounded-2xl text-xs sm:text-sm font-black border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] flex items-center gap-2 transition-all cursor-pointer"
+                  className="px-4 py-2.5 bg-[#2D6A4F] text-white hover:bg-[#40916C] hover:text-white rounded-2xl text-xs sm:text-sm font-black border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] flex items-center gap-2 transition-all cursor-pointer"
                 >
                   <Camera className="w-4 h-4 stroke-[2.5]" />
                   <span>{isKhmer ? 'ស្កែនរូបថតលំហាត់' : 'Scan Homework Photo'}</span>
@@ -1246,7 +1082,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             <button
               type="button"
               onClick={onOpenScanner}
-              className="w-12 h-12 sm:w-14 sm:h-14 bg-[#2D6A4F] text-[#1B4332] rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] flex items-center justify-center hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] transition-all cursor-pointer shrink-0"
+              className="w-12 h-12 sm:w-14 sm:h-14 bg-[#2D6A4F] text-white rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] flex items-center justify-center hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] transition-all cursor-pointer shrink-0"
               title={isKhmer ? 'ស្កែនរូបថតលំហាត់' : 'Scan Homework Photo'}
             >
               <Camera className="w-6 h-6 stroke-[2.5]" />

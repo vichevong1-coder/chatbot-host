@@ -52,7 +52,7 @@ export const AllStepsDrawer: React.FC<AllStepsDrawerProps> = ({
               <h3 id="all-steps-title" className="font-heading font-black text-sm sm:text-base leading-tight">
                 {isKhmer ? '📋 ផែនទីដំណើរការដោះស្រាយ' : '📋 Solution Journey Roadmap'}
               </h3>
-              <p className="text-[11px] font-bold text-[#A7CDB4]">
+              <p className="text-[11px] font-bold text-white/80">
                 {isKhmer
                   ? `ជំហានសរុប៖ ${steps.length} • កំពុងនៅជំហានទី ${currentStepIndex + 1}`
                   : `Total: ${steps.length} steps • Currently on Step ${currentStepIndex + 1}`}

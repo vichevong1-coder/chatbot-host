@@ -57,20 +57,20 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {/* Text + Input Column */}
           <div className="flex-1 text-[#1B4332] min-w-0 w-full flex flex-col items-center sm:items-start text-center sm:text-left">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1B4332] text-[#A7CDB4] text-[10px] sm:text-xs font-black border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332]">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1B4332] text-white text-xs sm:text-sm font-black border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332]">
                 <span className="truncate">{isKhmer ? 'គ្រូបង្រៀន AI កិច្ចការផ្ទះ' : 'AI Homework Companion'}</span>
               </div>
-              <span className="px-2.5 py-1 bg-white text-[#1B4332] rounded-full border-2 border-[#1B4332] text-[10px] sm:text-xs font-black shadow-[1.5px_1.5px_0px_#1B4332]">
+              <span className="px-2.5 py-1 bg-white text-[#1B4332] rounded-full border-2 border-[#1B4332] text-xs sm:text-sm font-black shadow-[1.5px_1.5px_0px_#1B4332]">
                 {isKhmer ? `ថ្នាក់ទី ${profile.grade}` : `Grade ${profile.grade}`}
               </span>
             </div>
 
-            <h2 className="text-base sm:text-2xl lg:text-3xl font-black font-heading leading-snug text-[#1B4332] drop-shadow-[1px_1px_0px_#FFFFFF] break-words">
+            <h2 className="text-xl sm:text-3xl lg:text-4xl font-black font-heading leading-snug text-[#1B4332] drop-shadow-[1px_1px_0px_#FFFFFF] break-words">
               {isKhmer
                 ? `សួស្តី ${getDisplayName(profile.name, true)}! តោះដោះស្រាយលំហាត់ជាមួយគ្នា!`
                 : `Hello ${getDisplayName(profile.name, false)}! Ready to solve homework together?`}
             </h2>
-            <p className="text-xs sm:text-sm font-black text-[#1B4332]/80 leading-relaxed mt-1">
+            <p className="text-sm sm:text-base lg:text-lg font-black text-[#1B4332]/80 leading-relaxed mt-2">
               {isKhmer
                 ? "ReanMore នឹងជួយណែនាំអ្នកជាជំហានៗយ៉ាងងាយស្រួល!"
                 : "ReanMore will guide you step-by-step with ease!"}
@@ -92,7 +92,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 />
                 <button
                   type="submit"
-                  className="px-4 sm:px-5 py-2 bg-[#40916C] hover:bg-[#ffd768] text-[#1B4332] rounded-lg sm:rounded-xl font-black text-xs sm:text-sm border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                  className="px-4 sm:px-5 py-2 bg-[#40916C] hover:bg-[#ffd768] text-white hover:text-[#1B4332] rounded-lg sm:rounded-xl font-black text-xs sm:text-sm border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
                 >
                   <span>{isKhmer ? 'ផ្ញើ' : 'Send'}</span>
                   <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
@@ -129,10 +129,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <Camera className="w-6 h-6 sm:w-7 sm:h-7 text-[#1B4332]" />
             </div>
             <div className="min-w-0 flex-1">
-              <h4 className="text-sm sm:text-base font-black font-heading leading-tight">
+              <h4 className="text-base sm:text-lg font-black font-heading leading-tight">
                 {isKhmer ? 'ស្កែនរូបថតលំហាត់' : 'Scan Homework Photo'}
               </h4>
-              <p className="text-[10px] sm:text-xs font-bold text-[#1B4332]/60 mt-0.5 truncate">
+              <p className="text-xs sm:text-sm font-bold text-[#1B4332]/60 mt-0.5 truncate">
                 {isKhmer ? 'ថតរូបលំហាត់ហើយ ReanMore នឹងជួយដោះស្រាយ' : 'Snap a photo and ReanMore will help solve it'}
               </p>
             </div>
@@ -148,10 +148,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <MessageSquare className="w-6 h-6 sm:w-7 sm:h-7 text-[#1B4332]" />
             </div>
             <div className="min-w-0 flex-1">
-              <h4 className="text-sm sm:text-base font-black font-heading leading-tight">
+              <h4 className="text-base sm:text-lg font-black font-heading leading-tight">
                 {isKhmer ? 'វាយសួរ ReanMore' : 'Ask ReanMore via Chat'}
               </h4>
-              <p className="text-[10px] sm:text-xs font-bold text-[#1B4332]/60 mt-0.5 truncate">
+              <p className="text-xs sm:text-sm font-bold text-[#1B4332]/60 mt-0.5 truncate">
                 {isKhmer ? 'វាយសំណួរហើយទទួលចម្លើយភ្លាមៗ' : 'Type a question and get instant guidance'}
               </p>
             </div>
@@ -177,7 +177,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 className={`px-3 py-2 sm:px-4 sm:py-2.5 ${meta.color} text-white rounded-xl border-2 border-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2`}
               >
                 <Icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                <span className="font-black text-[11px] sm:text-xs">
+                <span className="font-black text-sm sm:text-base">
                   {isKhmer ? meta.labelKhmer : meta.labelEng}
                 </span>
               </button>
@@ -189,7 +189,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             className="px-3 py-2 sm:px-4 sm:py-2.5 bg-white text-[#1B4332] rounded-xl border-2 border-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2"
           >
             <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="font-black text-[11px] sm:text-xs">
+            <span className="font-black text-sm sm:text-base">
               {isKhmer ? 'ផ្សេងៗ' : 'More Topics'}
             </span>
           </button>

@@ -92,7 +92,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               />
             ) : (
               <div className="w-full h-full bg-[#E8F5E9] flex items-center justify-center">
-                <User className="w-12 h-12 sm:w-14 sm:h-14 text-[#A7CDB4]" strokeWidth={2} />
+                <User className="w-12 h-12 sm:w-14 sm:h-14 text-[#40916C]" strokeWidth={2} />
               </div>
             )}
 
@@ -132,8 +132,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         <div className="space-y-2 sm:space-y-3 flex-1 relative z-10 w-full min-w-0">
-          <div className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1 rounded-full bg-[#1B4332] text-[#40916C] text-[11px] sm:text-xs font-black border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332]">
-            <Sparkles className="w-3.5 h-3.5 text-[#40916C] shrink-0" />
+          <div className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1 rounded-full bg-[#1B4332] text-white text-[11px] sm:text-xs font-black border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332]">
+            <Sparkles className="w-3.5 h-3.5 text-white shrink-0" />
             <span className="truncate">{isKhmer ? 'សិស្សរៀនជាមួយ ReanMore' : 'ReanMore Student'}</span>
           </div>
 

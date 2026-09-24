@@ -420,3 +420,123 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #40916C;
 }
+
+/* Forest Theme Scenery Animations */
+@keyframes treeSway {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(1.2deg);
+  }
+}
+
+@keyframes treeSwaySlow {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(1.8deg) scale(1.01);
+  }
+}
+
+@keyframes treeSwayAlt {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-1.5deg);
+  }
+}
+
+@keyframes treeSwayAltSlow {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(-1.8deg) scale(1.01);
+  }
+}
+
+@keyframes bushRustle {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.015);
+  }
+}
+
+@keyframes bushRustleAlt {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.02);
+  }
+}
+
+@keyframes fireflyGlow {
+  0%, 100% {
+    transform: translateY(0px) scale(0.7);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translateY(-16px) scale(1.25);
+    opacity: 0.95;
+  }
+}
+
+@keyframes leafDrift {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(60px, 120px) rotate(180deg);
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(140px, 260px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.animate-tree-sway {
+  animation: treeSway 6s ease-in-out infinite;
+}
+
+.animate-tree-sway-slow {
+  animation: treeSwaySlow 8s ease-in-out infinite;
+}
+
+.animate-tree-sway-alt {
+  animation: treeSwayAlt 7s ease-in-out infinite;
+}
+
+.animate-tree-sway-alt-slow {
+  animation: treeSwayAltSlow 9s ease-in-out infinite;
+}
+
+.animate-bush-rustle {
+  animation: bushRustle 5s ease-in-out infinite;
+}
+
+.animate-bush-rustle-alt {
+  animation: bushRustleAlt 6.5s ease-in-out infinite 1s;
+}
+
+.animate-firefly-glow {
+  animation: fireflyGlow 4s ease-in-out infinite;
+}
+
+.animate-leaf-drift {
+  animation: leafDrift 16s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+

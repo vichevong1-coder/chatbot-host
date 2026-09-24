@@ -47,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
                   className={`relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer border-2 ${
                     isActive
                       ? 'bg-[#40916C] text-white border-[#A7CDB4] shadow-[2px_2px_0px_#A7CDB4]'
-                      : 'bg-[#2D6A4F] text-[#A7CDB4] border-[#1B4332] hover:bg-[#40916C] hover:text-white'
+                      : 'bg-[#2D6A4F] text-white border-[#1B4332] hover:bg-[#40916C] hover:text-white'
                   }`}
                 >
                   <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isActive ? 'text-white' : ''}`} />

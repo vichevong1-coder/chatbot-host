@@ -162,17 +162,3 @@ export interface WeeklyReportData {
   strongestAreas: Array<{ titleKhmer: string; titleEng: string; subject: Subject; correctRate: number }>;
   dailyBreakdown: Array<{ day: string; label: string; solved: number; attempted: number }>;
 }
-
-/* ── Worksheet Exercise Queue (multi-exercise OCR scan result) ── */
-
-export interface WorksheetQueue {
-  /** All exercises scanned from the worksheet image */
-  problems: HomeworkProblem[];
-  /** Index of the currently active exercise (0-based) */
-  activeIndex: number;
-  /** IDs of exercises the student has finished */
-  completedIds: string[];
-  /** Source filename or title for display */
-  worksheetTitle?: string;
-}
-

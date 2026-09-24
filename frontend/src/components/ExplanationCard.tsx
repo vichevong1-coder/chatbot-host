@@ -74,7 +74,7 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
             onClick={() => setActiveTab('simple')}
             className={`flex-1 py-2 px-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer border-2 border-[#1B4332] ${
               activeTab === 'simple' 
-                ? 'bg-[#2D6A4F] text-[#1B4332] shadow-[2px_2px_0px_#1B4332] -translate-y-0.5' 
+                ? 'bg-[#2D6A4F] text-white shadow-[2px_2px_0px_#1B4332] -translate-y-0.5' 
                 : 'bg-white text-[#1B4332]/80 hover:bg-[#2D6A4F]/50'
             }`}
           >
@@ -87,7 +87,7 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
             onClick={() => setActiveTab('analogy')}
             className={`flex-1 py-2 px-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer border-2 border-[#1B4332] ${
               activeTab === 'analogy' 
-                ? 'bg-[#40916C] text-[#1B4332] shadow-[2px_2px_0px_#1B4332] -translate-y-0.5' 
+                ? 'bg-[#40916C] text-white shadow-[2px_2px_0px_#1B4332] -translate-y-0.5' 
                 : 'bg-white text-[#1B4332]/80 hover:bg-[#40916C]/50'
             }`}
           >
@@ -111,8 +111,8 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
 
           {activeTab === 'analogy' && (
             <div className="bg-[#40916C] p-4 rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] space-y-3 animate-fadeIn">
-              <div className="flex items-center gap-2 text-[#1B4332] font-black text-sm">
-                <Sparkles className="w-4 h-4 text-[#1B4332]" />
+              <div className="flex items-center gap-2 text-white font-black text-sm">
+                <Sparkles className="w-4 h-4 text-white" />
                 {isKhmer ? explainDifferently.analogyTitle : explainDifferently.analogyTitle}
               </div>
               <p className="text-base text-[#1B4332] font-black leading-relaxed bg-white p-3.5 rounded-xl border-2 border-[#1B4332]">
@@ -153,7 +153,7 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 bg-[#2D6A4F] hover:bg-[#40916C] text-[#1B4332] font-black text-xs sm:text-sm rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] transition-all cursor-pointer"
+            className="px-5 py-2.5 bg-[#2D6A4F] hover:bg-[#40916C] text-white hover:text-white font-black text-xs sm:text-sm rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] transition-all cursor-pointer"
           >
             {isKhmer ? 'យល់ហើយ!' : 'Got it!'}
           </button>

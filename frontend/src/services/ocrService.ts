@@ -9,100 +9,24 @@ export interface OCRProcessResult {
   error?: string;
 }
 
-// Helper to check for generic subject/worksheet header words
-function isGenericHeader(text: string): boolean {
-  if (!text) return true;
-  const cleaned = text.trim().toUpperCase();
-  return ['MATHEMATICS', 'MATH', 'SCIENCE', 'HOMEWORK', 'WORKSHEET', 'EXERCISE', 'SECTION', 'QUESTION', 'PROBLEM'].includes(cleaned);
-}
-
-// Extract specific descriptive title for a problem card (e.g. "Q1: Addition & Number Bonds")
-function extractSpecificTitle(q: any, section: any, qNo: string, fullStatement: string): string {
-  let topic = '';
-
-  // 1. Check if q.title is specific
-  if (q?.title && !isGenericHeader(q.title)) {
-    topic = q.title.trim();
-  } 
-  // 2. Check if section.title is specific
-  else if (section?.title && !isGenericHeader(section.title)) {
-    topic = section.title.trim();
-  }
-  // 3. Check instructions or prompt for a short topic (e.g. "Calendar Facts")
-  else if (q?.instructions && !isGenericHeader(q.instructions)) {
-    const firstLine = q.instructions.split('\n')[0].trim();
-    if (firstLine.length <= 35 && !isGenericHeader(firstLine)) {
-      topic = firstLine;
-    }
-  } else if (q?.prompt && !isGenericHeader(q.prompt)) {
-    const firstLine = q.prompt.split('\n')[0].trim();
-    if (firstLine.length <= 35 && !isGenericHeader(firstLine)) {
-      topic = firstLine;
-    }
-  }
-
-  // 4. If no short topic found, check first sub-question or calculation formula
-  if (!topic && Array.isArray(q?.sub_questions) && q.sub_questions.length > 0) {
-    const firstSq = q.sub_questions[0];
-    const sqText = (firstSq?.prompt || firstSq?.text || '').trim();
-    if (sqText) {
-      topic = sqText.length > 25 ? sqText.slice(0, 22) + '...' : sqText;
-    }
-  }
-
-  // 5. Fallback: clean snippet of full statement
-  if (!topic && fullStatement) {
-    const cleanStmt = fullStatement
-      .replace(/^(MATHEMATICS|MATH|SCIENCE|HOMEWORK|WORKSHEET)\s*/gi, '')
-      .trim();
-    const firstLine = cleanStmt.split('\n')[0].trim();
-    if (firstLine) {
-      topic = firstLine.length > 25 ? firstLine.slice(0, 22) + '...' : firstLine;
-    }
-  }
-
-  // Format clean label: "Q1: Addition & Number Bonds"
-  const cleanQNo = (qNo || 'Q').replace(/^(Problem|លំហាត់)\s*/i, '').trim();
-  return topic ? `${cleanQNo}: ${topic}` : `Problem ${cleanQNo}`;
-}
-
 // Extract full multi-part question text from all fields (title, prompt, instructions, elements, sub_questions)
 function extractFullQuestionStatement(q: any, section?: any): string {
   const parts: string[] = [];
 
-  const rawTitle = (q?.title || section?.title || '').trim();
+  const title = (q?.title || section?.title || '').trim();
   const prompt = (q?.prompt || '').trim();
   const instructions = (q?.instructions || section?.instructions || '').trim();
 
-  // Extract from elements and stitch formula blanks together (e.g. "35 +" + "= 100" -> "35 + ___ = 100")
+  // Extract from elements
   const elementTexts: string[] = [];
   const rawElements = q?.elements || section?.elements;
-  if (Array.isArray(rawElements) && rawElements.length > 0) {
-    let currentLine = '';
+  if (Array.isArray(rawElements)) {
     for (const el of rawElements) {
-      const txt = typeof el === 'string' ? el.trim() : (el?.text || '').trim();
-      if (!txt) continue;
-
-      if (!currentLine) {
-        currentLine = txt;
-      } else if (currentLine.endsWith('+') || currentLine.endsWith('-') || currentLine.endsWith('x') || currentLine.endsWith('/') || currentLine.endsWith('=')) {
-        if (txt.startsWith('=')) {
-          currentLine = `${currentLine} ___ ${txt}`;
-        } else {
-          currentLine = `${currentLine} ${txt}`;
-        }
-      } else if (txt.startsWith('=') || txt.startsWith('+') || txt.startsWith('-')) {
-        currentLine = `${currentLine} ___ ${txt}`;
-      } else {
-        elementTexts.push(currentLine);
-        currentLine = txt;
+      if (typeof el === 'string' && el.trim()) {
+        elementTexts.push(el.trim());
+      } else if (el?.text && typeof el.text === 'string' && el.text.trim()) {
+        elementTexts.push(el.text.trim());
       }
-    }
-    if (currentLine) {
-      if (currentLine.endsWith('+') || currentLine.endsWith('-') || currentLine.endsWith('x') || currentLine.endsWith('=')) {
-        currentLine = `${currentLine} ___`;
-      }
-      elementTexts.push(currentLine);
     }
   }
 
@@ -110,25 +34,7 @@ function extractFullQuestionStatement(q: any, section?: any): string {
   const subTexts: string[] = [];
   if (Array.isArray(q?.sub_questions)) {
     for (const sq of q.sub_questions) {
-      let sqText = (sq?.prompt || sq?.text || sq?.instructions || '').trim();
-      
-      // If sq has inner elements
-      if (Array.isArray(sq?.elements) && sq.elements.length > 0) {
-        const joinedEls = sq.elements
-          .map((e: any) => (typeof e === 'string' ? e.trim() : (e?.text || '').trim()))
-          .filter(Boolean);
-        if (joinedEls.length > 0) {
-          const elStr = joinedEls.join(' ');
-          if (!sqText.includes(elStr)) {
-            sqText = sqText ? `${sqText}: ${elStr}` : elStr;
-          }
-        }
-      }
-
-      if (sqText.endsWith('+') || sqText.endsWith('-') || sqText.endsWith('x') || sqText.endsWith('=')) {
-        sqText = `${sqText} ___`;
-      }
-
+      const sqText = (sq?.prompt || sq?.text || sq?.instructions || '').trim();
       const sqNo = sq?.question_no ? `${sq.question_no}) ` : '';
       if (sqText) {
         subTexts.push(`${sqNo}${sqText}`);
@@ -136,20 +42,16 @@ function extractFullQuestionStatement(q: any, section?: any): string {
     }
   }
 
-  // Only add title if it is meaningful content (not just a standalone generic "MATHEMATICS" header)
-  if (rawTitle && (!isGenericHeader(rawTitle) || (!prompt && !instructions && elementTexts.length === 0 && subTexts.length === 0))) {
-    parts.push(rawTitle);
+  // Assemble with clear hierarchy
+  if (title) {
+    parts.push(title);
   }
 
-  if (prompt && prompt !== rawTitle) {
-    let cleanPrompt = prompt;
-    if (cleanPrompt.endsWith('+') || cleanPrompt.endsWith('-') || cleanPrompt.endsWith('x') || cleanPrompt.endsWith('=')) {
-      cleanPrompt = `${cleanPrompt} ___`;
-    }
-    parts.push(cleanPrompt);
+  if (prompt && prompt !== title) {
+    parts.push(prompt);
   }
 
-  if (instructions && instructions !== rawTitle && instructions !== prompt) {
+  if (instructions && instructions !== title && instructions !== prompt) {
     parts.push(instructions);
   }
 
@@ -166,7 +68,7 @@ function extractFullQuestionStatement(q: any, section?: any): string {
   }
 
   const combined = parts.join('\n\n').trim();
-  return combined || prompt || rawTitle || instructions || 'Worksheet Exercise';
+  return combined || prompt || title || instructions || 'Worksheet Exercise';
 }
 
 /**
@@ -184,18 +86,18 @@ export function parseOCRResponse(data: any): OCRProcessResult {
 
   const problems: HomeworkProblem[] = [];
 
-  // Parse grade — supports both direct OCR (data.document) and orchestrator (data.document_meta)
+  // Parse grade
   let grade: Grade = 3;
-  const gradeStr = data.document?.grade_level || data.document_meta?.grade_level || data.grade_level || '';
+  const gradeStr = data.document?.grade_level || data.grade_level || '';
   const gradeMatch = gradeStr.match(/\d+/);
   if (gradeMatch) {
     const g = parseInt(gradeMatch[0], 10);
     if (g >= 1 && g <= 6) grade = g as Grade;
   }
 
-  // Parse subject — supports both direct OCR and orchestrator formats
+  // Parse subject
   let subject: Subject = 'math';
-  const subStr = (data.document?.subject || data.document_meta?.subject || data.detected_subject || data.subject || '').toLowerCase();
+  const subStr = (data.document?.subject || data.detected_subject || data.subject || '').toLowerCase();
   if (subStr.includes('science') || subStr.includes('physic') || subStr.includes('bio') || subStr.includes('chem')) {
     subject = 'science';
   } else if (subStr.includes('eng') || subStr.includes('language') || subStr.includes('vocab')) {
@@ -217,12 +119,12 @@ export function parseOCRResponse(data: any): OCRProcessResult {
             for (const q of secQuestions) {
               const fullStatement = extractFullQuestionStatement(q, sec);
               const qNo = q.question_no || sec.label || `Q${problemCounter}`;
-              const specificTitle = extractSpecificTitle(q, sec, qNo, fullStatement);
+              const cardTitle = q.title || sec.title || `Exercise ${qNo}`;
 
               problems.push({
                 id: `ocr-p-${problemCounter}`,
-                titleKhmer: `លំហាត់ ${specificTitle}`,
-                titleEng: specificTitle,
+                titleKhmer: `លំហាត់ ${qNo}: ${cardTitle}`,
+                titleEng: `Problem ${qNo}: ${cardTitle}`,
                 grade,
                 subject,
                 problemStatementKhmer: fullStatement,
@@ -250,8 +152,8 @@ export function parseOCRResponse(data: any): OCRProcessResult {
                       exampleKhmer: 'សួរសំណួរទៅទន្សាយដើម្បីបំបែកលំហាត់ជាជំហានៗ!',
                       exampleEng: 'Ask Tunsay to break this problem down step-by-step!',
                     },
-                    socraticPromptKhmer: `តោះយើងចាប់ផ្តើមដោះស្រាយ ${specificTitle} ទាំងអស់គ្នា!`,
-                    socraticPromptEng: `Let's solve ${specificTitle} step by step!`,
+                    socraticPromptKhmer: `តោះយើងចាប់ផ្តើមដោះស្រាយ ${cardTitle} ទាំងអស់គ្នា!`,
+                    socraticPromptEng: `Let's solve ${cardTitle} step by step!`,
                     explainDifferently: {
                       simpleKhmer: fullStatement,
                       simpleEng: fullStatement,
@@ -269,12 +171,12 @@ export function parseOCRResponse(data: any): OCRProcessResult {
             // Section has no inner questions array — treat Section itself as a question card
             const secStatement = extractFullQuestionStatement(null, sec);
             const secNo = sec.label || `Q${problemCounter}`;
-            const specificTitle = extractSpecificTitle(null, sec, secNo, secStatement);
+            const secTitle = sec.title || `Exercise ${secNo}`;
 
             problems.push({
               id: `ocr-p-${problemCounter}`,
-              titleKhmer: `លំហាត់ ${specificTitle}`,
-              titleEng: specificTitle,
+              titleKhmer: `លំហាត់ ${secNo}: ${secTitle}`,
+              titleEng: `Problem ${secNo}: ${secTitle}`,
               grade,
               subject,
               problemStatementKhmer: secStatement,
@@ -302,8 +204,8 @@ export function parseOCRResponse(data: any): OCRProcessResult {
                     exampleKhmer: 'សួរសំណួរទៅទន្សាយដើម្បីបំបែកលំហាត់ជាជំហានៗ!',
                     exampleEng: 'Ask Tunsay to break this problem down step-by-step!',
                   },
-                  socraticPromptKhmer: `តោះយើងចាប់ផ្តើមដោះស្រាយ ${specificTitle}!`,
-                  socraticPromptEng: `Let's solve ${specificTitle}!`,
+                  socraticPromptKhmer: `តោះយើងចាប់ផ្តើមដោះស្រាយ ${secTitle}!`,
+                  socraticPromptEng: `Let's solve ${secTitle}!`,
                   explainDifferently: {
                     simpleKhmer: secStatement,
                     simpleEng: secStatement,
@@ -325,12 +227,12 @@ export function parseOCRResponse(data: any): OCRProcessResult {
         for (const q of page.questions) {
           const fullStatement = extractFullQuestionStatement(q);
           const qNo = q.question_no || `Q${problemCounter}`;
-          const specificTitle = extractSpecificTitle(q, null, qNo, fullStatement);
+          const title = q.title || `Exercise ${qNo}`;
 
           problems.push({
             id: `ocr-p-${problemCounter}`,
-            titleKhmer: `លំហាត់ ${specificTitle}`,
-            titleEng: specificTitle,
+            titleKhmer: `លំហាត់ ${qNo}`,
+            titleEng: title,
             grade,
             subject,
             problemStatementKhmer: fullStatement,

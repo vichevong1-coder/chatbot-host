@@ -48,10 +48,10 @@ export const HintSheet: React.FC<HintSheetProps> = ({
             </div>
             <div>
               <h3 id="hint-sheet-title" className="text-base sm:text-lg font-black text-white font-heading flex items-center gap-1.5 drop-shadow-[1px_1px_0px_#1B4332]">
-                <Lightbulb className="w-5 h-5 text-[#40916C] fill-[#40916C]" />
+                <Lightbulb className="w-5 h-5 text-white fill-white" />
                 {isKhmer ? 'តម្រុយពី ReanMore' : "Tunsay's Hints"}
               </h3>
-              <p className="text-xs text-[#40916C] font-bold">
+              <p className="text-xs text-white font-bold">
                 {isKhmer 
                   ? `ជំហានទី ${step.stepNumber} នៃ ${step.totalSteps}` 
                   : `Step ${step.stepNumber} of ${step.totalSteps}`}
@@ -75,7 +75,7 @@ export const HintSheet: React.FC<HintSheetProps> = ({
             onClick={() => setHintLevel(1)}
             className={`flex-1 py-2 px-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer border-2 border-[#1B4332] ${
               hintLevel === 1 
-                ? 'bg-[#40916C] text-[#1B4332] shadow-[2px_2px_0px_#1B4332] -translate-y-0.5' 
+                ? 'bg-[#40916C] text-white shadow-[2px_2px_0px_#1B4332] -translate-y-0.5' 
                 : 'bg-white text-[#1B4332]/80 hover:bg-[#40916C]/50'
             }`}
           >
@@ -127,7 +127,7 @@ export const HintSheet: React.FC<HintSheetProps> = ({
           {hintLevel === 2 && (
             <div className="bg-[#E8F5E9] p-4 rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] space-y-2 animate-fadeIn">
               <div className="flex items-center gap-2 text-[#1B4332] font-black text-sm">
-                <HelpCircle className="w-4 h-4 text-[#A7CDB4]" />
+                <HelpCircle className="w-4 h-4 text-[#2D6A4F]" />
                 {isKhmer ? 'តម្រុយធំជាង៖' : 'Bigger hint:'}
               </div>
               <p className="text-sm sm:text-base text-[#1B4332] font-black leading-relaxed">
@@ -138,8 +138,8 @@ export const HintSheet: React.FC<HintSheetProps> = ({
 
           {hintLevel === 3 && (
             <div className="bg-[#40916C] p-4 rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] space-y-3 animate-fadeIn">
-              <div className="flex items-center gap-2 text-[#1B4332] font-black text-sm">
-                <Sparkles className="w-4 h-4 text-[#1B4332]" />
+              <div className="flex items-center gap-2 text-white font-black text-sm">
+                <Sparkles className="w-4 h-4 text-white" />
                 {isKhmer ? step.hint3.titleKhmer : step.hint3.titleEng}
               </div>
               <p className="text-sm sm:text-base text-[#1B4332] font-black leading-relaxed bg-white p-3 rounded-xl border-2 border-[#1B4332]">
@@ -150,8 +150,8 @@ export const HintSheet: React.FC<HintSheetProps> = ({
 
           {/* Sayo Encouragement Note */}
           <div className="flex items-center gap-3 p-3.5 bg-[#2D6A4F] rounded-2xl border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332]">
-            <Sparkles className="w-5 h-5 text-[#1B4332]" />
-            <p className="text-xs sm:text-sm text-[#1B4332] font-black">
+            <Sparkles className="w-5 h-5 text-white" />
+            <p className="text-xs sm:text-sm text-white font-black">
               {isKhmer 
                 ? "អ្នកអាចធ្វើវាបាន! ព្យាយាមម្តងទៀតជាមួយចម្លើយរបស់អ្នក។" 
                 : "You can do it! Give it a try now with your answer."}
@@ -178,7 +178,7 @@ export const HintSheet: React.FC<HintSheetProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 bg-[#2D6A4F] hover:bg-[#40916C] text-[#1B4332] font-black text-xs sm:text-sm rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] transition-all cursor-pointer"
+            className="px-5 py-2.5 bg-[#2D6A4F] hover:bg-[#40916C] text-white hover:text-white font-black text-xs sm:text-sm rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] transition-all cursor-pointer"
           >
             {isKhmer ? 'យល់ហើយ!' : 'Got it!'}
           </button>

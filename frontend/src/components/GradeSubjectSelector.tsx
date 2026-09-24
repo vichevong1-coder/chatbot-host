@@ -42,8 +42,8 @@ export const GradeSubjectSelector: React.FC<GradeSubjectSelectorProps> = ({
             <BookOpen className="w-5 h-5 text-[#1B4332] shrink-0" />
             <span>{isKhmer ? 'ជ្រើសរើសថ្នាក់សិក្សា' : 'Select Grade'}</span>
           </label>
-          <span className="text-[11px] sm:text-xs font-black text-[#1B4332] bg-[#40916C] px-2.5 sm:px-3 py-1 rounded-full border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] flex items-center gap-1">
-            <GraduationCap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#1B4332]" />
+          <span className="text-[11px] sm:text-xs font-black text-white bg-[#40916C] px-2.5 sm:px-3 py-1 rounded-full border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] flex items-center gap-1">
+            <GraduationCap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
             {isKhmer ? `ថ្នាក់ទី ${currentGrade}` : `Grade ${currentGrade}`}
           </span>
         </div>
@@ -58,7 +58,7 @@ export const GradeSubjectSelector: React.FC<GradeSubjectSelectorProps> = ({
                 type="button"
                 onClick={() => onSelectGrade(g)}
                 aria-pressed={isSelected}
-                className={`py-2.5 sm:py-3.5 px-2 sm:px-3 rounded-2xl font-black text-xs sm:text-base border-3 transition-all flex items-center justify-center cursor-pointer min-w-0 ${
+                className={`py-2.5 sm:py-3.5 px-2 sm:px-3 rounded-2xl font-black text-sm sm:text-base border-3 transition-all flex items-center justify-center cursor-pointer min-w-0 ${
                   isSelected
                     ? 'bg-[#2D6A4F] border-[#1B4332] text-white shadow-[2.5px_2.5px_0px_#1B4332] -translate-y-0.5'
                     : 'bg-[#E8F5E9] border-[#1B4332] text-[#1B4332] hover:bg-[#40916C] shadow-[2px_2px_0px_#1B4332]'

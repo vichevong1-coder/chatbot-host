@@ -95,7 +95,7 @@ export const ParentReport: React.FC<ParentReportProps> = ({ profile }) => {
 
         {!hasData ? (
           <div className="p-4 sm:p-6 bg-[#E8F5E9] rounded-xl border-2 border-[#A7CDB4] text-center">
-            <BookOpen className="w-8 h-8 sm:w-10 sm:h-10 text-[#A7CDB4] mx-auto mb-2" />
+            <BookOpen className="w-8 h-8 sm:w-10 sm:h-10 text-[#40916C] mx-auto mb-2" />
             <p className="text-sm sm:text-base font-black text-[#1B4332]/60">
               {isKhmer
                 ? 'មិនទាន់មានទិន្នន័យសម្រាប់សប្តាហ៍នេះទេ។ កូនអ្នកនឹងចាប់ផ្តើមលេងលំហាត់ឆាប់ៗនេះ!'
@@ -197,7 +197,7 @@ export const ParentReport: React.FC<ParentReportProps> = ({ profile }) => {
                           ? 'bg-[#40916C] border-[#1B4332] text-white shadow-[2px_2px_0px_#1B4332]'
                           : isActive
                             ? 'bg-[#ffd768] border-[#1B4332] text-[#1B4332] shadow-[2px_2px_0px_#1B4332]'
-                            : 'bg-white border-[#A7CDB4]/40 text-[#A7CDB4]'
+                            : 'bg-white border-[#A7CDB4]/40 text-[#1B4332]/40'
                         }
                       `}
                     >

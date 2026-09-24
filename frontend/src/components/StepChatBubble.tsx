@@ -230,7 +230,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
             {isKhmer ? `ជំហានទី ${stepNum} នៃ ${totalSteps}` : `Step ${stepNum} of ${totalSteps}`}
           </span>
           {titleText && (
-            <span className="text-[#A7CDB4] text-[11px] font-bold hidden sm:inline truncate max-w-[140px]">
+            <span className="text-white/70 text-[11px] font-bold hidden sm:inline truncate max-w-[140px]">
               • {titleText}
             </span>
           )}
@@ -318,7 +318,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
           </div>
 
           {/* Question Text */}
-          <p className="text-sm sm:text-base font-black text-[#1B4332] leading-snug">{yourTurnText}</p>
+          <p className="text-base sm:text-lg font-black text-[#1B4332] leading-snug">{yourTurnText}</p>
 
           {/* ── State A: Compact Completed State (Greyed out with checkmark and student's answer) ── */}
           {isCompleted ? (
@@ -346,13 +346,13 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
                   }}
                   disabled={feedbackStatus === 'checking' || feedbackStatus === 'correct'}
                   placeholder={isKhmer ? 'វាយចម្លើយរបស់អ្នកនៅទីនេះ...' : 'Type your answer here...'}
-                  className="flex-1 px-3.5 py-2.5 bg-[#F4FBF7] rounded-xl border-2 border-[#1B4332] text-sm font-black text-[#1B4332] placeholder:text-[#1B4332]/45 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#2D6A4F] disabled:opacity-60 transition-all"
+                  className="flex-1 px-3.5 py-2.5 bg-[#F4FBF7] rounded-xl border-2 border-[#1B4332] text-base font-black text-[#1B4332] placeholder:text-[#1B4332]/45 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#2D6A4F] disabled:opacity-60 transition-all"
                   autoComplete="off"
                 />
                 <button
                   type="submit"
                   disabled={!inputAnswer.trim() || feedbackStatus === 'checking' || feedbackStatus === 'correct'}
-                  className="px-4 py-2.5 bg-[#2D6A4F] hover:bg-[#1B4332] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-black rounded-xl border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[0px_0px_0px_#1B4332] transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                  className="px-4 py-2.5 bg-[#2D6A4F] hover:bg-[#1B4332] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm sm:text-base font-black rounded-xl border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[0px_0px_0px_#1B4332] transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                 >
                   {feedbackStatus === 'checking' ? (
                     <span>{isKhmer ? 'កំពុងពិនិត្យ...' : 'Checking...'}</span>
@@ -367,7 +367,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
 
               {/* Inline Feedback Banner: Correct */}
               {feedbackStatus === 'correct' && (
-                <div className="p-2.5 bg-[#E8F5E9] rounded-xl border-2 border-[#2D6A4F] text-xs sm:text-sm font-black text-[#1B4332] flex items-center gap-2 animate-fadeIn shadow-[1px_1px_0px_#2D6A4F]">
+                <div className="p-2.5 bg-[#E8F5E9] rounded-xl border-2 border-[#2D6A4F] text-sm sm:text-base font-black text-[#1B4332] flex items-center gap-2 animate-fadeIn shadow-[1px_1px_0px_#2D6A4F]">
                   <span className="text-base">✅</span>
                   <span className="flex-1">
                     {isKhmer ? 'ត្រឹមត្រូវណាស់! អស្ចារ្យណាស់ 🎉' : 'Correct! Advancing to next step... 🎉'}
@@ -377,7 +377,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
 
               {/* Inline Feedback Banner: Try Again */}
               {feedbackStatus === 'incorrect' && (
-                <div className="p-2.5 bg-[#FEF2F2] rounded-xl border-2 border-[#DC2626] text-xs sm:text-sm font-black text-[#991B1B] flex items-center gap-2 animate-fadeIn shadow-[1px_1px_0px_#DC2626]">
+                <div className="p-2.5 bg-[#FEF2F2] rounded-xl border-2 border-[#DC2626] text-sm sm:text-base font-black text-[#991B1B] flex items-center gap-2 animate-fadeIn shadow-[1px_1px_0px_#DC2626]">
                   <span className="text-base">🔄</span>
                   <span className="flex-1">
                     {isKhmer
@@ -422,7 +422,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
             type="button"
             onClick={() => onNavigateStep(stepIndex - 1)}
             disabled={!canGoBack}
-            className="px-2.5 sm:px-3 py-1.5 bg-white hover:bg-[#F4FBF7] disabled:opacity-40 disabled:cursor-not-allowed text-[#1B4332] text-xs font-black rounded-xl border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] hover:-translate-y-0.5 disabled:hover:translate-y-0 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+            className="px-2.5 sm:px-3 py-1.5 bg-white hover:bg-[#F4FBF7] disabled:opacity-40 disabled:cursor-not-allowed text-[#1B4332] text-sm font-black rounded-xl border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] hover:-translate-y-0.5 disabled:hover:translate-y-0 transition-all flex items-center gap-1 cursor-pointer shrink-0"
           >
             <ChevronLeft className="w-3.5 h-3.5 stroke-[2.5]" />
             <span className="hidden sm:inline">{isKhmer ? 'ថយក្រោយ' : 'Back'}</span>
@@ -460,7 +460,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
               <button
                 type="button"
                 onClick={onOpenHints}
-                className="px-2.5 sm:px-3 py-1.5 bg-[#FFFBEA] hover:bg-[#FEF3C7] text-[#92400E] text-xs font-black rounded-xl border-2 border-[#D97706] shadow-[1.5px_1.5px_0px_#D97706] hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-1 cursor-pointer"
+                className="px-2.5 sm:px-3 py-1.5 bg-[#FFFBEA] hover:bg-[#FEF3C7] text-[#92400E] text-sm font-black rounded-xl border-2 border-[#D97706] shadow-[1.5px_1.5px_0px_#D97706] hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-1 cursor-pointer"
                 title={isKhmer ? 'សុំតម្រុយ' : 'Need a hint?'}
               >
                 <Lightbulb className="w-3.5 h-3.5 fill-[#D97706] stroke-[2]" />
@@ -481,7 +481,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
               type="button"
               onClick={() => onNavigateStep(stepIndex + 1)}
               disabled={!canGoNext}
-              className="px-2.5 sm:px-3 py-1.5 bg-[#2D6A4F] hover:bg-[#1B4332] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black rounded-xl border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] hover:-translate-y-0.5 disabled:hover:translate-y-0 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+              className="px-2.5 sm:px-3 py-1.5 bg-[#2D6A4F] hover:bg-[#1B4332] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-black rounded-xl border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] hover:-translate-y-0.5 disabled:hover:translate-y-0 transition-all flex items-center gap-1 cursor-pointer shrink-0"
             >
               <span className="hidden sm:inline">{isKhmer ? 'បន្ទាប់' : 'Next'}</span>
               <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />

@@ -4,6 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ReanMore — AI Homework Tutor</title>
+    <!-- Dynamic Light/Dark Mode Favicon -->
+    <link id="favicon" rel="icon" type="image/png" href="/logo.png" />
+    <link rel="icon" type="image/png" href="/weblogo.png" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" href="/logo.png" media="(prefers-color-scheme: light)" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <script>
+      (function() {
+        function updateFavicon() {
+          var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var favicon = document.getElementById('favicon');
+          if (favicon) {
+            favicon.href = isDark ? '/weblogo.png' : '/logo.png';
+          }
+        }
+        updateFavicon();
+        if (window.matchMedia) {
+          var matcher = window.matchMedia('(prefers-color-scheme: dark)');
+          if (matcher.addEventListener) {
+            matcher.addEventListener('change', updateFavicon);
+          } else if (matcher.addListener) {
+            matcher.addListener(updateFavicon);
+          }
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Siemreap&family=Kantumruy+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+Khmer:wght@400;500;600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">

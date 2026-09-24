@@ -148,8 +148,8 @@ export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onSta
                 {isKhmer ? 'កំពុងឆេះសន្ធោសន្ធៅ!' : "You're on Fire!"}
               </span>
               
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-[#A7CDB4] text-[10px] sm:text-xs font-bold border border-white/15">
-                <ShieldCheck className="w-3 h-3 text-[#52B788]" />
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white text-[10px] sm:text-xs font-bold border border-white/15">
+                <ShieldCheck className="w-3 h-3 text-white" />
                 {isKhmer ? 'បានរៀនថ្ងៃនេះ' : 'Active Today'}
               </span>
             </div>
@@ -159,7 +159,7 @@ export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onSta
         {/* Right: Quick Stats & Highscore */}
         <div className="flex items-center gap-3 self-start md:self-auto bg-black/25 px-3.5 py-2 rounded-2xl border border-white/15">
           <div className="text-left pr-3 border-r border-white/15">
-            <p className="text-[10px] uppercase font-black tracking-wider text-[#A7CDB4]">
+            <p className="text-[10px] uppercase font-black tracking-wider text-white">
               {isKhmer ? 'កំណត់ត្រាខ្ពស់បំផុត' : 'Best Streak'}
             </p>
             <p className="text-sm sm:text-base font-black text-[#FFD166] flex items-center gap-1">
@@ -169,11 +169,11 @@ export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onSta
           </div>
 
           <div className="text-left">
-            <p className="text-[10px] uppercase font-black tracking-wider text-[#A7CDB4]">
+            <p className="text-[10px] uppercase font-black tracking-wider text-white">
               {isKhmer ? 'ពិន្ទុសរុប' : 'Total XP'}
             </p>
             <p className="text-sm sm:text-base font-black text-white flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-[#52B788]" />
+              <Sparkles className="w-3.5 h-3.5 text-white" />
               {streakState.totalXP} XP
             </p>
           </div>
@@ -185,7 +185,7 @@ export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onSta
         
         {/* Milestone Header */}
         <div className="flex items-center justify-between text-xs font-black">
-          <span className="text-[#A7CDB4] flex items-center gap-1.5">
+          <span className="text-white flex items-center gap-1.5">
             <Award className="w-4 h-4 text-[#FFD166]" />
             {isKhmer ? 'គោលដៅបន្ទាប់៖' : 'Next Milestone:'}
             <span className="text-white font-black underline decoration-[#FFD166] inline-flex items-center gap-1">
@@ -235,7 +235,7 @@ export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onSta
                   {milestone.days}d
                 </span>
                 {isUnlocked && (
-                  <Check className="w-2.5 h-2.5 mt-0.5 text-[#52B788] stroke-[3]" />
+                  <Check className="w-2.5 h-2.5 mt-0.5 text-[#FFD166] stroke-[3]" />
                 )}
               </div>
             );

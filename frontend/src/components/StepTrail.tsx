@@ -53,7 +53,7 @@ export const StepTrail: React.FC<StepTrailProps> = ({
                   title={isKhmer ? `ទៅកាន់ជំហានទី ${stepNum}` : `Go to step ${stepNum}`}
                 >
                   {isCompleted ? (
-                    <div className="w-6 h-6 rounded-full bg-[#2D6A4F] border-2 border-[#1B4332] text-[#1B4332] flex items-center justify-center shadow-[1px_1px_0px_#1B4332]">
+                    <div className="w-6 h-6 rounded-full bg-[#2D6A4F] border-2 border-[#1B4332] text-white flex items-center justify-center shadow-[1px_1px_0px_#1B4332]">
                       <Check className="w-3.5 h-3.5 stroke-[3]" />
                     </div>
                   ) : isCurrent ? (
