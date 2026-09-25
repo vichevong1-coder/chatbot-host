@@ -17,15 +17,38 @@ logger = logging.getLogger("orchestrator.socratic.prompts")
 
 
 GRADE_LEVELS = {
+    "grade_1_2": {
+        "group": "Grade 1-2 (Early Elementary, Ages 6-7)",
+        "guidelines": (
+            "Use ultra-short sentences (< 12 words), simple everyday words, and playful emojis (🦁🍎✏️). "
+            "Use concrete object counting (apples, cookies, toys, animals). Never use complex terms or abstract variables. "
+            "Ask one gentle sub-question at a time."
+        )
+    },
+    "grade_3_4": {
+        "group": "Grade 3-4 (Mid Elementary, Ages 8-9)",
+        "guidelines": (
+            "Use step-by-step Socratic questioning without giving away answers. "
+            "Rely on visual scaffolds (number lines, bar models, animal feature charts). "
+            "Provide progressive hints and encouraging clues."
+        )
+    },
+    "grade_5_6": {
+        "group": "Grade 5-6 (Upper Elementary, Ages 10-12)",
+        "guidelines": (
+            "Foster analytical reasoning, multi-step math operations, and scientific conceptual explanations "
+            "(states of matter, fractions, animal classification). Guide thoughtfully without giving away solutions."
+        )
+    },
     "grade_1_3": {
-        "group": "Grade 1-3 (Early Elementary)",
+        "group": "Grade 1-3 (Early Elementary, Ages 6-9)",
         "guidelines": (
             "Use extremely simple words, short sentences, and everyday objects (apples, cookies, blocks). "
             "Never use variables (x, y) or formulas. Rely on counting and visual emoji diagrams."
         )
     },
     "grade_4_6": {
-        "group": "Grade 4-6 (Upper Elementary)",
+        "group": "Grade 4-6 (Upper Elementary, Ages 9-12)",
         "guidelines": (
             "Use clear, friendly language. Simple arithmetic and basic concepts (fractions, water cycle, forces) "
             "are welcome. Avoid complex academic jargon or abstract algebraic theory."
@@ -150,10 +173,18 @@ class SocraticPromptController:
 
     def _get_grade_info(self, grade_level: str) -> Tuple[str, str]:
         normalized = grade_level.lower().replace("-", "_").replace(" ", "_")
-        if "1" in normalized or "2" in normalized or "3" in normalized:
-            info = GRADE_LEVELS["grade_1_3"]
+        if normalized in GRADE_LEVELS:
+            info = GRADE_LEVELS[normalized]
+        elif "1" in normalized or "2" in normalized:
+            info = GRADE_LEVELS["grade_1_2"]
+        elif "3" in normalized or "4" in normalized:
+            info = GRADE_LEVELS["grade_3_4"]
+        elif "5" in normalized or "6" in normalized:
+            info = GRADE_LEVELS["grade_5_6"]
+        elif "7" in normalized or "8" in normalized or "9" in normalized:
+            info = GRADE_LEVELS["grade_7_9"]
         else:
-            info = GRADE_LEVELS["grade_4_6"]
+            info = GRADE_LEVELS["grade_3_4"]
         return info["group"], info["guidelines"]
 
     def get_step_card_prompt(

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, Circle, BookOpen, Star } from 'lucide-react';
+import { CheckCircle, Circle, BookOpen, Star, ArrowLeft } from 'lucide-react';
 import { HomeworkProblem, Language } from '../types';
 
 interface WorksheetProgressPanelProps {
@@ -9,6 +9,7 @@ interface WorksheetProgressPanelProps {
   language: Language;
   worksheetTitle?: string;
   onSelectExercise: (index: number) => void;
+  onViewAllChats?: () => void;
 }
 
 export const WorksheetProgressPanel: React.FC<WorksheetProgressPanelProps> = ({
@@ -18,6 +19,7 @@ export const WorksheetProgressPanel: React.FC<WorksheetProgressPanelProps> = ({
   language,
   worksheetTitle,
   onSelectExercise,
+  onViewAllChats,
 }) => {
   const isKhmer = language === 'km';
   const completedSet = new Set(completedIds);
@@ -27,14 +29,27 @@ export const WorksheetProgressPanel: React.FC<WorksheetProgressPanelProps> = ({
   const allDone = doneCount >= total;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0 flex-1 overflow-hidden">
       {/* Header */}
       <div className="px-3 pt-3 pb-2 shrink-0">
-        <div className="flex items-center gap-1.5 mb-2">
-          <BookOpen className="w-3.5 h-3.5 text-[#1B4332]" />
-          <span className="text-[10px] font-black text-[#1B4332] uppercase tracking-wider truncate">
-            {worksheetTitle || (isKhmer ? 'ទំព័រលំហាត់' : 'Worksheet')}
-          </span>
+        <div className="flex items-center justify-between gap-1.5 mb-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <BookOpen className="w-3.5 h-3.5 text-[#1B4332] shrink-0" />
+            <span className="text-[10px] font-black text-[#1B4332] uppercase tracking-wider truncate">
+              {worksheetTitle || (isKhmer ? 'ទំព័រលំហាត់' : 'Worksheet')}
+            </span>
+          </div>
+          {onViewAllChats && (
+            <button
+              type="button"
+              onClick={onViewAllChats}
+              className="text-[9px] font-black text-[#1B4332] bg-white hover:bg-[#A7CDB4] px-2 py-1 rounded-lg border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] shrink-0 cursor-pointer transition-all active:translate-y-0.5 flex items-center gap-1"
+              title={isKhmer ? 'មើលប្រវត្តិជជែកទាំងអស់' : 'View All Recent Chats'}
+            >
+              <ArrowLeft className="w-3 h-3 stroke-[3]" />
+              <span>{isKhmer ? 'ប្រវត្តិឆាត' : 'All Chats'}</span>
+            </button>
+          )}
         </div>
 
         {/* Progress bar */}
@@ -62,7 +77,7 @@ export const WorksheetProgressPanel: React.FC<WorksheetProgressPanelProps> = ({
       </div>
 
       {/* Exercise list */}
-      <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-1">
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-3 space-y-1 overscroll-contain">
         {problems.map((prob, idx) => {
           const isDone = completedSet.has(prob.id);
           const isActive = idx === activeIndex;

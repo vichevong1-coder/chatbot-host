@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import forestBgImg from '../assets/forest_bg.jpg';
 
 interface ForestBackgroundProps {
-  activeTab?: 'home' | 'chat' | 'profile';
+  activeTab?: 'home' | 'chat' | 'profile' | 'report';
 }
 
 export const ForestBackground: React.FC<ForestBackgroundProps> = ({ activeTab = 'home' }) => {

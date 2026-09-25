@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { UserProfile, HomeworkProblem, Grade, ChatSession } from './types';
+import { UserProfile, HomeworkProblem, Grade, ChatSession, WorksheetQueue } from './types';
 import { Header } from './components/Header';
 import { HomeView } from './components/HomeView';
 import { ChatView } from './components/ChatView';
@@ -7,11 +7,38 @@ import { ProfileView } from './components/ProfileView';
 import { HomeworkScanner } from './components/HomeworkScanner';
 import { ForestBackground } from './components/ForestBackground';
 import { markSessionAbandoned } from './utils/reportUtils';
+import { enrichProblemFromCase } from './services/hardcodedTutorProvider';
 
-const STORAGE_KEY = 'reanmore_sessions_v1';
+const STORAGE_KEY = 'reanmore_sessions_v2';
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function isCorruptText(text?: string): boolean {
+  if (!text) return false;
+  return text.includes('áž') || text.includes('áŸ') || text.includes('\ufffd');
+}
+
+function sanitizeMessage(msg: any): any {
+  if (!msg) return msg;
+  const isKhmerCorrupt = isCorruptText(msg.textKhmer);
+  const isEngCorrupt = isCorruptText(msg.textEng);
+  return {
+    ...msg,
+    textKhmer: isKhmerCorrupt
+      ? (msg.textEng && !isCorruptText(msg.textEng) ? msg.textEng : 'សួស្តី! តោះដោះស្រាយលំហាត់ជាមួយគ្នា។')
+      : msg.textKhmer,
+    textEng: isEngCorrupt ? 'Hello! Let us solve homework together.' : msg.textEng,
+  };
+}
+
+function sanitizeSession(s: ChatSession): ChatSession {
+  return {
+    ...s,
+    titleKhmer: isCorruptText(s.titleKhmer) ? (s.title || 'ជជែកថ្មី') : s.titleKhmer,
+    messages: (s.messages || []).map(sanitizeMessage),
+  };
 }
 
 function getInitialSessions(profileName: string): ChatSession[] {
@@ -35,6 +62,11 @@ function getInitialSessions(profileName: string): ChatSession[] {
   ];
 }
 
+import { ParentReport } from './components/ParentReport';
+import { MOCK_PROBLEMS } from './data/mockProblems';
+
+export type TabType = 'home' | 'chat' | 'profile' | 'report';
+
 export default function App() {
   const [profile, setProfile] = useState<UserProfile>({
     name: 'សុជា (Sochea)',
@@ -43,27 +75,163 @@ export default function App() {
     language: 'km',
   });
 
-  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'profile'>('home');
-  const [activeProblem, setActiveProblem] = useState<HomeworkProblem | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [worksheetQueue, setWorksheetQueue] = useState<WorksheetQueue | null>(() => {
+    try {
+      const pathname = window.location.pathname.replace(/\/$/, '') || '/';
+      const parts = pathname.split('/').filter(Boolean);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as ChatSession[];
+        const targetId = (parts[0] === 'chat' && parts[1]) ? parts[1] : parsed[0]?.id;
+        const target = parsed.find(s => s.id === targetId);
+        if (target?.worksheetQueue && target.worksheetQueue.problems && target.worksheetQueue.problems.length > 0) {
+          return target.worksheetQueue;
+        }
+      }
+    } catch {}
+    return null;
+  });
+
+  const [activeProblem, setActiveProblem] = useState<HomeworkProblem | undefined>(() => {
+    try {
+      const pathname = window.location.pathname.replace(/\/$/, '') || '/';
+      const parts = pathname.split('/').filter(Boolean);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as ChatSession[];
+        const targetId = (parts[0] === 'chat' && parts[1]) ? parts[1] : parsed[0]?.id;
+        const target = parsed.find(s => s.id === targetId);
+        if (target?.worksheetQueue?.problems?.length) {
+          const activeIdx = target.worksheetQueue.activeIndex || 0;
+          const prob = target.worksheetQueue.problems[activeIdx] || target.problem || target.worksheetQueue.problems[0];
+          if (prob) return enrichProblemFromCase(prob, 4);
+        } else if (target?.problem) {
+          return enrichProblemFromCase(target.problem, 4);
+        }
+      }
+    } catch {}
+    return undefined;
+  });
+
   const [initialChatQuery, setInitialChatQuery] = useState<string | undefined>(undefined);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // ── Session state with localStorage persistence ──
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('tunsay_sessions_v1');
+      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('reanmore_sessions_v1') || localStorage.getItem('tunsay_sessions_v1');
       if (raw) {
         const parsed = JSON.parse(raw) as ChatSession[];
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed.map(sanitizeSession).filter(s => s.messages && s.messages.length > 0);
+          // Keep genuine sessions that have user messages, a problem, a worksheet, or an image
+          const genuineSessions = cleaned.filter(s =>
+            s.messages.some(m => m.sender === 'user') ||
+            Boolean(s.problem) ||
+            Boolean(s.worksheetQueue?.problems && s.worksheetQueue.problems.length > 0) ||
+            Boolean(s.imageUri)
+          );
+          if (genuineSessions.length > 0) {
+            return genuineSessions;
+          }
+          // If all saved sessions were empty duplicates, keep only the first one
+          if (cleaned.length > 0) {
+            return [cleaned[0]];
+          }
+        }
       }
     } catch { /* ignore corrupt storage */ }
     return getInitialSessions('សុជា (Sochea)');
   });
 
   const [activeSessionId, setActiveSessionId] = useState<string>(() => {
+    try {
+      const pathname = window.location.pathname.replace(/\/$/, '') || '/';
+      const parts = pathname.split('/').filter(Boolean);
+      if (parts[0] === 'chat' && parts[1]) {
+        return parts[1];
+      }
+    } catch {}
     return (sessions[0] && sessions[0].id) ? sessions[0].id : '';
   });
 
-  // Persist sessions to localStorage
+  // ── URL Path Router Synchronization ──
+  const navigateTo = useCallback((tab: TabType, sessionId?: string, exerciseId?: string) => {
+    setActiveTab(tab);
+    let path = `/${tab}`;
+    if (tab === 'home') path = '/home';
+    else if (tab === 'chat') {
+      if (exerciseId) path = `/exercise/${exerciseId}`;
+      else if (sessionId) path = `/chat/${sessionId}`;
+      else path = '/chat';
+    } else if (tab === 'profile') path = '/profile';
+    else if (tab === 'report') path = '/report';
+
+    if (window.location.pathname !== path) {
+      window.history.pushState({ tab, sessionId, exerciseId }, '', path);
+    }
+  }, []);
+
+  // Parse initial route from window.location.pathname on load and back/forward navigation
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const pathname = window.location.pathname.replace(/\/$/, '') || '/';
+      const parts = pathname.split('/').filter(Boolean);
+
+      if (parts.length === 0 || parts[0] === 'home') {
+        setActiveTab('home');
+      } else if (parts[0] === 'profile') {
+        setActiveTab('profile');
+      } else if (parts[0] === 'report') {
+        setActiveTab('report');
+      } else if (parts[0] === 'scan') {
+        setIsScannerOpen(true);
+      } else if (parts[0] === 'chat') {
+        setActiveTab('chat');
+        const targetId = parts[1] || activeSessionId || sessions[0]?.id;
+        if (targetId) {
+          const targetSession = sessions.find(s => s.id === targetId) || sessions[0];
+          if (targetSession) {
+            setActiveSessionId(targetSession.id);
+            if (targetSession.worksheetQueue && targetSession.worksheetQueue.problems && targetSession.worksheetQueue.problems.length > 0) {
+              setWorksheetQueue(targetSession.worksheetQueue);
+              const activeIdx = targetSession.worksheetQueue.activeIndex || 0;
+              const activeProb = targetSession.worksheetQueue.problems[activeIdx] || targetSession.problem || targetSession.worksheetQueue.problems[0];
+              setActiveProblem(enrichProblemFromCase(activeProb, profile.grade));
+            } else if (targetSession.problem) {
+              setWorksheetQueue(null);
+              setActiveProblem(enrichProblemFromCase(targetSession.problem, profile.grade));
+            } else {
+              setWorksheetQueue(null);
+              setActiveProblem(undefined);
+            }
+          }
+        }
+      } else if (parts[0] === 'exercise' && parts[1]) {
+        const exId = parts[1];
+        const rawProblem = MOCK_PROBLEMS.find(p => p.id === exId) || {
+          id: exId,
+          titleKhmer: `លំហាត់ ${exId}`,
+          titleEng: `Exercise ${exId}`,
+          grade: profile.grade,
+          subject: profile.subject,
+          problemStatementKhmer: '',
+          problemStatementEng: exId,
+          steps: [],
+        };
+        const enriched = enrichProblemFromCase(rawProblem, profile.grade);
+        setActiveProblem(enriched);
+        setActiveTab('chat');
+      }
+    };
+
+    handleLocationChange();
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, [sessions, profile.grade, profile.subject, activeSessionId]);
+
+  // Persist sessions to localStorage (always sanitize to prevent duplicates)
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
@@ -77,17 +245,67 @@ export default function App() {
     }
   }, [activeTab, activeSessionId]);
 
+  // Sync session state to PostgreSQL DB in the background
+  const syncSessionToBackend = useCallback((session: ChatSession, userProfile: UserProfile) => {
+    // Only persist to DB if there is actual user interaction (texted a message, scanned image, or loaded problem)
+    const hasUserMsgs = session.messages?.some(m => m.sender === 'user');
+    const hasWorksheet = Boolean(session.worksheetQueue?.problems && session.worksheetQueue.problems.length > 0);
+    const hasProblem = Boolean(session.problem);
+    const hasImage = Boolean(session.imageUri);
+    if (!hasUserMsgs && !hasWorksheet && !hasProblem && !hasImage) {
+      return; // Skip saving blank new chat with 0 user messages
+    }
+
+    try {
+      fetch('/api/session/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: session.id,
+          subject: userProfile.subject,
+          grade_level: `grade_${userProfile.grade <= 3 ? '1_3' : '4_6'}`,
+          language: userProfile.language,
+          title: session.title,
+          title_khmer: session.titleKhmer,
+          image_uri: session.imageUri,
+          worksheet_queue: session.worksheetQueue,
+          problem_step_progress: session.problemStepProgress,
+          messages: session.messages,
+        }),
+      }).catch(err => console.debug('Backend session sync offline/fallback:', err));
+    } catch { /* ignore network error in offline mode */ }
+  }, []);
+
   const activeSession = sessions.find(s => s.id === activeSessionId) ?? sessions[0];
 
   const handleUpdateProfile = (updated: Partial<UserProfile>) => {
     setProfile((prev: UserProfile) => ({ ...prev, ...updated }));
   };
 
-  const createNewSession = useCallback((problem?: HomeworkProblem) => {
+  const createNewSession = useCallback((problem?: HomeworkProblem, wsQueue?: WorksheetQueue, imageUri?: string) => {
+    // If starting a blank chat and an empty chat already exists, reuse it
+    if (!problem && !wsQueue && !imageUri) {
+      const existingEmpty = sessions.find(s =>
+        !s.problem &&
+        (!s.worksheetQueue?.problems || s.worksheetQueue.problems.length === 0) &&
+        !s.imageUri &&
+        !s.messages?.some(m => m.sender === 'user')
+      );
+      if (existingEmpty) {
+        setActiveSessionId(existingEmpty.id);
+        return existingEmpty.id;
+      }
+    }
+
+    const isWs = Boolean(wsQueue && wsQueue.problems && wsQueue.problems.length > 1);
+    const exCount = wsQueue?.problems?.length || 1;
+    const title = isWs ? `Worksheet (${exCount} Exercises)` : (problem?.titleEng ?? 'New Chat');
+    const titleKhmer = isWs ? `ទំព័រលំហាត់ (${exCount} លំហាត់)` : (problem?.titleKhmer ?? 'ជជែកថ្មី');
+
     const newSession: ChatSession = {
       id: generateId(),
-      title: problem?.titleEng ?? 'New Chat',
-      titleKhmer: problem?.titleKhmer ?? 'ជជែកថ្មី',
+      title,
+      titleKhmer,
       messages: [
         {
           id: 'init-msg',
@@ -98,59 +316,173 @@ export default function App() {
         }
       ],
       problem,
+      worksheetQueue: wsQueue,
+      imageUri,
+      isWorksheet: isWs,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    setSessions(prev => [newSession, ...prev]);
-    setActiveSessionId(newSession.id);
-    return newSession.id;
-  }, [profile.name]);
 
-  const updateSessionMessages = useCallback((sessionId: string, messages: ChatSession['messages']) => {
+    setSessions(prev => {
+      // Filter out any other duplicate blank unused sessions
+      const filtered = prev.filter(s =>
+        s.messages?.some(m => m.sender === 'user') ||
+        Boolean(s.problem) ||
+        Boolean(s.worksheetQueue?.problems && s.worksheetQueue.problems.length > 0) ||
+        Boolean(s.imageUri)
+      );
+      return [newSession, ...filtered];
+    });
+
+    setActiveSessionId(newSession.id);
+    if (problem || wsQueue || imageUri) {
+      syncSessionToBackend(newSession, profile);
+    }
+    return newSession.id;
+  }, [profile, sessions, syncSessionToBackend]);
+
+  const updateSessionMessages = useCallback((sessionId: string, messages: ChatSession['messages'], progressMap?: Record<string, any>) => {
     setSessions(prev => prev.map(s => {
       if (s.id !== sessionId) return s;
-      // Auto-update title from first user message if still default
       const firstUserMsg = messages.find(m => m.sender === 'user');
       let title = s.title;
       let titleKhmer = s.titleKhmer;
-      if (firstUserMsg && s.title === 'New Chat') {
+      if (firstUserMsg && (s.title === 'New Chat' || s.title === 'ជជែកថ្មី')) {
         const preview = firstUserMsg.textEng.slice(0, 30);
         title = preview + (firstUserMsg.textEng.length > 30 ? '...' : '');
         const khmerPreview = firstUserMsg.textKhmer?.slice(0, 30) ?? '';
         titleKhmer = khmerPreview + ((firstUserMsg.textKhmer?.length ?? 0) > 30 ? '...' : '');
       }
-      return {
+      const updated: ChatSession = {
         ...s,
         messages,
+        problemStepProgress: progressMap || s.problemStepProgress,
         title,
         titleKhmer,
         updatedAt: new Date().toISOString(),
       };
+      syncSessionToBackend(updated, profile);
+      return updated;
     }));
-  }, []);
+  }, [profile, syncSessionToBackend]);
 
   const handleStartChatWithProblem = (problem?: HomeworkProblem, initialQuery?: string) => {
-    setActiveProblem(problem);
+    const enriched = problem ? enrichProblemFromCase(problem, profile.grade) : undefined;
+    setActiveProblem(enriched);
     setInitialChatQuery(initialQuery);
-    const sessionId = createNewSession(problem);
+    setWorksheetQueue(null);
+    const sessionId = createNewSession(enriched);
     setActiveSessionId(sessionId);
-    setActiveTab('chat');
+    navigateTo('chat', sessionId, enriched?.id);
   };
 
-  const handleHomeworkScanned = (problem: HomeworkProblem) => {
-    setActiveProblem(problem);
+  const handleHomeworkScanned = (problems: HomeworkProblem[], initialIndex: number = 0, imageUri?: string) => {
+    if (problems.length === 0) return;
+
+    // Auto-detect grade from scanned homework and sync to profile
+    const detectedGrade = problems.find(p => p.grade && p.grade >= 1 && p.grade <= 6)?.grade;
+    const effectiveGrade = (detectedGrade || profile.grade) as Grade;
+    if (detectedGrade && detectedGrade !== profile.grade) {
+      updateProfile({ grade: detectedGrade as Grade });
+    }
+
+    const enrichedProblems = problems.map(p => enrichProblemFromCase(p, effectiveGrade));
+    const initialProblem = enrichedProblems[initialIndex] || enrichedProblems[0];
+    setActiveProblem(initialProblem);
     setInitialChatQuery(undefined);
     setIsScannerOpen(false);
-    const sessionId = createNewSession(problem);
+
+    // Initialize worksheet queue with all exercises on the scanned page
+    const queue: WorksheetQueue = {
+      problems: enrichedProblems,
+      activeIndex: initialIndex,
+      completedIds: [],
+      worksheetTitle: enrichedProblems.length > 1
+        ? (profile.language === 'km' ? `ទំព័រលំហាត់ (${enrichedProblems.length} លំហាត់)` : `Worksheet (${enrichedProblems.length} Exercises)`)
+        : undefined,
+    };
+    setWorksheetQueue(queue);
+    const sessionId = createNewSession(initialProblem, queue, imageUri);
     setActiveSessionId(sessionId);
-    setActiveTab('chat');
+    navigateTo('chat', sessionId, initialProblem.id);
+  };
+
+  const handleSelectExercise = (index: number) => {
+    setWorksheetQueue(prev => {
+      if (!prev) return prev;
+      const rawProblem = prev.problems[index];
+      if (!rawProblem) return prev;
+      const problem = enrichProblemFromCase(rawProblem, profile.grade);
+      setActiveProblem(problem);
+      navigateTo('chat', activeSessionId, problem.id);
+
+      const updatedQueue: WorksheetQueue = { ...prev, activeIndex: index };
+      // Save updated active index to session state
+      setSessions(sList => sList.map(s => {
+        if (s.id !== activeSessionId) return s;
+        const updated = {
+          ...s,
+          problem,
+          worksheetQueue: updatedQueue,
+          updatedAt: new Date().toISOString()
+        };
+        syncSessionToBackend(updated, profile);
+        return updated;
+      }));
+
+      return updatedQueue;
+    });
+  };
+
+  const handleExerciseComplete = (problemId: string) => {
+    setWorksheetQueue(prev => {
+      if (!prev) return prev;
+      if (prev.completedIds.includes(problemId)) return prev;
+      const newCompleted = [...prev.completedIds, problemId];
+      const nextIndex = prev.problems.findIndex(
+        (p, i) => i > prev.activeIndex && !newCompleted.includes(p.id)
+      );
+      const newIndex = nextIndex !== -1 ? nextIndex : prev.activeIndex;
+      if (nextIndex !== -1) {
+        const nextProb = enrichProblemFromCase(prev.problems[nextIndex], profile.grade);
+        setActiveProblem(nextProb);
+        navigateTo('chat', activeSessionId, nextProb.id);
+      }
+
+      const updatedQueue: WorksheetQueue = { ...prev, completedIds: newCompleted, activeIndex: newIndex };
+      // Update session in sessions list and persist
+      setSessions(sList => sList.map(s => {
+        if (s.id !== activeSessionId) return s;
+        const updated = {
+          ...s,
+          worksheetQueue: updatedQueue,
+          updatedAt: new Date().toISOString()
+        };
+        syncSessionToBackend(updated, profile);
+        return updated;
+      }));
+
+      return updatedQueue;
+    });
   };
 
   const handleSelectSession = (sessionId: string) => {
     setActiveSessionId(sessionId);
     const session = sessions.find(s => s.id === sessionId);
-    setActiveProblem(session?.problem);
-    setActiveTab('chat');
+    if (session) {
+      if (session.worksheetQueue && session.worksheetQueue.problems.length > 0) {
+        setWorksheetQueue(session.worksheetQueue);
+        const activeProb = session.worksheetQueue.problems[session.worksheetQueue.activeIndex] || session.problem || session.worksheetQueue.problems[0];
+        setActiveProblem(enrichProblemFromCase(activeProb, profile.grade));
+      } else if (session.problem) {
+        setWorksheetQueue(null);
+        setActiveProblem(enrichProblemFromCase(session.problem, profile.grade));
+      } else {
+        setWorksheetQueue(null);
+        setActiveProblem(undefined);
+      }
+    }
+    navigateTo('chat', sessionId);
   };
 
   const handleDeleteSession = (sessionId: string) => {
@@ -159,16 +491,21 @@ export default function App() {
       if (filtered.length === 0) {
         const fresh = getInitialSessions(profile.name);
         setActiveSessionId(fresh[0].id);
+        navigateTo('chat', fresh[0].id);
         return fresh;
       }
       if (activeSessionId === sessionId) {
         setActiveSessionId(filtered[0].id);
+        navigateTo('chat', filtered[0].id);
       }
       return filtered;
     });
-  };
 
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
+    // Delete in background from backend
+    try {
+      fetch(`/api/session/${sessionId}`, { method: 'DELETE' }).catch(() => {});
+    } catch { /* ignore */ }
+  };
 
   return (
     <div className={`relative bg-[#EDF7EE] text-[#1B4332] flex flex-col font-sans w-full overflow-x-hidden ${activeTab === 'chat' ? 'h-screen h-[100dvh] overflow-hidden' : 'min-h-screen'}`}>
@@ -177,10 +514,10 @@ export default function App() {
       <Header
         profile={profile}
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={(tab) => navigateTo(tab)}
       />
 
-      <main className={`relative z-10 flex-1 min-h-0 w-full mx-auto ${activeTab === 'chat' ? 'w-full px-2.5 sm:px-5 pt-5 sm:pt-7 pb-2.5 sm:pb-4 h-full overflow-hidden flex flex-col' : 'max-w-7xl p-4 sm:p-6 lg:p-8'}`}>
+      <main className={`relative z-10 flex-1 min-h-0 w-full mx-auto ${activeTab === 'chat' ? 'w-full px-1.5 sm:px-4 lg:px-6 py-1.5 sm:py-3 lg:py-4 h-full overflow-hidden flex flex-col' : 'max-w-7xl px-3 py-3 sm:px-6 sm:py-6 lg:px-8'}`}>
         {activeTab === 'home' && (
           <HomeView
             profile={profile}
@@ -199,12 +536,19 @@ export default function App() {
             sessions={sessions}
             activeSessionId={activeSessionId}
             onSelectSession={handleSelectSession}
-            onNewSession={() => createNewSession()}
+            onNewSession={() => { createNewSession(); setWorksheetQueue(null); }}
             onDeleteSession={handleDeleteSession}
-            onUpdateMessages={(msgs) => updateSessionMessages(activeSessionId, msgs)}
+            onUpdateMessages={(msgs, progressMap) => updateSessionMessages(activeSessionId, msgs, progressMap)}
             onOpenScanner={() => setIsScannerOpen(true)}
-            onBackToHome={() => setActiveTab('home')}
+            onBackToHome={() => navigateTo('home')}
+            worksheetQueue={worksheetQueue ?? undefined}
+            onSelectExercise={handleSelectExercise}
+            onExerciseComplete={handleExerciseComplete}
           />
+        )}
+
+        {activeTab === 'report' && (
+          <ParentReport profile={profile} />
         )}
 
         {activeTab === 'profile' && (

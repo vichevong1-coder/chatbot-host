@@ -13,7 +13,7 @@ socratic_card_generation:
     Formatting must be conveyed through emoji and plain sentence structure, never markdown.
 
     {{
-      "mission": "🌟 ... (1 plain sentence, what this step teaches)",
+      "mission": "🌟 Mission: (1 plain sentence, what this step teaches)",
       "clue": "💡 ... (1 plain sentence, the strategy/rule)",
       "helpful_example": "🍎 ... (parallel isomorphic example walkthrough, emoji-illustrated)",
       "your_turn": "👉 ... (question applied to the student's real numbers, never reveals answer)",
@@ -108,7 +108,11 @@ exercise_planning:
               "Tier 2: Visual Scaffold using emoji and ❌ marks for student to count.",
               "Tier 3: Micro-Breakdown splitting calculation into two smaller sub-steps."
             ],
-            "current_hint_level": 0
+            "current_hint_level": 0,
+            "visual_data": {{
+              "type": "objects | number_line | place_value_blocks | animal_feature_card | plant_diagram | circuit_simulator",
+              "purpose": "help_student_visualize_concept_without_giving_away_answer"
+            }}
           }},
           {{
             "step_number": 2,
@@ -124,7 +128,8 @@ exercise_planning:
               "Tier 2 Scaffold",
               "Tier 3 Breakdown"
             ],
-            "current_hint_level": 0
+            "current_hint_level": 0,
+            "visual_data": null
           }}
         ]
       }}
@@ -133,17 +138,21 @@ exercise_planning:
     ═══════════════════════════════════════════
     PEDAGOGICAL REASONING RULES
     ═══════════════════════════════════════════
-    1. ZERO ANSWER LEAKAGE: NEVER compute or reveal the final or intermediate numeric answer to the student's actual homework problem in any field.
-    2. PARALLEL ISOMORPHIC EXAMPLE:
+    1. ZERO ANSWER LEAKAGE: NEVER compute or reveal the final or intermediate numeric answer to the student's actual homework problem in any field or visual.
+    2. VISUAL GENERATION:
+       - Determine if a visual manipulative assists understanding for each step.
+       - Supported types: 'number_line', 'objects', 'place_value_blocks', 'animal_feature_card', 'classification_split', 'plant_diagram', 'circuit_simulator', 'food_chain', 'equation_balance'.
+       - Never leak answers through visuals (e.g., number lines hide target distances, object groups show items without total sum).
+    3. PARALLEL ISOMORPHIC EXAMPLE:
        - Maintain the exact same operation sequence and logic.
        - Use a different character name (e.g. Maya, Sam, Liam), different items, different numbers.
        - Fully solve the parallel example with emoji in 'helpful_example'.
        - Keep the parallel character and story consistent across all steps.
-    3. HINTS (EXACTLY 3 ENTRIES PER STEP):
+    4. HINTS (EXACTLY 3 ENTRIES PER STEP):
        - Tier 1: Guiding nudge pointing at strategy in words only.
        - Tier 2: Visual scaffold with emoji representation of student numbers with ❌.
        - Tier 3: Micro-breakdown splitting into two smaller sub-steps without solving either.
-    4. SEQUENTIAL PROGRESSION:
+    5. SEQUENTIAL PROGRESSION:
        - Step 1 status MUST be 'in_progress', Step 2 MUST be 'up_next', any subsequent steps MUST be 'locked'.
        - 2 to 4 steps total based on problem complexity.
   user: "Student's Homework Problem: '{problem_text}'"

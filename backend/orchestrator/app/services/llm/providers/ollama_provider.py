@@ -18,11 +18,12 @@ logger = logging.getLogger("orchestrator.llm.ollama")
 
 class OllamaProvider(BaseLLMProvider):
     """
-    Adapter for local Ollama instances running on http://localhost:11434.
+    Adapter for local Ollama instances (http://localhost:11434) or Ollama Cloud (https://ollama.com).
     """
     def __init__(
         self,
         base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
         default_model: str = "llama3.2:3b",
         fast_model: str = "llama3.2:3b",
         reasoning_model: str = "llama3.2:3b",
@@ -34,6 +35,7 @@ class OllamaProvider(BaseLLMProvider):
         super().__init__(name="ollama", default_temperature=configured_temp)
         configured_url = getattr(settings, "OLLAMA_BASE_URL", "") or os.getenv("OLLAMA_BASE_URL", "")
         self.base_url = (base_url or configured_url or "http://localhost:11434").rstrip("/")
+        self.api_key = api_key or getattr(settings, "OLLAMA_API_KEY", "") or os.getenv("OLLAMA_API_KEY", "")
         
         configured_model = getattr(settings, "OLLAMA_MODEL", "") or os.getenv("OLLAMA_MODEL", "")
         self.default_model = configured_model or default_model
@@ -42,11 +44,17 @@ class OllamaProvider(BaseLLMProvider):
         self.translation_model_name = getattr(settings, "OLLAMA_TRANSLATION_MODEL", "") or translation_model or self.default_model
         self.timeout = timeout
 
+    def _get_headers(self) -> Dict[str, str]:
+        headers: Dict[str, str] = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
+
     def is_available(self) -> bool:
-        """Checks if local Ollama daemon is reachable."""
+        """Checks if local or cloud Ollama daemon is reachable."""
         try:
-            with httpx.Client(timeout=1.5) as client:
-                res = client.get(f"{self.base_url}/api/tags")
+            with httpx.Client(timeout=3.0) as client:
+                res = client.get(f"{self.base_url}/api/tags", headers=self._get_headers())
                 return res.status_code == 200
         except Exception:
             return False
@@ -92,7 +100,11 @@ class OllamaProvider(BaseLLMProvider):
         start_time = time.time()
         try:
             with httpx.Client(timeout=self.timeout) as client:
-                response = client.post(f"{self.base_url}/api/chat", json=payload)
+                response = client.post(
+                    f"{self.base_url}/api/chat",
+                    json=payload,
+                    headers=self._get_headers()
+                )
                 response.raise_for_status()
                 data = response.json()
 
@@ -140,7 +152,11 @@ class OllamaProvider(BaseLLMProvider):
         start_time = time.time()
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(f"{self.base_url}/api/chat", json=payload)
+                response = await client.post(
+                    f"{self.base_url}/api/chat",
+                    json=payload,
+                    headers=self._get_headers()
+                )
                 response.raise_for_status()
                 data = response.json()
 

@@ -43,6 +43,12 @@ class SessionContext:
     step_widget: Optional[Dict[str, Any]] = None       # Serialized StepWidgetPayload dictionary
     formatted_markdown: Optional[str] = None          # Rendered 4-Part card or overview markdown
     is_problem_complete: bool = False
+
+    # Multi-Exercise Worksheet Persistence
+    worksheet_data: Optional[Dict[str, Any]] = None
+    image_uri: Optional[str] = None
+    session_title: Optional[str] = None
+    session_title_khmer: Optional[str] = None
     
     # Conversational Memory & Rolling Summary
     turns: List[Dict[str, Any]] = field(default_factory=list)
@@ -81,6 +87,13 @@ class SessionContext:
             if len(completed_indices) >= total_steps and total_steps > 0:
                 self.is_problem_complete = True
 
+        self._trigger_change()
+
+    def set_worksheet_data(self, data: Optional[Dict[str, Any]]):
+        """
+        Updates multi-exercise worksheet data and triggers persistent storage.
+        """
+        self.worksheet_data = data
         self._trigger_change()
 
     def get_step_widget_payload(self) -> Optional[Any]:
@@ -144,7 +157,7 @@ class SessionContext:
                 # Capture the first line of tutor response to keep summary concise
                 first_b = b.split("\n")[0].strip()
                 evicted_lines.append(f"Tutor: {first_b}")
-        evicted_text = "\n".join(evicted_lines)
+            evicted_text = "\n".join(evicted_lines)
 
         if not evicted_text:
             return
@@ -189,6 +202,10 @@ class SessionContext:
             "step_widget": self.step_widget,
             "formatted_markdown": self.formatted_markdown,
             "is_problem_complete": self.is_problem_complete,
+            "worksheet_data": self.worksheet_data,
+            "image_uri": self.image_uri,
+            "session_title": self.session_title,
+            "session_title_khmer": self.session_title_khmer,
             "turns": self.turns,
             "rolling_summary": self.rolling_summary
         }
@@ -216,6 +233,10 @@ class SessionContext:
             step_widget=data.get("step_widget"),
             formatted_markdown=data.get("formatted_markdown"),
             is_problem_complete=data.get("is_problem_complete", False),
+            worksheet_data=data.get("worksheet_data"),
+            image_uri=data.get("image_uri"),
+            session_title=data.get("session_title"),
+            session_title_khmer=data.get("session_title_khmer"),
             turns=data.get("turns", []),
             rolling_summary=data.get("rolling_summary", "")
         )

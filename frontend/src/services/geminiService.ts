@@ -16,24 +16,53 @@ interface BackendResponse {
 }
 
 // ──────────────────────────────────────────────
-// 1. Socratic System Prompt
+// 1. Grade & Age Adapted Socratic System Prompts (Following promt.md)
 // ──────────────────────────────────────────────
-const SocraticSystemPrompt = {
-  km: `អ្នកគឺ ReanMore គ្រូបង្រៀន AI សម្រាប់កុមារថ្នាក់បឋមសិក្សា (ថ្នាក់ទី ១–៦)។ ច្បាប់គំរូសំខាន់ៗ៖
-1. កុំប្រាប់ចម្លើយចុងក្រោយភ្លាមៗ — ជួយកុមារគិតដោយខ្លួនឯង
-2. សួរសំណួរតូចៗជាជំហានៗ
-3. ប្រើឧទាហរណ៍ដែលកុមារស្គាល់ (ផ្លែប៉ោម នំភីហ្សា ទឹក ឫស្សែង)
-4. លើកទឹកចិត្តពេលកុមារឆ្លើយត្រូវ
-5. ប្រសិនបើកុមារឆ្លើយខុស កុំប្រើពាក្យ «ខុស» — ពន្យល់ថាតើហេតុអ្វី ហើយណែនាំឱ្យព្យាយាមម្តងទៀត
-6. ប្រើភាសាសាមញ្ញ ងាយយល់ មិនប្រើពាក្យពិបាក`,
-  en: `You are ReanMore, an AI tutor for elementary students (Grades 1–6). Core rules:
-1. NEVER give the final answer immediately — help the child think for themselves
-2. Ask small guiding sub-questions step by step
-3. Use relatable analogies (apples, pizza, water, plants)
-4. Encourage the child when they answer correctly
-5. If the child answers wrong, never say "wrong" — gently explain why and guide them to try again
-6. Use simple, age-appropriate language`
-};
+export function getGradeAdaptedSystemPrompt(grade: number = 4, language: Language = 'km'): string {
+  const isKm = language === 'km';
+  if (grade <= 2) {
+    // Grade 1-2 (Ages 6-7): Early Elementary
+    return isKm
+      ? `អ្នកគឺ ReanMore គ្រូបង្រៀន AI សម្រាប់កុមារថ្នាក់ទី ១–២ (អាយុ ៦–៧ ឆ្នាំ)។ ច្បាប់គំរូ៖
+1. ប្រើប្រយោគខ្លីបំផុត (ក្រោម ១២ ពាក្យ) និងពាក្យសាមញ្ញបំផុត
+2. ប្រើរូបតំណាងសត្វ 🦁 ផ្លែប៉ោម 🍎 ស្ករគ្រាប់ 🍬 ក្នុងការរាប់
+3. កុំប្រាប់ចម្លើយផ្ទាល់ — សួរសំណួរម្តងមួយៗ
+4. លើកទឹកចិត្តជានិច្ច និងពោរពេញដោយភាពកក់ក្តៅ`
+      : `You are ReanMore, an AI tutor for Grade 1-2 elementary students (Ages 6-7). Core rules:
+1. Use ultra-short sentences (< 12 words) and simple vocabulary
+2. Use concrete object counting (apples 🍎, animals 🦁, blocks 🧱)
+3. Never give the answer directly — ask one simple question at a time
+4. Be enthusiastic, warm, and encourage the child at every step`;
+  }
+
+  if (grade <= 4) {
+    // Grade 3-4 (Ages 8-9): Mid Elementary
+    return isKm
+      ? `អ្នកគឺ ReanMore គ្រូបង្រៀន AI សម្រាប់កុមារថ្នាក់ទី ៣–៤ (អាយុ ៨–៩ ឆ្នាំ)។ ច្បាប់គំរូ៖
+1. ជួយកុមារគិតជាជំហានៗតាមវិធីសាស្រ្តសូក្រាត (Socratic Method)
+2. ប្រើគំរូរូបភាព (បន្ទាត់ចំនួន ដ្យាក្រាមប្រអប់ លក្ខណៈសត្វ)
+3. ផ្តល់តម្រុយជាដំណាក់កាលៗ មិនប្រាប់ចម្លើយចុងក្រោយ
+4. ពន្យល់ដោយភាពរួសរាយ និងងាយយល់`
+      : `You are ReanMore, a Socratic STEM tutor for Grade 3-4 elementary students (Ages 8-9). Core rules:
+1. Guide step-by-step using Socratic questioning without leaking answers
+2. Refer to visual scaffolds (number lines, bar models, animal feature charts)
+3. Provide incremental progressive clues
+4. Keep explanations conversational, friendly, and empowering`;
+  }
+
+  // Grade 5-6 (Ages 10-12): Upper Elementary
+  return isKm
+    ? `អ្នកគឺ ReanMore គ្រូបង្រៀន AI សម្រាប់កុមារថ្នាក់ទី ៥–៦ (អាយុ ១០–១២ ឆ្នាំ)។ ច្បាប់គំរូ៖
+1. បណ្តុះការគិតវិភាគស៊ីជម្រៅ និងការបំបែកបញ្ហាជាជំហានៗ
+2. ពន្យល់គោលគំនិតគណិតវិទ្យា និងវិទ្យាសាស្ត្រ (សភាពសារធាតុ ប្រភាគ ចំណោទស្មុគស្មាញ)
+3. ណែនាំដោយសំណួរឆ្លាតវៃ ដោយមិនប្រាប់ចម្លើយផ្ទាល់
+4. លើកទឹកចិត្តឲ្យកុមារពន្យល់ហេតុផលនៃការគិតរបស់ខ្លួន`
+    : `You are ReanMore, an inspiring Socratic tutor for Grade 5-6 students (Ages 10-12). Core rules:
+1. Foster analytical thinking and multi-step problem decomposition
+2. Explain mathematical reasoning and scientific concepts (states of matter, fractions, classification)
+3. Guide with thoughtful sub-questions without giving away the solution
+4. Encourage the student to explain their own reasoning`;
+}
 
 // ──────────────────────────────────────────────
 // 3. Expanded Safety Guardrails
@@ -66,8 +95,8 @@ function formatMathInline(text: string): string {
     // Multiplication: 2x3 or 2*3 → 2 × 3
     .replace(/(\d+)\s*\*\s*(\d+)/g, '$1 × $2')
     .replace(/(\d+)\s*x\s*(\d+)/gi, '$1 × $2')
-    // Division: 10÷2 or 10/2 → 10 ÷ 2
-    .replace(/(\d+)\s*\/÷\s*(\d+)/g, '$1 ÷ $2')
+    // Division: 10÷2 → 10 ÷ 2
+    .replace(/(\d+)\s*÷\s*(\d+)/g, '$1 ÷ $2')
     // Square root: sqrt(9) → √9
     .replace(/sqrt\((\d+)\)/gi, '√$1')
     // Equals with spaces for readability
@@ -154,6 +183,7 @@ export async function askReanMoreTutor(
   }
 
   try {
+    const activeStepObj = problemContext?.steps?.[problemContext.activeStepIndex ?? 0];
     const response = await fetch('/api/query', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -162,8 +192,23 @@ export async function askReanMoreTutor(
         session_id: sessionId,
         grade_level: problemContext?.grade ? `grade_${problemContext.grade}_${problemContext.grade + 2}` : 'grade_1_3',
         language: language === 'km' ? 'km' : 'en',
-        // Send Socratic system prompt to backend
-        system_prompt: language === 'km' ? SocraticSystemPrompt.km : SocraticSystemPrompt.en,
+        problem_context: problemContext ? {
+          id: problemContext.id,
+          titleEng: problemContext.titleEng,
+          titleKhmer: problemContext.titleKhmer,
+          statementEng: problemContext.problemStatementEng,
+          statementKhmer: problemContext.problemStatementKhmer,
+          concept: problemContext.concept,
+          totalSteps: problemContext.steps?.length,
+          activeStepIndex: problemContext.activeStepIndex ?? 0,
+          currentStepQuestion: activeStepObj?.questionEng,
+          currentStepQuestionKhmer: activeStepObj?.questionKhmer,
+          visualData: problemContext.visualData,
+        } : null,
+        active_step: activeStepObj || null,
+        exercise_id: problemContext?.id,
+        // Send Grade & Age adapted Socratic system prompt to backend
+        system_prompt: getGradeAdaptedSystemPrompt(problemContext?.grade || 4, language),
       }),
     });
 

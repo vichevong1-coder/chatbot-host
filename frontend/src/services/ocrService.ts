@@ -86,13 +86,27 @@ export function parseOCRResponse(data: any): OCRProcessResult {
 
   const problems: HomeworkProblem[] = [];
 
-  // Parse grade
-  let grade: Grade = 3;
-  const gradeStr = data.document?.grade_level || data.grade_level || '';
-  const gradeMatch = gradeStr.match(/\d+/);
-  if (gradeMatch) {
-    const g = parseInt(gradeMatch[0], 10);
-    if (g >= 1 && g <= 6) grade = g as Grade;
+  // Parse grade with support for Khmer numerals and text search
+  let grade: Grade = 4;
+  const KHMER_NUM_MAP: Record<string, number> = {
+    '១': 1, '២': 2, '៣': 3, '៤': 4, '៥': 5, '៦': 6,
+    '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6
+  };
+  const rawTextBlob = JSON.stringify(data);
+  const khmerGradeMatch = rawTextBlob.match(/ថ្នាក់ទី\s*([១-៦1-6])/);
+  const engGradeMatch = rawTextBlob.match(/grade\s*([1-6])/i);
+
+  if (khmerGradeMatch && khmerGradeMatch[1]) {
+    grade = (KHMER_NUM_MAP[khmerGradeMatch[1]] || 4) as Grade;
+  } else if (engGradeMatch && engGradeMatch[1]) {
+    grade = parseInt(engGradeMatch[1], 10) as Grade;
+  } else {
+    const gradeStr = data.document?.grade_level || data.grade_level || '';
+    const gradeMatch = gradeStr.match(/\d+/);
+    if (gradeMatch) {
+      const g = parseInt(gradeMatch[0], 10);
+      if (g >= 1 && g <= 6) grade = g as Grade;
+    }
   }
 
   // Parse subject

@@ -92,6 +92,7 @@ export interface HomeworkProblem {
   problemStatementKhmer: string;
   problemStatementEng: string;
   imageUri?: string;
+  visualData?: any;
   steps: StepItem[];
 }
 
@@ -101,6 +102,7 @@ export interface ChatMessage {
   textKhmer?: string;
   textEng: string;
   timestamp: string;
+  problemId?: string;
   imageUri?: string;
   problem?: HomeworkProblem;
   activeStepIndex?: number;
@@ -114,8 +116,23 @@ export interface ChatSession {
   titleKhmer: string;
   messages: ChatMessage[];
   problem?: HomeworkProblem | undefined;
+  worksheetQueue?: WorksheetQueue | undefined;
+  problemStepProgress?: Record<string, {
+    currentStepIndex: number;
+    maxUnlockedStepIndex: number;
+    completedStepIndices: number[];
+  }> | undefined;
+  imageUri?: string | undefined;
+  isWorksheet?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface WorksheetQueue {
+  problems: HomeworkProblem[];
+  activeIndex: number;
+  completedIds: string[];
+  worksheetTitle?: string;
 }
 
 export interface UserProfile {
@@ -161,4 +178,81 @@ export interface WeeklyReportData {
   struggleAreas: Array<{ titleKhmer: string; titleEng: string; subject: Subject; wrongRate: number; hintsNeeded: number }>;
   strongestAreas: Array<{ titleKhmer: string; titleEng: string; subject: Subject; correctRate: number }>;
   dailyBreakdown: Array<{ day: string; label: string; solved: number; attempted: number }>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unified Tutor Session types (shared by hardcoded + Gemini providers)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A single step in a tutor session.
+ * NOTE: expected_student_answer must NEVER be sent to JSX renders.
+ */
+export interface TutorStep {
+  step: number;
+  tutor_question: string;
+  /** Backend-only. Validated in provider, never exposed to UI directly. */
+  expected_student_answer: string;
+}
+
+export interface VisualData {
+  type:
+    | 'number_line'
+    | 'place_value_blocks'
+    | 'objects'
+    | 'number_groups'
+    | 'number_grouping'
+    | 'base_ten_blocks'
+    | 'calendar'
+    | 'interactive_calendar'
+    | 'calendar_blocks'
+    | 'calendar_month'
+    | 'year_comparison'
+    | 'weekday_row'
+    | 'fact_cards'
+    | 'month_list'
+    | 'animal_feature_card'
+    | 'animal_group_card'
+    | 'multiple_choice_images'
+    | 'multiple_choice_multi_select'
+    | 'classification_split'
+    | 'producer_consumer_sort'
+    | 'food_chain'
+    | 'plant_diagram'
+    | 'string';
+  [key: string]: unknown;
+}
+
+/**
+ * Unified tutor session. Works for both hardcoded and Gemini-sourced sessions.
+ * Correct answers and expected answers are held ONLY in the provider, not here.
+ */
+export interface TutorSession {
+  case_id: string;
+  source: 'hardcoded' | 'gemini';
+  subject: 'math' | 'science' | 'english';
+  original_question: string;
+  tutor_intro: string;
+  steps: TutorStep[];
+  hints: string[];
+  explain_another_way: {
+    message: string;
+    question: string;
+  };
+  visual_data: VisualData | null;
+  grade_adaptation: string;
+  final_celebration: string;
+  worksheet_image?: string;
+}
+
+export type TutorStepStatus = 'pending' | 'correct' | 'wrong' | 'skipped';
+
+export interface TutorSessionState {
+  session: TutorSession;
+  currentStep: number;       // 0-indexed into session.steps
+  wrongAttempts: number;     // resets per step
+  hintsUsed: number;         // 0–3 across the current step
+  stepStatuses: TutorStepStatus[];
+  isComplete: boolean;
+  showExplainAnotherWay: boolean;
 }

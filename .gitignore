@@ -55,6 +55,9 @@ htmlcov/
 
 # Logs & Database Persistence
 *.log
+*.db
+*.sqlite
+*.sqlite3
 scratch/
 sample_outputs/
 postgres_data/

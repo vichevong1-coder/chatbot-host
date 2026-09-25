@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Flame, Sparkles, Trophy, Zap, ShieldCheck, Award, Star, Gem, Crown, Check } from 'lucide-react';
 import { UserProfile, HomeworkProblem } from '../types';
+import { loadActivities } from '../utils/reportUtils';
 
 interface DailyStreakCardProps {
   profile: UserProfile;
   onStartPractice?: (problem?: HomeworkProblem) => void;
 }
 
-const STORAGE_KEY = 'reanmore_continuous_streak_v1';
+const STORAGE_KEY = 'reanmore_continuous_streak_v2';
 
 interface StreakMilestone {
   days: number;
@@ -40,61 +41,116 @@ function getYesterdayString(): string {
 export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onStartPractice: _onStartPractice }) => {
   const isKhmer = profile.language === 'km';
   const today = getTodayString();
-  const yesterday = getYesterdayString();
 
-  const [streakState, setStreakState] = useState(() => {
+  const [streakState, setStreakState] = useState<{
+    currentStreak: number;
+    bestStreak: number;
+    lastActiveDate: string;
+    totalXP: number;
+    hasStudiedToday: boolean;
+    totalSessions?: number;
+    totalTurns?: number;
+    dbSource?: string;
+  }>(() => {
+    // Initial compute from local storage or activities
+    const activities = loadActivities();
+    const completedActivities = activities.filter(a => a.status === 'completed');
+    const uniqueDays = new Set(activities.map(a => a.startedAt.split('T')[0]));
+    const calcXP = (completedActivities.length * 50) + (activities.reduce((acc, a) => acc + (a.stepsCompleted || 0), 0) * 15);
+    const hasToday = uniqueDays.has(today);
+
     try {
-      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('reanmore_streak_v1') || localStorage.getItem('reanmore_roadmap_v2');
+      const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         return {
-          currentStreak: parsed.streakCount || parsed.currentStreak || 3,
-          bestStreak: Math.max(parsed.bestStreak || 3, parsed.streakCount || 3),
+          currentStreak: parsed.currentStreak ?? (uniqueDays.size || (activities.length > 0 ? 1 : 0)),
+          bestStreak: Math.max(parsed.bestStreak ?? 0, uniqueDays.size || 0),
           lastActiveDate: parsed.lastActiveDate || today,
-          totalXP: parsed.totalXP || 180,
-          hasStudiedToday: parsed.lastActiveDate === today,
+          totalXP: parsed.totalXP ?? calcXP,
+          hasStudiedToday: parsed.hasStudiedToday ?? (hasToday || activities.length > 0),
+          dbSource: parsed.dbSource || 'local',
         };
       }
     } catch { /* ignore */ }
+
     return {
-      currentStreak: 3,
-      bestStreak: 7,
+      currentStreak: uniqueDays.size || (activities.length > 0 ? 1 : 0),
+      bestStreak: Math.max(uniqueDays.size || 0, activities.length > 0 ? 1 : 0),
       lastActiveDate: today,
-      totalXP: 180,
-      hasStudiedToday: true,
+      totalXP: calcXP,
+      hasStudiedToday: hasToday || activities.length > 0,
+      dbSource: 'local',
     };
   });
 
+  // Fetch live metrics from Database backend & subscribe to activity changes
   useEffect(() => {
-    setStreakState(prev => {
-      let current = prev.currentStreak;
-      let hasStudied = prev.lastActiveDate === today;
+    let isMounted = true;
 
-      if (prev.lastActiveDate === yesterday) {
-        // active yesterday, ready for today's increment
-        hasStudied = true;
-      } else if (prev.lastActiveDate !== today) {
-        // missed a day
-        current = 1;
-        hasStudied = true;
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/stats');
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data && !data.error) {
+            const updated = {
+              currentStreak: Number(data.current_streak ?? 0),
+              bestStreak: Number(data.best_streak ?? 0),
+              lastActiveDate: today,
+              totalXP: Number(data.total_xp ?? 0),
+              hasStudiedToday: Boolean(data.has_studied_today),
+              totalSessions: Number(data.total_sessions ?? 0),
+              totalTurns: Number(data.total_turns ?? 0),
+              dbSource: data.source || 'db',
+            };
+            setStreakState(updated);
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            } catch { /* ignore */ }
+            return;
+          }
+        }
+      } catch (err) {
+        console.debug('Using local activity streak calculation:', err);
       }
 
-      const best = Math.max(prev.bestStreak, current);
-      const updated = {
-        ...prev,
-        currentStreak: current,
-        bestStreak: best,
-        lastActiveDate: today,
-        hasStudiedToday: hasStudied,
-      };
+      // Local activity recalculation fallback
+      const activities = loadActivities();
+      const completedActivities = activities.filter(a => a.status === 'completed');
+      const uniqueDays = new Set(activities.map(a => a.startedAt.split('T')[0]));
+      const calcXP = (completedActivities.length * 50) + (activities.reduce((acc, a) => acc + (a.stepsCompleted || 0), 0) * 15);
+      const isTodayActive = uniqueDays.has(today);
 
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch { /* ignore */ }
+      if (isMounted) {
+        const fallback = {
+          currentStreak: uniqueDays.size > 0 ? (isTodayActive ? uniqueDays.size : 1) : (activities.length > 0 ? 1 : 0),
+          bestStreak: Math.max(uniqueDays.size, activities.length > 0 ? 1 : 0),
+          lastActiveDate: today,
+          totalXP: calcXP,
+          hasStudiedToday: isTodayActive || activities.length > 0,
+          dbSource: 'local',
+        };
+        setStreakState(fallback);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(fallback));
+        } catch { /* ignore */ }
+      }
+    }
 
-      return updated;
-    });
-  }, [today, yesterday]);
+    fetchStats();
+
+    // Listen to storage or custom activity update events
+    const handleStorageChange = () => fetchStats();
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('reanmore_activity_updated', handleStorageChange);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('reanmore_activity_updated', handleStorageChange);
+    };
+  }, [today]);
 
   // Find next milestone
   const nextMilestone = STREAK_MILESTONES.find(m => m.days > streakState.currentStreak) || STREAK_MILESTONES[STREAK_MILESTONES.length - 1];
@@ -184,15 +240,15 @@ export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onSta
       <div className="mt-5 pt-4 border-t-2 border-white/15 relative z-10 space-y-2.5">
         
         {/* Milestone Header */}
-        <div className="flex items-center justify-between text-xs font-black">
-          <span className="text-white flex items-center gap-1.5">
-            <Award className="w-4 h-4 text-[#FFD166]" />
-            {isKhmer ? 'គោលដៅបន្ទាប់៖' : 'Next Milestone:'}
+        <div className="flex flex-col min-[440px]:flex-row min-[440px]:items-center justify-between gap-1 text-xs font-black">
+          <span className="text-white flex items-center gap-1.5 flex-wrap">
+            <Award className="w-4 h-4 text-[#FFD166] shrink-0" />
+            <span>{isKhmer ? 'គោលដៅបន្ទាប់៖' : 'Next Milestone:'}</span>
             <span className="text-white font-black underline decoration-[#FFD166] inline-flex items-center gap-1">
               <NextIcon className={`w-3.5 h-3.5 ${nextMilestone.iconColor}`} /> {nextMilestone.days} {isKhmer ? 'ថ្ងៃ' : 'Days'} ({isKhmer ? nextMilestone.labelKhmer : nextMilestone.labelEng})
             </span>
           </span>
-          <span className="text-[#FFD166] font-bold text-[11px] sm:text-xs">
+          <span className="text-[#FFD166] font-bold text-[10px] sm:text-xs shrink-0">
             {daysUntilNext > 0
               ? (isKhmer ? `នៅសល់ ${daysUntilNext} ថ្ងៃទៀត!` : `${daysUntilNext} days to unlock!`)
               : (isKhmer ? 'សម្រេចបានហើយ!' : 'Milestone Unlocked!')}
@@ -200,7 +256,7 @@ export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onSta
         </div>
 
         {/* Milestone Continuous Progress Bar */}
-        <div className="h-3.5 bg-black/40 rounded-full border-2 border-white/30 overflow-hidden relative shadow-inner">
+        <div className="h-3 sm:h-3.5 bg-black/40 rounded-full border-2 border-white/30 overflow-hidden relative shadow-inner">
           <div
             className="h-full bg-gradient-to-r from-[#FF851B] via-[#FF4D4D] to-[#FFDC00] rounded-full transition-all duration-700 ease-out shadow-[0_0_10px_rgba(255,133,27,0.8)]"
             style={{ width: `${milestoneProgress}%` }}
@@ -208,7 +264,7 @@ export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onSta
         </div>
 
         {/* Milestone Badges Strip */}
-        <div className="grid grid-cols-6 gap-1 sm:gap-2 pt-2">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2 pt-1.5 sm:pt-2">
           {STREAK_MILESTONES.map((milestone) => {
             const isUnlocked = streakState.currentStreak >= milestone.days;
             const isNext = nextMilestone.days === milestone.days && !isUnlocked;
@@ -228,8 +284,8 @@ export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onSta
                 `}
                 title={`${milestone.labelEng} (${milestone.days} Days) - +${milestone.rewardXP} XP`}
               >
-                <div className="h-5 flex items-center justify-center">
-                  <MIcon className={`w-4 h-4 sm:w-5 sm:h-5 ${isUnlocked ? milestone.iconColor : 'text-white/70'}`} />
+                <div className="h-4 sm:h-5 flex items-center justify-center">
+                  <MIcon className={`w-3.5 h-3.5 sm:w-5 sm:h-5 ${isUnlocked ? milestone.iconColor : 'text-white/70'}`} />
                 </div>
                 <span className={`text-[9px] sm:text-[10px] font-black mt-1 leading-none ${isUnlocked ? 'text-[#FFD166]' : 'text-white/80'}`}>
                   {milestone.days}d

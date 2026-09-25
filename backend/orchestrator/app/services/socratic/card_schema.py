@@ -57,12 +57,14 @@ class SocraticStep(BaseModel):
         default=None,
         description="Underlying mathematical or scientific concept tag"
     )
+    visual_data: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Structured visual component configuration (e.g. number_line, objects, place_value, animal_features, plant_diagram)"
+    )
 
     def to_plain_text(self, active_hint: Optional[str] = None) -> str:
         """
         Renders the step as emoji-annotated plain text with NO markdown syntax.
-        Fields are rendered directly into pre-styled UI components on the frontend,
-        so all formatting is conveyed through emoji and sentence structure only.
         """
         lines = [
             f"🌟 Our Mission: {self.mission.strip()}",
@@ -74,7 +76,6 @@ class SocraticStep(BaseModel):
             f"👉 Your Turn: {self.your_turn.strip()}"
         ]
 
-        # Append hint if explicitly passed or active hint tier unlocked
         hint_to_show = active_hint
         if not hint_to_show and 0 < self.current_hint_level <= len(self.hints):
             hint_to_show = self.hints[self.current_hint_level - 1]
@@ -87,9 +88,33 @@ class SocraticStep(BaseModel):
 
         return "\n".join(lines)
 
-    # Keep to_markdown as alias for backwards-compatibility with any callers
     def to_markdown(self, active_hint: Optional[str] = None) -> str:
-        return self.to_plain_text(active_hint=active_hint)
+        """
+        Renders this step into standard structured 4-Part Socratic Card markdown format.
+        """
+        lines = [
+            f"🌟 **Our Mission:** {self.mission.strip()}",
+            "",
+            f"💡 **Clue:** {self.clue.strip()}",
+            "",
+            "🍎 **Helpful Picture / Example:**",
+            f"> {self.helpful_example.strip()}",
+            "",
+            "👉 **Your Turn:**",
+            f"{self.your_turn.strip()}"
+        ]
+
+        hint_to_show = active_hint
+        if not hint_to_show and 0 < self.current_hint_level <= len(self.hints):
+            hint_to_show = self.hints[self.current_hint_level - 1]
+
+        if hint_to_show:
+            lines.extend([
+                "",
+                f"💡 **Hint ({max(1, self.current_hint_level)}/3):** {hint_to_show.strip()}"
+            ])
+
+        return "\n".join(lines)
 
 
 
@@ -109,6 +134,10 @@ class StepWidgetPayload(BaseModel):
     completed_steps: List[int] = Field(
         default_factory=list,
         description="List of 0-indexed completed step numbers"
+    )
+    visual_data: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Active visual manipulative payload matching the frontend VisualWidget"
     )
     steps: List[SocraticStep] = Field(
         ...,
@@ -139,6 +168,8 @@ class StepWidgetPayload(BaseModel):
             next_step = self.get_active_step()
             if next_step and next_step.status != "completed":
                 next_step.status = "in_progress"
+            if next_step and next_step.visual_data:
+                self.visual_data = next_step.visual_data
             return True
         return False
 
@@ -152,15 +183,16 @@ class StepWidgetPayload(BaseModel):
             target_step = self.steps[target_index]
             if target_step.status == "pending":
                 target_step.status = "in_progress"
+            if target_step.visual_data:
+                self.visual_data = target_step.visual_data
             return True
         return False
 
     def to_overview_markdown(self) -> str:
         """
-        Renders the plain-text roadmap view (Overview Mode) with emoji labels.
-        No markdown tokens — formatting conveyed through emoji and sentence structure only.
+        Renders the structured roadmap view (Overview Mode) in Markdown format.
         """
-        lines = ["📋 Full Solution Journey (Overview Mode)", ""]
+        lines = ["📋 **Full Solution Journey (Overview Mode)**", ""]
 
         for idx, step in enumerate(self.steps):
             if step.status == "completed":
@@ -174,10 +206,9 @@ class StepWidgetPayload(BaseModel):
                 status_text = "Up Next 🔒"
 
             lines.extend([
-                f"{status_icon} Step {step.step_number}: {step.title}",
-                f"   Mission: {step.mission}",
-                f"   Clue: {step.clue}",
-                f"   Status: {status_text}",
+                f"{status_icon} **Step {step.step_number}: {step.title}** ({status_text})",
+                f"   🌟 *Mission:* {step.mission}",
+                f"   💡 *Clue:* {step.clue}",
                 ""
             ])
 
