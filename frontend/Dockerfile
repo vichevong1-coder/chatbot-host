@@ -16,14 +16,12 @@ COPY . .
 RUN npm run build
 
 # Serve stage
-FROM nginx:alpine
+FROM caddy:2-alpine
 
 # Copy built assets
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/caddy
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy Caddy configuration
+COPY Caddyfile /etc/caddy/Caddyfile
 
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 80 443

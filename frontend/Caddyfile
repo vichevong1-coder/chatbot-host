@@ -1,0 +1,11 @@
+reanmore.duckdns.org {
+    # Serve the React application
+    root * /usr/share/caddy
+    file_server
+
+    # Handle Single Page Application routing (React)
+    try_files {path} /index.html
+
+    # Proxy API requests to the Python Orchestrator container
+    reverse_proxy /api/* orchestrator:9000
+}
