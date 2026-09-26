@@ -508,7 +508,7 @@ export default function App() {
   };
 
   return (
-    <div className={`relative bg-[#EDF7EE] text-[#1B4332] flex flex-col font-sans w-full overflow-x-hidden ${activeTab === 'chat' ? 'h-screen h-[100dvh] overflow-hidden' : 'min-h-screen'}`}>
+    <div className={`relative bg-[#EDF7EE] text-[#1B4332] flex flex-col font-sans w-full overflow-x-hidden ${activeTab === 'chat' ? 'h-screen h-[100dvh] overflow-hidden' : 'h-screen h-[100dvh] overflow-y-auto'}`}>
       <ForestBackground activeTab={activeTab} />
 
       <Header
