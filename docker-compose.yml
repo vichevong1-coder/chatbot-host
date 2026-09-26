@@ -1,20 +1,32 @@
-
-
 services:
-  # State Checkpointing & Cache
+  # Frontend UI (Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: science-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - orchestrator
+    networks:
+      - science-network
+
+  # State Checkpointing & Cache (Optimized)
   redis:
-    image: redis/redis-stack-server:latest
+    image: redis:7-alpine
     container_name: science-redis
     ports:
       - "6379:6379"
     networks:
       - science-network
 
-  # Persistent Logs Database (Postgres)
+  # Persistent Logs Database (Optimized for RAM)
   db:
     image: postgres:15-alpine
     container_name: science-postgres
     restart: always
+    command: postgres -c shared_buffers=16MB -c max_connections=20
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -67,7 +79,7 @@ services:
     networks:
       - science-network
 
-  # Unified Science Solver (Physics, Chemistry, Biology)
+  # Unified Science Solver
   science-service:
     build:
       context: ./backend/services/science_service
